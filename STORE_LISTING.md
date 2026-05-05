@@ -13,7 +13,7 @@ This is the source of truth for every text field in App Store Connect and Google
 | Promotional text (iOS only) | See below — updateable without re-review | 170 |
 | Keywords (iOS) | `fishing,walleye,muskellunge,stocking,survey,dnr,perch,crappie,minnesota,wisconsin,michigan,iowa` | 100 |
 | Description | See "Long description" below | 4000 |
-| Support URL | `https://lakeloreapp.com/support` *(see note)* | — |
+| Support URL | `https://lakeloreapp.com/support` | — |
 | Marketing URL | `https://lakeloreapp.com` | — |
 | Privacy Policy URL | `https://lakeloreapp.com/privacy` | — |
 | Copyright | `© 2026 LakeLore Co.` | — |
@@ -21,7 +21,7 @@ This is the source of truth for every text field in App Store Connect and Google
 | Primary category (Android) | `Sports` | — |
 | Content rating | 4+ (iOS) / Everyone (Android) | — |
 
-> **Note on Support URL:** The marketing site doesn't have a `/support` route yet. Either add a one-paragraph page with the `hello@lakeloreapp.com` mailto, or just point Apple/Google at `https://lakeloreapp.com/#download` (anchor on the homepage with the download CTA). Apple won't reject for either, but a real `/support` page is cleaner.
+> **Support email:** `support@lakeloreapp.com` is the contact published on the support page. The privacy and terms pages still reference `hello@lakeloreapp.com` for legal/privacy correspondence. Both should be configured as aliases in Google Workspace.
 
 ---
 
