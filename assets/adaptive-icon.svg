@@ -1,0 +1,32 @@
+<!--
+  LakeLore Android adaptive-icon foreground — 1024×1024, transparent.
+  Android may apply circle/squircle/rounded-square masks; foreground
+  content must fit within the central 66% safe zone (~676×676).
+  Background color is set in app.json as #f4efe4.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Transparent background; Expo uses backgroundColor from app.json. -->
+
+  <!-- All design coords scaled to the inner 66% safe zone, recentered on (512,512).
+       Effective scale = 0.66 of the full-icon coords. -->
+
+  <!-- Medallion outline -->
+  <circle cx="512" cy="512" r="251" stroke="#1a1f2a" stroke-width="11" fill="none"/>
+
+  <!-- Waterline -->
+  <line x1="293" y1="580" x2="731" y2="580" stroke="#1a1f2a" stroke-width="9"/>
+
+  <!-- Depth contour (dashed) -->
+  <line x1="293" y1="633" x2="731" y2="633" stroke="#1a1f2a" stroke-width="6" stroke-dasharray="13 25"/>
+
+  <!-- Fishing hook -->
+  <path d="M425 358 L425 543 Q425 609 491 609 L570 609"
+        stroke="#1a1f2a" stroke-width="19" fill="none" stroke-linecap="round"/>
+
+  <!-- Hook barb -->
+  <path d="M531 609 L570 609 L557 582"
+        stroke="#1a1f2a" stroke-width="15" fill="none" stroke-linecap="round"/>
+
+  <!-- Walleye gold eye -->
+  <circle cx="612" cy="427" r="29" fill="#c89a3c"/>
+</svg>

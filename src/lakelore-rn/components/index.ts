@@ -1,0 +1,9 @@
+// components/index.ts — single import surface.
+export { PaperHeader } from './PaperHeader';
+export { Chip } from './Chip';
+export { Toggle } from './Toggle';
+export { Segmented } from './Segmented';
+export { PrimaryButton } from './PrimaryButton';
+export { StatPill } from './StatPill';
+export { LakeRow } from './LakeRow';
+export { SectionLabel } from './SectionLabel';
