@@ -20,25 +20,25 @@ Last reviewed: 2026-05-07.
 
 ## At a glance
 
-| | Item | Owner | Estimate |
+| | Item | Owner | Status |
 |---|---|---|---|
-| 🛑 | [Apple Developer Program enrollment](#apple-developer-program-99yr) | you | 1 day (Apple verification) |
-| 🛑 | [Google Play Console enrollment](#google-play-console-25-one-time) | you | ~1 hr |
-| 🛑 | [Expo / EAS account](#expo--eas-account) | you | 5 min |
-| 🛑 | [EAS Build setup](#eas-build-setup) | shared | 30 min config + 1 hr first build |
-| 🛑 | [Capture screenshots](#capture-screenshots) | you | 1–2 hr |
+| ✅ | Apple Developer Program enrollment | you | Approved 2026-05-07 |
+| 🛑 | Google Play Console enrollment | you | App created; bank verification pending |
+| 🛑 | [Expo / EAS account](#expo--eas-account) | you | 5 min — `eas login` |
+| 🛑 | [EAS Build setup](#eas-build-setup) | shared | Config done; you run `eas init` + first `eas build` |
+| 🛑 | [Capture screenshots](#capture-screenshots) | you | After first dev build |
 | 🛑 | [`support@lakeloreapp.com` Google Workspace alias](#supportlakeloreappcom-alias) | you | 5 min |
-| 🛑 | [iPad decision: `supportsTablet`](#ipad-decision-supportstablet) | you | 1 min decide, then either iPad screenshots or a flag flip |
-| 🛑💳 | [RevenueCat account + API keys](#revenuecat-account--api-keys) | you | 30 min |
-| 🛑💳 | [App Store Connect: Paid Apps agreement + subscription product](#app-store-connect-paid-apps-agreement--subscription-product) | you | 1–3 hr (incl. tax/banking forms) |
-| 🛑💳 | [Play Console: subscription product](#play-console-subscription-product) | you | 1 hr |
-| 🛑💳 | [Server entitlement gating](#server-entitlement-gating) | me | 1 day |
-| 🛑💳 | [Mobile RevenueCat SDK + paywall UX](#mobile-revenuecat-sdk--paywall-ux) | me | 2–3 days |
-| 🛑💳 | [Privacy + Terms updates for subscriptions](#privacy--terms-updates-for-subscriptions) | me | 1 hr (drafted; deploys with paywall) |
+| 🛑 | [iPad decision: `supportsTablet`](#ipad-decision-supportstablet) | you | Pending |
+| ✅ | RevenueCat account + iOS app linked | you | Real `appl_` key in code; Android still on test key |
+| 🛑💳 | App Store Connect: Paid Apps + iOS subscription product | you | Agreement signed; banking validation pending; subscription product pending |
+| 🛑💳 | Play Console: subscription product | you | Pending bank verification |
+| ✅ | Server entitlement gating | me | Live in production (fail-closed in prod, awaits `REVENUECAT_SECRET_KEY`) |
+| 🟡💳 | Mobile RevenueCat SDK + paywall UX | me | All UX shipped; needs real Android `goog_` key + sandbox testing |
+| ✅ | Privacy + Terms updates for subscriptions | me | Live on lakeloreapp.com (effective 2026-05-07) |
 | ⚠️ | [Sentry crash + error monitoring](#sentry-crash--error-monitoring) | shared | 30 min |
 | ⚠️ | [Offsite DB backups](#offsite-db-backups) | shared | 30 min |
 | ⚠️ | [Auto-discover dev API host](#auto-discover-dev-api-host) | me | 10 min |
-| ⚠️ | [In-app "Sources / About" page](#in-app-sources--about-page) | me | 1 hr |
+| ✅ | In-app "Sources / About" page | me | Shipped (commit `f0f8362`) |
 | 🧹 | [Empty / error state polish](#empty--error-state-polish) | me | 1 hr |
 | 🧹 | [Replace `Alert.alert` validation with toast](#replace-alertalert-validation-with-toast) | me | 30 min |
 
