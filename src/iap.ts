@@ -18,12 +18,16 @@ import Purchases, {
 } from 'react-native-purchases';
 
 // ── Configuration ──────────────────────────────────────────────────────────
-// During RC dashboard onboarding, both platforms share the project-level
-// `test_*` key — it lets `configure()` succeed and proves the SDK wiring
-// before any platform is linked. Once you finish Apple/Google enrollment
-// and link iOS + Android apps in RC, replace each with the real
-// platform-specific public key (`appl_…` / `goog_…`).
-const APPLE_PUBLIC_KEY  = 'test_dZCCVGGeZrUTSYjetHnOZTGEiOb';
+// Public, platform-specific RevenueCat SDK keys. Designed to ship in the
+// binary; the *secret* REST API key (sk_…) never goes in this file — it
+// stays as a Fly secret on the server.
+//
+// iOS: real key — App Store Connect API + In-App Purchase Key linked in
+//      RC dashboard 2026-05-07.
+// Android: still on the project-level `test_…` key while waiting on Google
+//      Play Console bank verification → service account → RC link. Swap to
+//      the real `goog_…` key when that pipeline is complete.
+const APPLE_PUBLIC_KEY  = 'appl_dzAkMHKpPUIBlKYqfKSiOUCiXPE';
 const GOOGLE_PUBLIC_KEY = 'test_dZCCVGGeZrUTSYjetHnOZTGEiOb';
 
 // Identifiers configured in the RevenueCat dashboard.
