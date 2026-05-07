@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
@@ -22,6 +22,7 @@ import {
   JetBrainsMono_700Bold,
 } from '@expo-google-fonts/jetbrains-mono';
 import { StateProvider, useAppState } from './src/StateContext';
+import { initIAP } from './src/iap';
 import StateSelectScreen from './src/screens/StateSelectScreen';
 import SearchScreen from './src/screens/SearchScreen';
 import LakeDetailScreen from './src/screens/LakeDetailScreen';
@@ -78,6 +79,13 @@ export default function App() {
     JetBrainsMono_600SemiBold,
     JetBrainsMono_700Bold,
   });
+
+  useEffect(() => {
+    // Fire-and-forget. No-ops if RevenueCat keys aren't configured yet,
+    // so the app launches cleanly during development before paywall setup
+    // is complete.
+    initIAP();
+  }, []);
 
   if (!fontsLoaded) {
     return <View style={{ flex: 1, backgroundColor: colors.paper }} />;

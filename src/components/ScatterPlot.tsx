@@ -355,10 +355,16 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
           {points.filter(inView).map((p, i) => {
             const { px, py } = toPixel(p.x, p.y);
             const isSel = selectedDot?.lake_id===p.lake_id && selectedDot?.year===p.year;
+            // No-stocking dots get rendered hollow with a dark outline so they
+            // pop against the paper2 chart fill — the previous paper3 fill on
+            // a paper2 background was nearly invisible.
+            const noData = p.stocked == null;
             return (
               <Circle key={i} cx={px} cy={py} r={isSel?7:5}
-                fill={stockedColor(p.stocked, minStocked, maxStocked)}
-                fillOpacity={0.85} stroke={isSel?colors.ink:colors.paper} strokeWidth={isSel?1.5:0.5} />
+                fill={noData ? 'none' : stockedColor(p.stocked, minStocked, maxStocked)}
+                fillOpacity={noData ? 1 : 0.85}
+                stroke={isSel ? colors.ink : noData ? colors.inkSoft : colors.paper}
+                strokeWidth={isSel ? 1.5 : noData ? 1.2 : 0.5} />
             );
           })}
           </Svg>
@@ -372,7 +378,7 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
       )}
 
       <View style={styles.legend}>
-        <View style={[styles.legendDot, { backgroundColor: colors.paper3 }]} />
+        <View style={[styles.legendDot, styles.legendDotEmpty]} />
         <Text style={[text.labelS, { color: colors.inkSoft }]}>no data</Text>
         <Text style={[text.labelS, { color: colors.paper3 }]}>·</Text>
         <Text style={[text.labelS, { color: colors.inkSoft }]}>low</Text>
@@ -467,4 +473,10 @@ const styles = StyleSheet.create({
     marginBottom: space.md,
   },
   legendDot: { width: 10, height: 10 },
+  legendDotEmpty: {
+    borderRadius: 5,
+    borderWidth: 1.2,
+    borderColor: colors.inkSoft,
+    backgroundColor: 'transparent',
+  },
 });

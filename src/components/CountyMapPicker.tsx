@@ -12,8 +12,10 @@ import { ND_COUNTIES, ND_VIEWBOX } from '../data/ndCountyPaths';
 import { IA_COUNTIES, IA_VIEWBOX } from '../data/iaCountyPaths';
 import { NE_COUNTIES, NE_VIEWBOX } from '../data/neCountyPaths';
 import { WI_COUNTIES, WI_VIEWBOX } from '../data/wiCountyPaths';
+import { MI_COUNTIES, MI_VIEWBOX } from '../data/miCountyPaths';
 import { StateKey } from '../types';
 import { colors, text, space, hairline, fonts } from '../lakelore-rn/theme';
+import type { TextStyle } from 'react-native';
 import { PaperHeader, Chip, SectionLabel } from '../lakelore-rn/components';
 
 interface Props {
@@ -42,8 +44,8 @@ function MapCountyPicker({ visible, state, selected, onConfirm, onClose }: Props
   const [draft, setDraft] = useState<string[]>(selected);
   const { width } = useWindowDimensions();
 
-  const counties = state === 'mn' ? MN_COUNTIES : state === 'nd' ? ND_COUNTIES : state === 'ia' ? IA_COUNTIES : state === 'ne' ? NE_COUNTIES : state === 'wi' ? WI_COUNTIES : SD_COUNTIES;
-  const viewBox  = state === 'mn' ? MN_VIEWBOX  : state === 'nd' ? ND_VIEWBOX  : state === 'ia' ? IA_VIEWBOX  : state === 'ne' ? NE_VIEWBOX  : state === 'wi' ? WI_VIEWBOX  : SD_VIEWBOX;
+  const counties = state === 'mn' ? MN_COUNTIES : state === 'nd' ? ND_COUNTIES : state === 'ia' ? IA_COUNTIES : state === 'ne' ? NE_COUNTIES : state === 'wi' ? WI_COUNTIES : state === 'mi' ? MI_COUNTIES : SD_COUNTIES;
+  const viewBox  = state === 'mn' ? MN_VIEWBOX  : state === 'nd' ? ND_VIEWBOX  : state === 'ia' ? IA_VIEWBOX  : state === 'ne' ? NE_VIEWBOX  : state === 'wi' ? WI_VIEWBOX  : state === 'mi' ? MI_VIEWBOX  : SD_VIEWBOX;
   const [, , vbW, vbH] = viewBox.split(' ').map(Number);
   const mapW = width - 32;
   const mapH = (mapW / vbW) * vbH;
@@ -173,7 +175,8 @@ function MapCountyPicker({ visible, state, selected, onConfirm, onClose }: Props
   const countyNames = Object.keys(counties).sort();
   const dynamicViewBox = `${mapVB.x} ${mapVB.y} ${mapVB.w} ${mapVB.h}`;
   const zoomFactor = vbW / mapVB.w;
-  const baseFontSize = state === 'mn' ? 5.5 : state === 'ia' ? 5.5 : state === 'wi' ? 5.5 : 6.5;
+  // Dense-county states (>70 counties) get a smaller label so labels don't overlap.
+  const baseFontSize = state === 'mn' || state === 'ia' || state === 'wi' || state === 'mi' ? 5.5 : 6.5;
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onShow={handleShow}>
@@ -185,8 +188,11 @@ function MapCountyPicker({ visible, state, selected, onConfirm, onClose }: Props
             onBack={onClose}
             backLabel="Cancel"
             right={
-              <Pressable onPress={() => { onConfirm(draft); onClose(); }} hitSlop={8}>
-                <Text style={[text.labelL, { color: colors.walleye2 }]}>
+              <Pressable
+                onPress={() => { onConfirm(draft); onClose(); }}
+                hitSlop={12}
+                style={styles.doneBtn}>
+                <Text style={styles.doneText}>
                   Done{draft.length > 0 ? ` · ${draft.length}` : ''}
                 </Text>
               </Pressable>
@@ -222,7 +228,11 @@ function MapCountyPicker({ visible, state, selected, onConfirm, onClose }: Props
                   if (cx < 8 || cx > vbW - 8 || cy < 8 || cy > vbH - 8) return null;
                   return (
                     <SvgText key={`label-${name}`} x={cx} y={cy}
-                      fontSize={baseFontSize / zoomFactor}
+                      // baseFontSize is in viewBox units, so dividing by zoomFactor
+                      // would keep the on-screen size constant. Dividing by √zoom
+                      // instead lets labels grow at ~half the zoom rate — readable
+                      // when zoomed in without exploding at high zoom.
+                      fontSize={baseFontSize / Math.sqrt(zoomFactor)}
                       fontFamily={fonts.mono}
                       textAnchor="middle" alignmentBaseline="middle"
                       fill={isSelected ? colors.paper : colors.ink}>
@@ -279,6 +289,17 @@ function MapCountyPicker({ visible, state, selected, onConfirm, onClose }: Props
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
+  // Larger, more prominent Done action than the default header label.
+  doneBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  doneText: {
+    fontFamily: fonts.monoSemi,
+    fontSize: 17,
+    letterSpacing: 1.7,
+    color: colors.walleye2,
+  } as TextStyle,
   hintRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

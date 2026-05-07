@@ -40,7 +40,7 @@ interface CatchRow {
 interface StockRow { stock_year: number; species: string; life_stage: string; quantity: number }
 interface MetricRow { species: string; adults_per_100ac: number }
 interface MetricByYearRow { species: string; year: number; adults_per_100ac: number }
-interface LakeData { lake: Lake; surveys: { id: number|string; report_id?: number|null; source_pdf?: string|null }[]; catches: CatchRow[]; stocking: StockRow[]; metrics: MetricRow[]; metrics_by_year?: MetricByYearRow[] }
+interface LakeData { lake: Lake; surveys: { id: number|string; report_id?: number|null; source_pdf?: string|null; source_url?: string|null }[]; catches: CatchRow[]; stocking: StockRow[]; metrics: MetricRow[]; metrics_by_year?: MetricByYearRow[] }
 
 // Palette — paper-and-ink chart palette
 const LINE_COLORS = [colors.rust, colors.walleye, colors.moss, colors.lake3, '#8a6aa8', colors.lakeInk];
@@ -501,16 +501,34 @@ export default function LakeDetailScreen() {
                 <Text style={[text.labelM, { color: colors.walleye2 }]}>Iowa DNR Lake Page ↗</Text>
               </Pressable>
             ) : null}
-            {state === 'ne' && (() => {
-              const pdfs = [...new Set((data?.surveys ?? []).map(s => s.source_pdf).filter(Boolean))] as string[];
-              return pdfs.map(pdf => (
-                <Pressable key={pdf} onPress={() => Linking.openURL(`${API_BASE_URL}/api/ne/pdf/${encodeURIComponent(pdf)}`)}>
-                  <Text style={[text.labelM, { color: colors.walleye2 }]}>
-                    {pdf.replace(/[-_]/g, ' ').replace(/\.pdf$/i, '').replace(/\b(20\d\d)\b/, '($1)').trim()} ↗
-                  </Text>
+            {(state === 'ne' || state === 'mi' || state === 'wi') && (() => {
+              // Surveys are returned year-DESC by the server; the first row with
+              // a source_pdf is the most recent assessment for the lake. URL per state:
+              //   NE: source_url captured directly during scrape (Cloudflare-protected page)
+              //   WI: source_url captured from WDNR's reports index (no fixed directory pattern)
+              //   MI: stable DNR directory listing — built from the filename
+              const latest = (data?.surveys ?? []).find(s => s.source_pdf);
+              if (!latest?.source_pdf) return null;
+              const filename = latest.source_pdf;
+              let url: string | null = null;
+              if (state === 'ne' || state === 'wi') url = latest.source_url ?? null;
+              else if (state === 'mi') url = `https://www2.dnr.state.mi.us/publications/pdfs/DNRFishLibrary/StatusoftheFisheryResourceReports/${filename}`;
+              if (!url) return null;
+              const label = filename.replace(/^Reports_/i, '').replace(/[-_]/g, ' ').replace(/\.pdf$/i, '').replace(/\b(20\d\d)\b/, '($1)').trim();
+              return (
+                <Pressable onPress={() => Linking.openURL(url!)}>
+                  <Text style={[text.labelM, { color: colors.walleye2 }]}>{label} ↗</Text>
                 </Pressable>
-              ));
+              );
             })()}
+            {state === 'nd' && (
+              // ND GFP doesn't expose per-lake URLs (their public site is an
+              // ASP.NET WebForms search with no deep linking). Link to the
+              // statewide "Where to Fish" search where users can pick the lake.
+              <Pressable onPress={() => Linking.openURL('https://gfappspublic.nd.gov/wheretofish/Search.aspx')}>
+                <Text style={[text.labelM, { color: colors.walleye2 }]}>ND Where to Fish ↗</Text>
+              </Pressable>
+            )}
           </View>
         </View>
 
