@@ -26,7 +26,9 @@
         "NSPrivacyAccessedAPITypes": [
           {
             "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
-            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+            "NSPrivacyAccessedAPITypeReasons": [
+              "CA92.1"
+            ]
           }
         ]
       }
@@ -44,10 +46,14 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "privacyPolicyUrl": "https://lakeloreapp.com/privacy"
+      "privacyPolicyUrl": "https://lakeloreapp.com/privacy",
+      "eas": {
+        "projectId": "8d4acf25-f8aa-4f97-a2f0-d0b41d95af01"
+      }
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "owner": "ndrwtp"
   }
 }

@@ -18,7 +18,7 @@
     "preview": {
       "distribution": "internal",
       "channel": "preview",
-      "autoIncrement": "buildNumber",
+      "autoIncrement": true,
       "ios": {
         "resourceClass": "m-medium"
       },
