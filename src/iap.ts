@@ -53,8 +53,12 @@ export function isIapConfigured(): boolean {
  * first call configures Purchases. No-ops if no key is configured for the
  * current platform, so the app still launches in environments where IAP
  * is intentionally disabled (Expo Go, web, dev with no keys).
+ *
+ * Pass `appUserID` so RevenueCat ties purchases to LakeLore's persistent
+ * anonymous UUID (see src/userId.ts) — that's the same ID we send to the
+ * API as `X-User-Id`, so client and server agree on identity.
  */
-export async function initIAP(): Promise<void> {
+export async function initIAP(appUserID?: string): Promise<void> {
   if (initialized) return;
   const key = getApiKey();
   if (!key) {
@@ -63,9 +67,9 @@ export async function initIAP(): Promise<void> {
   }
   try {
     if (__DEV__) Purchases.setLogLevel(Purchases.LOG_LEVEL.WARN);
-    await Purchases.configure({ apiKey: key });
+    await Purchases.configure({ apiKey: key, appUserID: appUserID ?? null });
     initialized = true;
-    if (__DEV__) console.log('[iap] RevenueCat initialized');
+    if (__DEV__) console.log(`[iap] RevenueCat initialized${appUserID ? ` (user: ${appUserID})` : ''}`);
   } catch (e) {
     console.warn('[iap] configure failed:', e);
   }

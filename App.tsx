@@ -23,6 +23,7 @@ import {
 } from '@expo-google-fonts/jetbrains-mono';
 import { StateProvider, useAppState } from './src/StateContext';
 import { initIAP } from './src/iap';
+import { getUserId } from './src/userId';
 import StateSelectScreen from './src/screens/StateSelectScreen';
 import SearchScreen from './src/screens/SearchScreen';
 import LakeDetailScreen from './src/screens/LakeDetailScreen';
@@ -81,10 +82,14 @@ export default function App() {
   });
 
   useEffect(() => {
-    // Fire-and-forget. No-ops if RevenueCat keys aren't configured yet,
-    // so the app launches cleanly during development before paywall setup
-    // is complete.
-    initIAP();
+    // Resolve the persistent anonymous UUID first so RevenueCat and the
+    // API client agree on identity. No-ops if RevenueCat keys aren't
+    // configured yet — the app launches cleanly during development
+    // before paywall setup is complete.
+    (async () => {
+      const userId = await getUserId();
+      await initIAP(userId);
+    })();
   }, []);
 
   if (!fontsLoaded) {

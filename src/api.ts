@@ -1,4 +1,5 @@
 import { FilterState, FilterOptions, ResultsResponse, StateKey } from './types';
+import { getUserId } from './userId';
 
 // ── Server URL configuration ───────────────────────────────────────────────────
 // Production: Fly.io unified server (lake-fish-api.fly.dev)
@@ -15,16 +16,41 @@ function baseUrl(state: StateKey) {
   return `${API_BASE_URL}/api/${state}`;
 }
 
+// ── Subscription error sentinel ───────────────────────────────────────────────
+// Server returns 402 with `{ error: 'subscription_required', state }` for any
+// non-MN state when the caller doesn't have the all-states entitlement. Callers
+// can `instanceof SubscriptionRequiredError` to switch to the paywall flow.
+
+export class SubscriptionRequiredError extends Error {
+  state: StateKey;
+  constructor(state: StateKey) {
+    super(`Subscription required for ${state}`);
+    this.name = 'SubscriptionRequiredError';
+    this.state = state;
+  }
+}
+
 // ── Fetch wrapper with timeout and user-friendly errors ───────────────────────
 
 async function get<T>(url: string, timeoutMs = 10_000): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { signal: controller.signal });
+    const userId = await getUserId();
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { 'X-User-Id': userId },
+    });
+    if (res.status === 402) {
+      // Subscription gate. Surface a typed error so callers can route to
+      // the paywall instead of showing a generic "server error".
+      const body = await res.json().catch(() => null);
+      throw new SubscriptionRequiredError((body?.state as StateKey) ?? extractStateFromUrl(url));
+    }
     if (!res.ok) throw new Error(`Server error (${res.status})`);
     return res.json() as Promise<T>;
   } catch (err: unknown) {
+    if (err instanceof SubscriptionRequiredError) throw err;
     if (err instanceof Error && err.name === 'AbortError') {
       throw new Error('Request timed out — check your connection');
     }
@@ -35,6 +61,11 @@ async function get<T>(url: string, timeoutMs = 10_000): Promise<T> {
   } finally {
     clearTimeout(timer);
   }
+}
+
+function extractStateFromUrl(url: string): StateKey {
+  const m = url.match(/\/api\/([a-z]{2})(?:\/|\?|$)/);
+  return (m?.[1] as StateKey) ?? 'mn';
 }
 
 // ── API surface ───────────────────────────────────────────────────────────────
