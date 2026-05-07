@@ -83,15 +83,49 @@ Last reviewed: 2026-05-07.
 **Why.** Without this, there's no shippable binary. `npx expo prebuild` + `xcodebuild` can theoretically produce one, but EAS handles signing, version increments, TestFlight upload, and Play upload in a single command.
 
 **Done when.**
-- [ ] `eas.json` exists with `development`, `preview`, and `production` profiles.
-- [ ] `app.json` has `extra.eas.projectId` populated by `eas init`.
-- [ ] `auto-increment` is enabled so Apple doesn't reject a build for reusing `CFBundleVersion`.
-- [ ] `eas build --profile preview --platform ios` succeeds and produces a TestFlight-installable build.
-- [ ] `eas build --profile preview --platform android` succeeds and produces an internal-testing-installable AAB.
+- [x] `eas.json` exists with `development`, `preview`, and `production` profiles.
+- [ ] `eas init` run (writes `extra.eas.projectId` to `app.json`).
+- [x] `auto-increment` enabled in eas.json so Apple doesn't reject a build for reusing `CFBundleVersion`.
+- [ ] `submit.production.ios.ascAppId` and `appleTeamId` filled in (currently `TBD-...` placeholders) — needed only for `eas submit`, not for `eas build`.
+- [ ] `npm run build:dev:ios` succeeds and produces a simulator-installable dev client.
+- [ ] `npm run build:preview:ios` succeeds and produces a TestFlight-installable build.
+- [ ] `npm run build:preview:android` succeeds and produces an internal-testing-installable APK.
 
-**Where.** `~/lake-fish-mobile/eas.json` (to be created); `app.json` updated by `eas init`.
+**Where.** `~/lake-fish-mobile/eas.json`. Build commands wired into `package.json` scripts.
 
-**Owner.** Shared. I write config + walk you through `eas login` (must be interactive in your shell).
+**Owner.** Shared. Config is in. You handle the interactive bits below.
+
+**Your steps to take it the rest of the way:**
+
+```bash
+# 1. Install EAS CLI (one-time, global)
+npm install -g eas-cli
+
+# 2. Log in (interactive — opens browser)
+eas login
+
+# 3. Initialize the project — writes projectId into app.json
+cd ~/lake-fish-mobile
+eas init
+
+# 4. First build — make a dev client for simulator
+npm run build:dev:ios
+
+# 5. Once it's built (~10–15 min), install in simulator and connect:
+npm start
+# Press 'i' to launch the simulator + your dev build
+```
+
+After the first dev build succeeds, RC's "SDK detected" check will go green
+the first time you launch the app — that'll satisfy the wizard step you skipped.
+
+**Filling in the submit placeholders** (only needed when you run `eas submit`, not for `eas build`):
+
+- `appleTeamId` → developer.apple.com/account → Membership → Team ID (10-character string).
+- `ascAppId` → App Store Connect → My Apps → LakeLore → App Information → "Apple ID" (numeric, ~10 digits).
+- `serviceAccountKeyPath` → after Google bank verification, the JSON file you'll download for RC.
+
+Edit `eas.json` directly to swap them in.
 
 **Notes.** Pre-requisite to screenshots if you want them from a real native build. Screenshots can also be captured from Expo Go without EAS — see STORE_LISTING.md.
 
