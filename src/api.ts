@@ -1,16 +1,29 @@
+import Constants from 'expo-constants';
 import { FilterState, FilterOptions, ResultsResponse, StateKey } from './types';
 import { getUserId } from './userId';
 
 // ── Server URL configuration ───────────────────────────────────────────────────
-// Production: Fly.io unified server (lake-fish-api.fly.dev)
-// Development: unified server running locally on port 3100
-// Custom domain (e.g. api.lakelore.com) can be added in Fly.io dashboard
-// and swapped in here without any server changes.
+// Production builds always hit the Fly.io API. Dev builds derive the host
+// from Metro's `hostUri` (e.g. "192.168.1.8:8081"), strip the port, and
+// rewrite to port 3100 — the local server's port. That way LAN IP changes
+// don't require a code edit; whatever IP `npx expo start` advertises just
+// works. Falls back to a hardcoded LAN IP if hostUri isn't available
+// (rare — happens when running through Metro tunnel mode).
 
-const DEV_API_BASE = 'http://192.168.1.8:3100';
 const PROD_API_BASE = 'https://lake-fish-api.fly.dev';
+const DEV_API_FALLBACK = 'http://192.168.1.8:3100';
+const DEV_API_PORT = 3100;
 
-export const API_BASE_URL: string = __DEV__ ? DEV_API_BASE : PROD_API_BASE;
+function resolveDevApiBase(): string {
+  // Constants.expoConfig.hostUri looks like "192.168.1.8:8081" in dev.
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (!hostUri) return DEV_API_FALLBACK;
+  const host = hostUri.split(':')[0];
+  if (!host) return DEV_API_FALLBACK;
+  return `http://${host}:${DEV_API_PORT}`;
+}
+
+export const API_BASE_URL: string = __DEV__ ? resolveDevApiBase() : PROD_API_BASE;
 
 function baseUrl(state: StateKey) {
   return `${API_BASE_URL}/api/${state}`;
