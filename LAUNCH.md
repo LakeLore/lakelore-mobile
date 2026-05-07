@@ -35,9 +35,9 @@ Last reviewed: 2026-05-07.
 | ✅ | Server entitlement gating | me | Live in production (fail-closed in prod, awaits `REVENUECAT_SECRET_KEY`) |
 | 🟡💳 | Mobile RevenueCat SDK + paywall UX | me | All UX shipped; needs real Android `goog_` key + sandbox testing |
 | ✅ | Privacy + Terms updates for subscriptions | me | Live on lakeloreapp.com (effective 2026-05-07) |
-| ⚠️ | [Sentry crash + error monitoring](#sentry-crash--error-monitoring) | shared | 30 min |
+| ✅ | Sentry crash + error monitoring | shared | Live · mobile + server wired |
 | ⚠️ | [Offsite DB backups](#offsite-db-backups) | shared | 30 min |
-| ⚠️ | [Auto-discover dev API host](#auto-discover-dev-api-host) | me | 10 min |
+| ✅ | Auto-discover dev API host | me | Shipped (commit `e250df4`) |
 | ✅ | In-app "Sources / About" page | me | Shipped (commit `f0f8362`) |
 | 🧹 | [Empty / error state polish](#empty--error-state-polish) | me | 1 hr |
 | 🧹 | [Replace `Alert.alert` validation with toast](#replace-alertalert-validation-with-toast) | me | 30 min |
