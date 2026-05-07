@@ -4,7 +4,17 @@ The single source of truth for what's left before LakeLore ships to the App Stor
 
 For listing copy, screenshot capture, and store-form answers, see [STORE_LISTING.md](./STORE_LISTING.md). This file tracks the *infrastructure and code* work that surrounds those.
 
-Last reviewed: 2026-05-05.
+Last reviewed: 2026-05-07.
+
+## Monetization model (locked in 2026-05-07)
+
+- **Free tier:** Minnesota only. Full access to all 9,477 MN lakes, all features.
+- **Paid tier — "LakeLore All-States":** Unlocks the other six states (WI, MI, ND, SD, NE, IA).
+- **Price:** $5.99 / year, auto-renewing.
+- **Free trial:** None.
+- **Provider:** RevenueCat (cross-platform abstraction over Apple StoreKit + Google Play Billing).
+- **User identity:** Anonymous device UUID (no account, no email). Cross-device restore via per-platform store account ("Restore Purchases" button).
+- **State Select UX:** All 7 states visible with lake counts. MN is free to enter; the other six show a small lock indicator and tapping opens the paywall instead of entering the state.
 
 ---
 
@@ -19,6 +29,12 @@ Last reviewed: 2026-05-05.
 | 🛑 | [Capture screenshots](#capture-screenshots) | you | 1–2 hr |
 | 🛑 | [`support@lakeloreapp.com` Google Workspace alias](#supportlakeloreappcom-alias) | you | 5 min |
 | 🛑 | [iPad decision: `supportsTablet`](#ipad-decision-supportstablet) | you | 1 min decide, then either iPad screenshots or a flag flip |
+| 🛑💳 | [RevenueCat account + API keys](#revenuecat-account--api-keys) | you | 30 min |
+| 🛑💳 | [App Store Connect: Paid Apps agreement + subscription product](#app-store-connect-paid-apps-agreement--subscription-product) | you | 1–3 hr (incl. tax/banking forms) |
+| 🛑💳 | [Play Console: subscription product](#play-console-subscription-product) | you | 1 hr |
+| 🛑💳 | [Server entitlement gating](#server-entitlement-gating) | me | 1 day |
+| 🛑💳 | [Mobile RevenueCat SDK + paywall UX](#mobile-revenuecat-sdk--paywall-ux) | me | 2–3 days |
+| 🛑💳 | [Privacy + Terms updates for subscriptions](#privacy--terms-updates-for-subscriptions) | me | 1 hr (drafted; deploys with paywall) |
 | ⚠️ | [Sentry crash + error monitoring](#sentry-crash--error-monitoring) | shared | 30 min |
 | ⚠️ | [Offsite DB backups](#offsite-db-backups) | shared | 30 min |
 | ⚠️ | [Auto-discover dev API host](#auto-discover-dev-api-host) | me | 10 min |
@@ -26,7 +42,7 @@ Last reviewed: 2026-05-05.
 | 🧹 | [Empty / error state polish](#empty--error-state-polish) | me | 1 hr |
 | 🧹 | [Replace `Alert.alert` validation with toast](#replace-alertalert-validation-with-toast) | me | 30 min |
 
-🛑 = blocker · ⚠️ = strongly recommended pre-launch · 🧹 = polish, post-launch fine
+🛑 = blocker · 💳 = paywall track · ⚠️ = strongly recommended pre-launch · 🧹 = polish, post-launch fine
 
 ---
 
@@ -125,7 +141,143 @@ Last reviewed: 2026-05-05.
 
 ---
 
-## ⚠️ Strongly recommended pre-launch
+---
+
+## 🛑💳 Paywall track
+
+All six items below ship together. Apple won't approve a binary that references a subscription product that doesn't exist in App Store Connect, and the subscription product needs the binary to be reviewable. We schedule the user-side work and code work in parallel, then submit both at the same time.
+
+### RevenueCat account + API keys
+
+**Why.** RevenueCat sits between Apple/Google billing and your app: it abstracts cross-platform purchase APIs, handles receipt validation, and exposes a single REST API + webhook that your server checks for entitlement. Free up to $2.5K monthly tracked revenue (~5,000 subscribers at $5.99/yr) — well within the free tier for v1.
+
+**Done when.**
+- [ ] RevenueCat account created at https://app.revenuecat.com.
+- [ ] LakeLore project created.
+- [ ] Apple App Store and Google Play apps linked (needs the bundle ID `com.lakeloreapp.lakelore` and a P8 key from App Store Connect / a service account JSON from Play Console).
+- [ ] **Public SDK keys** captured (one for iOS, one for Android — these go in `app.json` `extra.revenueCat`).
+- [ ] **Secret API key** captured (server-side, used to query entitlement state — goes in Fly secrets).
+- [ ] **Webhook signing secret** captured (server-side, used to verify webhook calls from RC — goes in Fly secrets).
+
+**Owner.** You. I'll provide a step-by-step walkthrough when you start; the dashboard is reasonably guided.
+
+---
+
+### App Store Connect: Paid Apps agreement + subscription product
+
+**Why.** Apple requires a separate "Paid Applications" agreement (with banking and tax info) before you can sell anything. Then the subscription product itself has to be created in App Store Connect, reviewed, and approved alongside the binary.
+
+**Done when.**
+- [ ] Paid Apps agreement signed; banking + tax (W-9) submitted under Agreements, Tax, and Banking.
+- [ ] Subscription Group created: "LakeLore Atlas Pass" (one group can hold future tiers).
+- [ ] Subscription product created within the group:
+  - Product ID: `com.lakeloreapp.lakelore.allstates_annual`
+  - Reference name: `LakeLore All-States · Annual`
+  - Display name: `LakeLore All-States`
+  - Duration: 1 year
+  - Price tier: USD $5.99 (Apple's per-region matrix takes care of foreign pricing)
+  - Free trial: none
+  - Localized description: "Unlocks every state outside of Minnesota — Wisconsin, Michigan, North Dakota, South Dakota, Nebraska, and Iowa. Annual subscription, auto-renews."
+- [ ] Subscription submitted for review with the first build that references it.
+
+**Owner.** You. I'll provide the exact form values when you start the form.
+
+**Watch out for.** Apple requires *before-purchase disclosure* in the app: title, length, price, auto-renew terms, link to terms, link to privacy policy. Missing any of these is the most common subscription rejection. I'll bake them into the paywall screen so they're correct by construction.
+
+---
+
+### Play Console: subscription product
+
+**Why.** Same idea on Google's side — the subscription product must exist in Play Console before the app can purchase against it.
+
+**Done when.**
+- [ ] Merchant account set up (Play Console → Setup → Payments).
+- [ ] Subscription created under Monetize → Products → Subscriptions:
+  - Product ID: `lakelore_allstates_annual` (Google requires lowercase + underscores; can't share Apple's reverse-DNS form)
+  - Name: `LakeLore All-States`
+  - Description: same as Apple's
+  - Base plan: 1 year, USD $5.99, auto-renewing
+  - Free trial: none
+
+**Owner.** You.
+
+---
+
+### Server entitlement gating
+
+**Why.** Pure client-side gating gets bypassed by anyone who proxies the API. The server has to be the source of truth for "is this user paid?"
+
+**Done when.**
+- [ ] Express middleware reads `X-User-Id: <uuid>` from incoming requests; assigns one if missing.
+- [ ] `/api/me/entitlement` endpoint returns `{ allStates: boolean, expiresAt: string|null, source: 'revenuecat'|'cache' }`. Implementation: server caches entitlement per UUID in memory for ~5 min, falls through to RevenueCat REST API on miss, and updates from webhook events when RC pushes them.
+- [ ] State allow-list check: requests for any state other than `mn` require `allStates === true` (else 402 Payment Required with `{ error: 'subscription_required', state }`).
+- [ ] Webhook handler at `POST /webhooks/revenuecat` verifies the signing secret, updates the entitlement cache.
+- [ ] `/api/mn/*` endpoints unchanged (free tier).
+- [ ] No regressions in existing endpoint behavior for unauthenticated callers (mobile app + marketing site continue to work for MN).
+
+**Where.** `~/lake-fish-mobile-server/server.js`. Likely a new module `entitlement.js` for the cache + RC client.
+
+**Owner.** Me.
+
+**Notes.** I'll wire the code with `process.env.REVENUECAT_SECRET_KEY` and `REVENUECAT_WEBHOOK_SECRET` so the user just sets the Fly secrets when they have keys. Server can be merged before the keys exist (will refuse to gate without them, fail-closed).
+
+---
+
+### Mobile RevenueCat SDK + paywall UX
+
+**Why.** The actual purchase flow lives on the device. RC's SDK abstracts the platform-specific bits.
+
+**Done when.**
+- [ ] `react-native-purchases` installed; iOS and Android SDK keys plumbed via `app.json` `extra.revenueCat`.
+- [ ] Anonymous user UUID generated on first launch, stored in AsyncStorage (`lakeloreUserId`), passed as `X-User-Id` on every API request.
+- [ ] RevenueCat configured at app start with that UUID as App User ID.
+- [ ] State Select screen modified:
+  - All seven cards visible with lake counts (no change).
+  - Cards for non-MN states show a small "🔒 ALL-STATES" eyebrow chip in walleye-gold.
+  - Tapping a non-MN state opens the paywall modal instead of entering the state.
+  - MN unchanged — tap → enter.
+- [ ] Paywall modal:
+  - Headline ("Unlock the rest of the atlas"), value props (six states, all features), price ($5.99/yr, auto-renewing).
+  - Pre-purchase disclosure block (title, length, auto-renew terms, links to terms + privacy).
+  - "Subscribe" button → triggers RC purchase flow → updates entitlement → dismisses modal.
+  - "Restore Purchases" button → triggers RC restore → updates entitlement.
+  - "Manage Subscription" link (visible after purchase) → opens platform subscription settings.
+- [ ] After successful purchase, the entitlement state propagates so the previously-blocked state can be entered.
+- [ ] In-flight purchase state is robust: if RC takes a few seconds, the button shows a spinner; if the user backgrounds and returns, state is correct.
+- [ ] Offline behavior: cached entitlement allows continued access for at least 24 hours of offline use (RC handles this by default).
+
+**Where.**
+- New: `src/screens/PaywallScreen.tsx`
+- Modified: `src/screens/StateSelectScreen.tsx`, `src/screens/SearchScreen.tsx` (state-picker modal also needs the lock affordance), `src/api.ts` (new `X-User-Id` header), `App.tsx` (RC init).
+
+**Owner.** Me.
+
+---
+
+### Privacy + Terms updates for subscriptions
+
+**Why.** When the paywall ships, the app collects two new categories: an anonymous user identifier (UUID) and purchase data (transaction ID, subscription state). The privacy policy already has a "May be collected" hook for these but should be promoted to "Currently collected" once the paywall actually goes live. The terms need a Subscriptions section with auto-renew, refund, and cancellation language.
+
+**Done when.**
+- [ ] `web/app/privacy/page.tsx` updated:
+  - "Anonymous user identifier" — currently collected (replaces or complements the existing analytics-section device-ID language).
+  - "Purchase data" — currently collected when a user subscribes.
+  - Service providers section adds RevenueCat + Apple/Google billing.
+- [ ] `web/app/terms/page.tsx` updated:
+  - New "Subscriptions" section: name, price, length, auto-renew terms, free-trial language (none), cancellation method, refund policy (handled by Apple/Google).
+  - Acknowledgment that billing is by Apple/Google and subject to their refund policies.
+- [ ] Effective date bumped on both pages.
+- [ ] STORE_LISTING.md "App Privacy questionnaire" answers updated:
+  - Identifiers: ✅ User ID (App Functionality) — not linked to identity, not used for tracking.
+  - Purchases: ✅ Purchase History (App Functionality) — not linked to identity, not used for tracking.
+
+**Where.** `~/web/app/privacy/page.tsx`, `~/web/app/terms/page.tsx`, `~/lake-fish-mobile/STORE_LISTING.md`.
+
+**Owner.** Me. Drafted now, deployed when paywall ships.
+
+---
+
+
 
 ### Sentry crash + error monitoring
 
