@@ -7,6 +7,8 @@ import { useAppState } from '../StateContext';
 import { StateKey } from '../types';
 import { fetchStatus } from '../api';
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
+import { useEntitlement } from '../useEntitlement';
+import PaywallScreen from './PaywallScreen';
 
 interface Props {
   onSelect: () => void;
@@ -22,9 +24,15 @@ const STATE_ROWS: { key: StateKey; name: string; agency: string; stripe: string 
   { key: 'mi', name: 'Michigan',     agency: 'MI DNR',                stripe: colors.lakeInk },
 ];
 
+// MN is the free tier. Tapping any other state without entitlement opens
+// the paywall instead of entering the state.
+const FREE_STATE: StateKey = 'mn';
+
 export default function StateSelectScreen({ onSelect }: Props) {
   const { setState } = useAppState();
   const [lakeCounts, setLakeCounts] = useState<Partial<Record<StateKey, number>>>({});
+  const { hasAllStates } = useEntitlement();
+  const [paywallFor, setPaywallFor] = useState<StateKey | null>(null);
 
   useEffect(() => {
     STATE_ROWS.forEach(s =>
@@ -36,8 +44,21 @@ export default function StateSelectScreen({ onSelect }: Props) {
   }, []);
 
   const pick = (s: StateKey) => {
+    if (s !== FREE_STATE && !hasAllStates) {
+      setPaywallFor(s);
+      return;
+    }
     setState(s);
     onSelect();
+  };
+
+  const handlePurchased = () => {
+    // useEntitlement will pick up the new state via RC listener; just enter
+    // the state the user originally tried to open.
+    if (paywallFor) {
+      setState(paywallFor);
+      onSelect();
+    }
   };
 
   return (
@@ -52,38 +73,59 @@ export default function StateSelectScreen({ onSelect }: Props) {
           </Text>
         </View>
 
-        {STATE_ROWS.map(s => (
-          <Pressable key={s.key} onPress={() => pick(s.key)}
-            style={({ pressed }) => [
-              styles.row,
-              { backgroundColor: pressed ? colors.paper2 : colors.paper },
-            ]}>
-            <View style={[styles.stripe, { backgroundColor: s.stripe }]} />
-            <View style={styles.rowBody}>
-              <View style={{ flex: 1 }}>
-                <Text style={[text.displayL, { color: colors.ink }]}>{s.name}</Text>
-                <Text style={[text.labelM, { color: colors.inkSoft, marginTop: 6 }]}>
-                  {s.agency}
-                </Text>
+        {STATE_ROWS.map(s => {
+          const locked = s.key !== FREE_STATE && !hasAllStates;
+          return (
+            <Pressable key={s.key} onPress={() => pick(s.key)}
+              style={({ pressed }) => [
+                styles.row,
+                { backgroundColor: pressed ? colors.paper2 : colors.paper },
+              ]}>
+              <View style={[styles.stripe, { backgroundColor: s.stripe }]} />
+              <View style={styles.rowBody}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[text.displayL, { color: colors.ink }]}>{s.name}</Text>
+                  <Text style={[text.labelM, { color: colors.inkSoft, marginTop: 6 }]}>
+                    {s.agency}
+                  </Text>
+                  {locked ? (
+                    <View style={styles.lockChip}>
+                      <Text style={[text.labelS, { color: colors.walleye2 }]}>
+                        🔒  ALL-STATES
+                      </Text>
+                    </View>
+                  ) : s.key === FREE_STATE ? (
+                    <View style={styles.freeChip}>
+                      <Text style={[text.labelS, { color: colors.moss }]}>FREE</Text>
+                    </View>
+                  ) : null}
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  {lakeCounts[s.key] != null ? (
+                    <>
+                      <Text style={[text.dataL, { color: colors.ink }]}>
+                        {lakeCounts[s.key]!.toLocaleString()}
+                      </Text>
+                      <Text style={[text.labelS, { color: colors.walleye2, marginTop: 2 }]}>
+                        LAKES
+                      </Text>
+                    </>
+                  ) : (
+                    <Text style={[text.labelS, { color: colors.paper3 }]}>···</Text>
+                  )}
+                </View>
               </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                {lakeCounts[s.key] != null ? (
-                  <>
-                    <Text style={[text.dataL, { color: colors.ink }]}>
-                      {lakeCounts[s.key]!.toLocaleString()}
-                    </Text>
-                    <Text style={[text.labelS, { color: colors.walleye2, marginTop: 2 }]}>
-                      LAKES
-                    </Text>
-                  </>
-                ) : (
-                  <Text style={[text.labelS, { color: colors.paper3 }]}>···</Text>
-                )}
-              </View>
-            </View>
-          </Pressable>
-        ))}
+            </Pressable>
+          );
+        })}
       </ScrollView>
+
+      <PaywallScreen
+        visible={paywallFor != null}
+        triggeredFrom={paywallFor ?? undefined}
+        onClose={() => setPaywallFor(null)}
+        onPurchased={handlePurchased}
+      />
     </SafeAreaView>
   );
 }
@@ -109,5 +151,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: space.xl,
     paddingVertical: space.xl,
+  },
+  lockChip: {
+    alignSelf: 'flex-start',
+    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: hairline,
+    borderColor: colors.walleye2,
+    backgroundColor: colors.paper2,
+  },
+  freeChip: {
+    alignSelf: 'flex-start',
+    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: hairline,
+    borderColor: colors.moss,
+    backgroundColor: colors.paper,
   },
 });
