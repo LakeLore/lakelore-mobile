@@ -27,7 +27,10 @@ const APPLE_PUBLIC_KEY  = 'test_dZCCVGGeZrUTSYjetHnOZTGEiOb';
 const GOOGLE_PUBLIC_KEY = 'test_dZCCVGGeZrUTSYjetHnOZTGEiOb';
 
 // Identifiers configured in the RevenueCat dashboard.
-export const ALL_STATES_ENTITLEMENT = 'all_states';
+// The entitlement identifier matches what's in the RC dashboard literally —
+// including the space and mixed case. RC entitlement identifiers are
+// immutable once created, so we conform here rather than in the dashboard.
+export const ALL_STATES_ENTITLEMENT = 'LakeLore All-States';
 const OFFERING_ID = 'default';
 
 // ── State ──────────────────────────────────────────────────────────────────
@@ -100,7 +103,7 @@ export async function getOffering(): Promise<PurchasesOffering | null> {
 }
 
 /**
- * Best-effort check: does this user currently have the `all_states`
+ * Best-effort check: does this user currently have the all-states
  * entitlement? Returns false if RC isn't configured. The server is the
  * authoritative source — this is for UI state only (e.g. hide the
  * paywall promo when already subscribed).
