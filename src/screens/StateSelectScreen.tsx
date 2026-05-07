@@ -9,6 +9,7 @@ import { fetchStatus } from '../api';
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
 import { useEntitlement } from '../useEntitlement';
 import PaywallScreen from './PaywallScreen';
+import AboutScreen from './AboutScreen';
 
 interface Props {
   onSelect: () => void;
@@ -33,6 +34,7 @@ export default function StateSelectScreen({ onSelect }: Props) {
   const [lakeCounts, setLakeCounts] = useState<Partial<Record<StateKey, number>>>({});
   const { hasAllStates } = useEntitlement();
   const [paywallFor, setPaywallFor] = useState<StateKey | null>(null);
+  const [showAbout, setShowAbout] = useState(false);
 
   useEffect(() => {
     STATE_ROWS.forEach(s =>
@@ -71,6 +73,9 @@ export default function StateSelectScreen({ onSelect }: Props) {
           <Text style={[text.editorialS, { color: colors.inkSoft, marginTop: 6 }]}>
             A field guide to fish populations in surveyed lakes across the upper Midwest.
           </Text>
+          <Pressable onPress={() => setShowAbout(true)} style={styles.aboutLink} hitSlop={8}>
+            <Text style={[text.labelM, { color: colors.walleye2 }]}>About &amp; data sources ›</Text>
+          </Pressable>
         </View>
 
         {STATE_ROWS.map(s => {
@@ -126,6 +131,8 @@ export default function StateSelectScreen({ onSelect }: Props) {
         onClose={() => setPaywallFor(null)}
         onPurchased={handlePurchased}
       />
+
+      <AboutScreen visible={showAbout} onClose={() => setShowAbout(false)} />
     </SafeAreaView>
   );
 }
@@ -137,6 +144,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.xl,
     paddingTop: space.xxxl,
     paddingBottom: space.xxl,
+  },
+  aboutLink: {
+    marginTop: 14,
+    alignSelf: 'flex-start',
   },
   row: {
     flexDirection: 'row',
