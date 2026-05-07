@@ -1,5 +1,9 @@
 import { registerRootComponent } from 'expo';
 
+// Initialize Sentry FIRST so any error during App startup is captured.
+import { initSentry } from './src/sentry';
+initSentry();
+
 import App from './App';
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);
