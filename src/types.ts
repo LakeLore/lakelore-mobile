@@ -35,6 +35,7 @@ export const STATE_CONFIGS: Record<StateKey, StateConfig> = {
     defaultSurveyTypes: [],
     sortOptions: [
       { value: 'cpue', label: 'CPUE' },
+      { value: 'length', label: 'Avg Length' },
       { value: 'psd', label: 'PSD' },
       { value: 'psd_p', label: 'PSD-P' },
       { value: 'wr', label: 'Relative Weight (Wr)' },
@@ -120,6 +121,8 @@ export const STATE_CONFIGS: Record<StateKey, StateConfig> = {
     defaultGear: '',
     defaultSurveyTypes: [],
     sortOptions: [
+      { value: 'cpue',    label: 'CPUE' },
+      { value: 'length',  label: 'Avg Length' },
       { value: 'catch',   label: 'Total Catch' },
       { value: 'stocked', label: 'Stocked / 100ac' },
       { value: 'year',    label: 'Survey Year' },
@@ -298,6 +301,18 @@ export const ND_SPECIES_NAMES: Record<string, string> = {
 };
 
 // SD stores species as full names in DB; reverse map for PSD lookups
+// WI DNR survey gear codes — human-readable labels for the gear filter UI
+export const WI_GEAR_LABELS: Record<string, string> = {
+  SE1: 'Spring EF (SE1)',
+  SE2: 'Spring EF (SE2)',
+  SN1: 'Fyke Net (SN1)',
+  SN2: 'Fyke Net (SN2)',
+  SN3: 'Mini-Fyke (SN3)',
+  FE:  'Fall EF (FE)',
+  GN:  'Gill Net',
+  TL:  'Tow Line (TL)',
+};
+
 export const SD_SPECIES_FROM_NAME: Record<string, string> = {
   'Walleye':'WAE','Northern Pike':'NOP','Largemouth Bass':'LMB','Smallmouth Bass':'SMB',
   'Muskellunge':'MUE','Yellow Perch':'YEP','Black Crappie':'BLC','White Crappie':'WHC',

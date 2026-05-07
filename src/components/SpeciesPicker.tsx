@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View, Text, TextInput, FlatList, Pressable,
-  Modal, StyleSheet, SafeAreaView,
+  Modal, StyleSheet, SafeAreaView, Keyboard, Platform,
 } from 'react-native';
 import { SpeciesOption, StateKey, SD_SPECIES_NAMES, MN_SPECIES_NAMES, ND_SPECIES_NAMES } from '../types';
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
@@ -23,6 +23,16 @@ const GAME_FISH = new Set([
 
 export default function SpeciesPicker({ visible, species, selected, state, onSelect, onClose }: Props) {
   const [query, setQuery] = useState('');
+  const [kbHeight, setKbHeight] = useState(0);
+
+  useEffect(() => {
+    if (!visible) { setKbHeight(0); return; }
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvt, e => setKbHeight(e.endCoordinates.height));
+    const hideSub = Keyboard.addListener(hideEvt, () => setKbHeight(0));
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, [visible]);
   const usesFullNames = state === 'ia' || state === 'ne';
   const namesMap = state === 'mn' ? MN_SPECIES_NAMES
     : state === 'nd' ? ND_SPECIES_NAMES
@@ -90,6 +100,7 @@ export default function SpeciesPicker({ visible, species, selected, state, onSel
         <FlatList
           data={filtered}
           keyExtractor={item => item.species}
+          contentContainerStyle={{ paddingBottom: kbHeight }}
           renderItem={({ item }) => {
             const name = namesMap[item.species] ?? item.species;
             const isSelected = selected === item.species;

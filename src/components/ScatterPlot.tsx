@@ -1,33 +1,8 @@
 import React, { useMemo, useState, useRef, useCallback } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, useWindowDimensions, PanResponder } from 'react-native';
 import Svg, { Circle, Line, Text as SvgText, Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
-import { Result, StateKey, SD_SPECIES_NAMES, MN_SPECIES_NAMES, ND_SPECIES_NAMES, SD_SPECIES_FROM_NAME } from '../types';
+import { Result, StateKey, SD_SPECIES_NAMES, MN_SPECIES_NAMES, ND_SPECIES_NAMES } from '../types';
 import { colors, text, space, hairline, fonts } from '../lakelore-rn/theme';
-
-
-// ── PSD length tables ─────────────────────────────────────────────────────────
-const PSD_LENGTHS: Record<string, [number, number, number, number, number]> = {
-  WAE:[250,380,510,635,760], NOP:[350,530,710,890,1070],
-  LMB:[200,300,380,510,630], SMB:[180,280,350,430,510],
-  BLG:[80,150,200,250,300],  YEP:[130,200,250,300,400],
-  BLC:[130,200,250,300,380], WHC:[150,200,250,300,380],
-  MUE:[500,750,900,1070,1200],SAU:[230,330,460,580,710],
-  SAR:[230,330,460,580,710], RBT:[150,300,410,510,610],
-  BNT:[150,300,410,510,610], STH:[300,400,510,610,710],
-  WHB:[190,250,300,360,400], CCF:[280,380,510,610,710],
-};
-
-function estimateMeanLength(species: string, n_sq?: number|null, n_qp?: number|null, n_pm?: number|null, n_m?: number|null): number | null {
-  const code = SD_SPECIES_FROM_NAME[species] ?? species;
-  const L = PSD_LENGTHS[code];
-  if (!L) return null;
-  const [S,Q,P,M,T] = L;
-  const counts = [n_sq??0, n_qp??0, n_pm??0, n_m??0];
-  const mids = [(S+Q)/2,(Q+P)/2,(P+M)/2,(M+T)/2];
-  const total = counts.reduce((a,b)=>a+b,0);
-  if (total===0) return null;
-  return Math.round((counts.reduce((acc,n,i)=>acc+n*mids[i],0)/total)/25.4*10)/10;
-}
 
 function stockedColor(stocked: number|null|undefined, min: number, max: number): string {
   if (stocked==null) return colors.paper3;
@@ -152,18 +127,28 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
           year: r.survey_year, lake_id: r.lake_id,
         });
       }
-    } else {
-      // SD: estimate mean length from PSD size-class counts
+    } else if (state === 'mi' || state === 'wi') {
       for (const r of results) {
-        if (r.cpue==null) continue;
-        const len = estimateMeanLength(r.species, r.n_sq, r.n_qp, r.n_pm, r.n_m);
-        if (len==null) continue;
+        if (r.cpue == null || r.average_length == null) continue;
         pts.push({
-          x: len, y: r.cpue,
+          x: r.average_length, y: r.cpue,
+          stocked: r.stocked_per_100ac,
+          name: r.lake_name, species: r.species,
+          year: r.survey_year, lake_id: r.lake_id,
+          total_catch: r.total_catch,
+          average_weight: r.average_weight,
+        });
+      }
+    } else {
+      // SD: server already returns the PSD-derived avg length as average_length.
+      for (const r of results) {
+        if (r.cpue==null || r.average_length==null) continue;
+        pts.push({
+          x: r.average_length, y: r.cpue,
           stocked: r.stocked_per_100ac,
           name: r.lake_name, species: namesMap[r.species]??r.species,
           year: r.survey_year, lake_id: r.lake_id,
-          estLength: len,
+          estLength: r.average_length,
         });
       }
     }
@@ -421,6 +406,15 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
         </Pressable>
       )}
 
+      <View style={styles.legend}>
+        <View style={[styles.legendDot, { backgroundColor: colors.paper3 }]} />
+        <Text style={[text.labelS, { color: colors.inkSoft }]}>no data</Text>
+        <Text style={[text.labelS, { color: colors.paper3 }]}>·</Text>
+        <Text style={[text.labelS, { color: colors.inkSoft }]}>low</Text>
+        <GradientBar width={90} height={10} />
+        <Text style={[text.labelS, { color: colors.inkSoft }]}>high stocked/100ac</Text>
+      </View>
+
       {selectedDot && (
         <Pressable style={styles.dotCard}
           onPress={() => { onLakePress(selectedDot.lake_id, selectedDot.name); setSelectedDot(null); }}
@@ -439,15 +433,6 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
           <Text style={[text.labelM, { color: colors.walleye2, marginTop: 4 }]}>Tap for lake history →</Text>
         </Pressable>
       )}
-
-      <View style={styles.legend}>
-        <View style={[styles.legendDot, { backgroundColor: colors.paper3 }]} />
-        <Text style={[text.labelS, { color: colors.inkSoft }]}>no data</Text>
-        <Text style={[text.labelS, { color: colors.paper3 }]}>·</Text>
-        <Text style={[text.labelS, { color: colors.inkSoft }]}>low</Text>
-        <GradientBar width={90} height={10} />
-        <Text style={[text.labelS, { color: colors.inkSoft }]}>high stocked/100ac</Text>
-      </View>
     </ScrollView>
   );
 }

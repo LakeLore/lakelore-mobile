@@ -11,6 +11,7 @@ import { useAppState } from '../StateContext';
 import {
   FilterState, FilterOptions, Result, ResultsResponse, StateKey,
   defaultFilters, STATE_CONFIGS, SD_SPECIES_NAMES, MN_SPECIES_NAMES, ND_SPECIES_NAMES, WI_SPECIES_NAMES,
+  WI_GEAR_LABELS,
 } from '../types';
 import { fetchFilters, fetchResults, fetchAllResults, DbStatus, fetchStatus } from '../api';
 import ResultRow from '../components/ResultRow';
@@ -167,17 +168,37 @@ export default function SearchScreen() {
     }
   }, [filters, state]);
 
-  const handleSpeciesSelect = (species: string) => {
-    const updated = { ...filters, species };
+  const handleSpeciesSelect = async (species: string) => {
+    // Refresh filter options so gear counts reflect this species, and reset the
+    // gear filter to whichever gear has the most records for the new species.
+    let nextOpts = options;
+    try {
+      nextOpts = await fetchFilters(state, species || undefined);
+      setOptions(nextOpts);
+    } catch { /* keep existing options if refetch fails */ }
+
+    const nextGearTypes = nextOpts && nextOpts.gearTypes.length > 0
+      ? [nextOpts.gearTypes[0]]
+      : filters.gearTypes;
+
+    const updated = { ...filters, species, gearTypes: nextGearTypes };
     setFilters(updated);
     if (species || filters.lakeName) {
       handleSearch(0, updated);
     }
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
+    // Restore baseline (all-species) gear counts so the advanced-filters picker
+    // reflects the cleared species selection.
+    let baseOpts = options;
+    try {
+      baseOpts = await fetchFilters(state);
+      setOptions(baseOpts);
+    } catch { /* keep existing options if refetch fails */ }
+
     const df = defaultFilters(state);
-    if (state === 'ia' && options?.defaultGear) df.gearTypes = [options.defaultGear];
+    if (state === 'ia' && baseOpts?.defaultGear) df.gearTypes = [baseOpts.defaultGear];
     setFilters(df);
     setResults([]);
     setScatterResults([]);
@@ -701,13 +722,14 @@ function InfoSection({ title, children }: { title: string; children: React.React
 
 // ── Multi-chip select (gear / survey type) ────────────────────────────────────
 
-function MultiChipSelect({ label, options, selected, onToggle, counts, showMoreThreshold }: {
+function MultiChipSelect({ label, options, selected, onToggle, counts, showMoreThreshold, labels }: {
   label: string;
   options: string[];
   selected: string[];
   onToggle: (value: string) => void;
   counts?: Record<string, number>;
   showMoreThreshold?: number;
+  labels?: Record<string, string>;
 }) {
   const [expanded, setExpanded] = useState(false);
   if (!options.length) return null;
@@ -730,9 +752,10 @@ function MultiChipSelect({ label, options, selected, onToggle, counts, showMoreT
         {visible.map(opt => {
           const active = selected.includes(opt);
           const count = counts?.[opt];
+          const display = labels?.[opt] ?? opt;
           return (
             <Chip key={opt} active={active} onPress={() => onToggle(opt)}>
-              {opt}{count !== undefined ? ` (${count.toLocaleString()})` : ''}
+              {display}{count !== undefined ? ` (${count.toLocaleString()})` : ''}
             </Chip>
           );
         })}
@@ -788,7 +811,7 @@ function AdvancedFiltersModal({ visible, filters, state, options, onChange, onCl
           }
         />
         <ScrollView style={{ padding: space.xl }} keyboardShouldPersistTaps="handled">
-          {(state === 'sd' || state === 'nd' || state === 'ia' || state === 'ne') && options?.gearTypes?.length && options.gearTypes.length > 1 ? (
+          {(state === 'sd' || state === 'nd' || state === 'ia' || state === 'ne' || state === 'wi' || state === 'mi') && options?.gearTypes?.length && options.gearTypes.length > 1 ? (
             <MultiChipSelect
               label="Gear Type"
               options={options.gearTypes}
@@ -796,6 +819,7 @@ function AdvancedFiltersModal({ visible, filters, state, options, onChange, onCl
               onToggle={toggleGear}
               counts={options.gearTypeCounts}
               showMoreThreshold={state === 'sd' ? 50 : undefined}
+              labels={state === 'wi' ? WI_GEAR_LABELS : undefined}
             />
           ) : null}
           {state === 'mn' && options?.surveyTypes?.length ? (

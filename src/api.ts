@@ -51,8 +51,11 @@ export async function fetchStatus(state: StateKey): Promise<DbStatus> {
   return get(`${baseUrl(state)}/status`);
 }
 
-export async function fetchFilters(state: StateKey): Promise<FilterOptions> {
-  return get(`${baseUrl(state)}/filters`);
+export async function fetchFilters(state: StateKey, species?: string): Promise<FilterOptions> {
+  const url = species
+    ? `${baseUrl(state)}/filters?species=${encodeURIComponent(species)}`
+    : `${baseUrl(state)}/filters`;
+  return get(url);
 }
 
 export async function fetchResults(

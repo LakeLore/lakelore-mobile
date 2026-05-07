@@ -467,7 +467,9 @@ export default function LakeDetailScreen() {
       <StatusBar style="light" />
       <PaperHeader
         title={lake.name}
-        eyebrow={`${lake.county.toUpperCase()} CO · ${state.toUpperCase()}`}
+        eyebrow={lake.county
+          ? `${lake.county.toUpperCase()} CO · ${state.toUpperCase()}`
+          : state.toUpperCase()}
         onBack={() => navigation.goBack()}
         backLabel="←"
         right={lake.max_depth_feet ? `${lake.max_depth_feet} FT` : undefined}
@@ -477,8 +479,11 @@ export default function LakeDetailScreen() {
         {/* Lake meta + source links */}
         <View style={styles.metaBar}>
           <Text style={[text.labelM, { color: colors.inkSoft }]}>
-            {lake.county.toUpperCase()} CO{lake.area_acres ? ` · ${lake.area_acres.toLocaleString()} AC` : ''}
-            {lake.max_depth_feet ? ` · ${lake.max_depth_feet} FT` : ''}
+            {[
+              lake.county ? `${lake.county.toUpperCase()} CO` : null,
+              lake.area_acres ? `${lake.area_acres.toLocaleString()} AC` : null,
+              lake.max_depth_feet ? `${lake.max_depth_feet} FT` : null,
+            ].filter(Boolean).join(' · ')}
           </Text>
           <View style={styles.linkRow}>
             {state === 'sd' && latestReportId ? (
