@@ -162,7 +162,7 @@ This auto-answers Apple's export compliance prompt with "uses standard encryptio
 
 ### App Privacy questionnaire (App Store Connect → "App Privacy")
 
-Walk through the App Privacy questionnaire and select **"Data Not Collected"**. None of the categories apply today:
+With the LakeLore All-States subscription enabled, two categories must be declared:
 
 - Contact Info: ❌
 - Health & Fitness: ❌
@@ -173,13 +173,20 @@ Walk through the App Privacy questionnaire and select **"Data Not Collected"**. 
 - User Content: ❌
 - Browsing History: ❌
 - Search History: ❌
-- Identifiers: ❌
-- Purchases: ❌
+- **Identifiers: ✅ User ID** — Linked to user: ❌. Used for tracking: ❌. Purpose: **App Functionality**.
+- **Purchases: ✅ Purchase History** — Linked to user: ❌. Used for tracking: ❌. Purpose: **App Functionality**.
 - Usage Data: ❌ *(server logs are 30-day rate-limit data, not user analytics — see privacy policy)*
 - Diagnostics: ❌
 - Other Data: ❌
 
-If/when you turn on analytics or crash reporting, return here and re-declare. The privacy policy already covers those categories as "May be collected".
+The User ID is the anonymous device-generated UUID we use to look up entitlement
+state. Purchase History is the transaction ID + subscription state RevenueCat
+returns; we never receive payment method.
+
+If/when you turn on analytics or crash reporting, return here and re-declare —
+those would add Diagnostics ✅ (Crash Data, App Functionality) and Usage Data ✅
+(Product Interaction, App Functionality), still both unlinked / non-tracking.
+The privacy policy already covers those categories.
 
 ---
 
