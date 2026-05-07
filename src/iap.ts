@@ -18,9 +18,13 @@ import Purchases, {
 } from 'react-native-purchases';
 
 // ── Configuration ──────────────────────────────────────────────────────────
-// Paste your public keys here when you have them.
-const APPLE_PUBLIC_KEY  = '';   // appl_xxxxxxxxxxxxxxxxxxxxxxxx
-const GOOGLE_PUBLIC_KEY = '';   // goog_xxxxxxxxxxxxxxxxxxxxxxxx
+// During RC dashboard onboarding, both platforms share the project-level
+// `test_*` key — it lets `configure()` succeed and proves the SDK wiring
+// before any platform is linked. Once you finish Apple/Google enrollment
+// and link iOS + Android apps in RC, replace each with the real
+// platform-specific public key (`appl_…` / `goog_…`).
+const APPLE_PUBLIC_KEY  = 'test_dZCCVGGeZrUTSYjetHnOZTGEiOb';
+const GOOGLE_PUBLIC_KEY = 'test_dZCCVGGeZrUTSYjetHnOZTGEiOb';
 
 // Identifiers configured in the RevenueCat dashboard.
 export const ALL_STATES_ENTITLEMENT = 'all_states';
