@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFonts } from 'expo-font';
@@ -83,8 +84,10 @@ export default function App() {
   }
 
   return (
-    <StateProvider>
-      <AppInner />
-    </StateProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <StateProvider>
+        <AppInner />
+      </StateProvider>
+    </GestureHandlerRootView>
   );
 }

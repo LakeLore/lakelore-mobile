@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useRef, useCallback } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet, useWindowDimensions, PanResponder } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Svg, { Circle, Line, Text as SvgText, Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { Result, StateKey, SD_SPECIES_NAMES, MN_SPECIES_NAMES, ND_SPECIES_NAMES } from '../types';
 import { colors, text, space, hairline, fonts } from '../lakelore-rn/theme';
@@ -67,14 +68,15 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
 
   // Refs for gesture state (avoids closure stale-value issues)
   const viewRef = useRef<ViewBounds|null>(null);
-  const hasMoved = useRef(false);
-  const prevTouchCount = useRef(0);
-  const maxTouchCount = useRef(0);
-  const prevPinchDist = useRef(0);
-  const prevPanX = useRef(0);
-  const prevPanY = useRef(0);
-  const svgContainerRef = useRef<View>(null);
-  const svgOffsetRef = useRef({ pageX: 0, pageY: 0 });
+  const dataBoundsRef = useRef<ViewBounds>({ xMin: 0, xMax: 1, yMin: 0, yMax: 1 });
+  const pinchActiveRef = useRef(false);
+  const prevTransXRef = useRef(0);
+  const prevTransYRef = useRef(0);
+  const prevScaleRef = useRef(1);
+  const plotWRef = useRef(plotW);
+  const plotHRef = useRef(plotH);
+  plotWRef.current = plotW;
+  plotHRef.current = plotH;
   const pointsRef = useRef<DotData[]>([]);
   const selectedDotRef = useRef<DotData|null>(null);
 
@@ -174,6 +176,7 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
   // Keep refs in sync with latest render values
   pointsRef.current = points;
   selectedDotRef.current = selectedDot;
+  dataBoundsRef.current = dataBounds;
 
   // Reset zoom on new results
   const prevResults = useRef(results);
@@ -193,139 +196,99 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
   const xTicks = useMemo(() => niceTicks(dataBounds.xMin, dataBounds.xMax, 5), [dataBounds]);
   const yTicks = useMemo(() => niceTicks(dataBounds.yMin, dataBounds.yMax, 5), [dataBounds]);
 
-  // ── PanResponder for pan + pinch ─────────────────────────────────────────────
-  const measureSvg = () => {
-    svgContainerRef.current?.measure((_x, _y, _w, _h, pageX, pageY) => {
-      svgOffsetRef.current = { pageX, pageY };
-    });
-  };
-
-  const panResponder = useMemo(() => PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onStartShouldSetPanResponderCapture: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponderCapture: () => true,
-
-    onPanResponderGrant: (evt) => {
-      measureSvg();
-      const touches = evt.nativeEvent.touches;
-      const tc = touches.length;
-      hasMoved.current = false;
-      prevTouchCount.current = tc;
-      maxTouchCount.current = tc;
-      prevPinchDist.current = 0;
-      if (tc === 1) {
-        prevPanX.current = touches[0].pageX;
-        prevPanY.current = touches[0].pageY;
-      } else if (tc >= 2) {
-        const dx = touches[0].pageX - touches[1].pageX;
-        const dy = touches[0].pageY - touches[1].pageY;
-        prevPinchDist.current = Math.sqrt(dx*dx + dy*dy);
+  // ── Gesture-handler driven pan + pinch + tap ─────────────────────────────────
+  // Mirrors the smooth pattern used by CountyMapPicker: a Tap (for dot
+  // selection) raced against a simultaneous Pan + Pinch (for zoom/scroll).
+  // gesture-handler runs on the native thread so it doesn't fight with the
+  // outer ScrollView the way PanResponder did.
+  const tapGesture = useMemo(() => Gesture.Tap()
+    .runOnJS(true)
+    .maxDuration(300)
+    .maxDistance(15)
+    .onEnd((e, success) => {
+      if (!success) return;
+      // e.x/e.y are already relative to the GestureDetector — no page-coord math needed.
+      const cur = viewRef.current ?? dataBoundsRef.current;
+      const xRange = cur.xMax - cur.xMin;
+      const yRange = cur.yMax - cur.yMin;
+      const pW = plotWRef.current;
+      const pH = plotHRef.current;
+      let bestDot: DotData | null = null;
+      let bestDist2 = 40 * 40;
+      for (const p of pointsRef.current) {
+        if (p.x < cur.xMin || p.x > cur.xMax || p.y < cur.yMin || p.y > cur.yMax) continue;
+        const px = PAD_L + ((p.x - cur.xMin) / xRange) * pW;
+        const py = PAD_T + (1 - (p.y - cur.yMin) / yRange) * pH;
+        const d2 = (e.x - px) * (e.x - px) + (e.y - py) * (e.y - py);
+        if (d2 < bestDist2) { bestDist2 = d2; bestDot = p; }
       }
-    },
-
-    onPanResponderMove: (evt) => {
-      const touches = evt.nativeEvent.touches;
-      const tc = touches.length;
-      maxTouchCount.current = Math.max(maxTouchCount.current, tc);
-
-      if (tc >= 2) {
-        hasMoved.current = true;
-        const dx = touches[0].pageX - touches[1].pageX;
-        const dy = touches[0].pageY - touches[1].pageY;
-        const dist = Math.sqrt(dx*dx + dy*dy);
-
-        if (prevTouchCount.current < 2 || prevPinchDist.current === 0) {
-          // First frame with 2 fingers — store baseline distance, apply next frame
-          prevPinchDist.current = dist;
-          prevTouchCount.current = tc;
-          return;
-        }
-        prevTouchCount.current = tc;
-
-        // Incremental scale: ratio of previous frame distance to current
-        const scale = prevPinchDist.current / dist;
-        prevPinchDist.current = dist;
-
-        const cur = viewRef.current ?? dataBounds;
-        const cx = (cur.xMin + cur.xMax) / 2;
-        const cy = (cur.yMin + cur.yMax) / 2;
-        const hw = (cur.xMax - cur.xMin) / 2 * scale;
-        const hh = (cur.yMax - cur.yMin) / 2 * scale;
-        const newView = { xMin: cx-hw, xMax: cx+hw, yMin: Math.max(0, cy-hh), yMax: cy+hh };
-        viewRef.current = newView;
-        setView(newView);
-
-      } else if (tc === 1) {
-        if (prevTouchCount.current >= 2) {
-          // Transition 2→1 finger: anchor pan at current touch position
-          prevPanX.current = touches[0].pageX;
-          prevPanY.current = touches[0].pageY;
-        }
-        prevTouchCount.current = 1;
-
-        const pdx = touches[0].pageX - prevPanX.current;
-        const pdy = touches[0].pageY - prevPanY.current;
-        if (Math.abs(pdx) > 2 || Math.abs(pdy) > 2) hasMoved.current = true;
-        prevPanX.current = touches[0].pageX;
-        prevPanY.current = touches[0].pageY;
-
-        const cur = viewRef.current ?? dataBounds;
-        const dDataX = -(pdx / plotW) * (cur.xMax - cur.xMin);
-        const dDataY = (pdy / plotH) * (cur.yMax - cur.yMin);
-        const newView = {
-          xMin: cur.xMin + dDataX, xMax: cur.xMax + dDataX,
-          yMin: Math.max(0, cur.yMin + dDataY), yMax: cur.yMax + dDataY,
-        };
-        viewRef.current = newView;
-        setView(newView);
+      if (bestDot) {
+        const sel = selectedDotRef.current;
+        const isSel = sel?.lake_id === bestDot.lake_id && sel?.year === bestDot.year;
+        setSelectedDot(isSel ? null : bestDot);
       }
-    },
-
-    onPanResponderRelease: (evt) => {
-      prevPinchDist.current = 0;
-      const wasMove = hasMoved.current;
-      const maxTc = maxTouchCount.current;
-      hasMoved.current = false;
-      prevTouchCount.current = 0;
-      maxTouchCount.current = 0;
-
-      // Tap: no significant movement, only 1 finger used
-      if (!wasMove && maxTc === 1) {
-        const { pageX: ox, pageY: oy } = svgOffsetRef.current;
-        const svgX = evt.nativeEvent.pageX - ox;
-        const svgY = evt.nativeEvent.pageY - oy;
-        const cur = viewRef.current ?? dataBounds;
-        const xRange = cur.xMax - cur.xMin;
-        const yRange = cur.yMax - cur.yMin;
-
-        let bestDot: DotData | null = null;
-        let bestDist2 = 40 * 40; // 40px tap threshold
-
-        for (const p of pointsRef.current) {
-          if (p.x < cur.xMin || p.x > cur.xMax || p.y < cur.yMin || p.y > cur.yMax) continue;
-          const px = PAD_L + ((p.x - cur.xMin) / xRange) * plotW;
-          const py = PAD_T + (1 - (p.y - cur.yMin) / yRange) * plotH;
-          const d2 = (svgX - px) * (svgX - px) + (svgY - py) * (svgY - py);
-          if (d2 < bestDist2) { bestDist2 = d2; bestDot = p; }
-        }
-
-        if (bestDot) {
-          const sel = selectedDotRef.current;
-          const isSel = sel?.lake_id === bestDot.lake_id && sel?.year === bestDot.year;
-          setSelectedDot(isSel ? null : bestDot);
-        }
-      }
-    },
-
-    onPanResponderTerminate: () => {
-      hasMoved.current = false;
-      prevTouchCount.current = 0;
-      prevPinchDist.current = 0;
-      maxTouchCount.current = 0;
-    },
+    }),
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [dataBounds, plotW, plotH]);
+  []);
+
+  // activeOffsetX/Y([-2,2]) makes the pan claim the gesture as soon as the
+  // touch moves more than 2px in any direction — wins the race against the
+  // outer ScrollView's vertical-scroll recognizer.
+  const panGesture = useMemo(() => Gesture.Pan()
+    .runOnJS(true)
+    .minDistance(0)
+    .activeOffsetX([-2, 2])
+    .activeOffsetY([-2, 2])
+    .onBegin(() => {
+      prevTransXRef.current = 0;
+      prevTransYRef.current = 0;
+    })
+    .onUpdate((e) => {
+      if (pinchActiveRef.current) return;
+      const pdx = e.translationX - prevTransXRef.current;
+      const pdy = e.translationY - prevTransYRef.current;
+      prevTransXRef.current = e.translationX;
+      prevTransYRef.current = e.translationY;
+      const cur = viewRef.current ?? dataBoundsRef.current;
+      const dDataX = -(pdx / plotWRef.current) * (cur.xMax - cur.xMin);
+      const dDataY = (pdy / plotHRef.current) * (cur.yMax - cur.yMin);
+      const newView = {
+        xMin: cur.xMin + dDataX, xMax: cur.xMax + dDataX,
+        yMin: Math.max(0, cur.yMin + dDataY), yMax: cur.yMax + dDataY,
+      };
+      viewRef.current = newView;
+      setView(newView);
+    }),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  []);
+
+  const pinchGesture = useMemo(() => Gesture.Pinch()
+    .runOnJS(true)
+    .onBegin(() => {
+      pinchActiveRef.current = true;
+      prevScaleRef.current = 1;
+    })
+    .onUpdate((e) => {
+      const incrementalScale = prevScaleRef.current / e.scale;
+      prevScaleRef.current = e.scale;
+      const cur = viewRef.current ?? dataBoundsRef.current;
+      const cx = (cur.xMin + cur.xMax) / 2;
+      const cy = (cur.yMin + cur.yMax) / 2;
+      const hw = (cur.xMax - cur.xMin) / 2 * incrementalScale;
+      const hh = (cur.yMax - cur.yMin) / 2 * incrementalScale;
+      const newView = { xMin: cx-hw, xMax: cx+hw, yMin: Math.max(0, cy-hh), yMax: cy+hh };
+      viewRef.current = newView;
+      setView(newView);
+    })
+    .onEnd(() => { pinchActiveRef.current = false; })
+    .onFinalize(() => { pinchActiveRef.current = false; }),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  []);
+
+  const gesture = useMemo(
+    () => Gesture.Race(tapGesture, Gesture.Simultaneous(panGesture, pinchGesture)),
+    [tapGesture, panGesture, pinchGesture],
+  );
 
   if (!points.length) {
     return (
@@ -347,8 +310,9 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
           : 'CPUE vs. avg length'} · color = stocked/100ac · tap a dot
       </Text>
 
-      <View ref={svgContainerRef} style={[styles.chartWrap, { width: svgW, height: svgH }]} onLayout={measureSvg} {...panResponder.panHandlers}>
-        <Svg width={svgW} height={svgH}>
+      <GestureDetector gesture={gesture}>
+        <View style={[styles.chartWrap, { width: svgW, height: svgH }]}>
+          <Svg width={svgW} height={svgH}>
           <Rect x={PAD_L} y={PAD_T} width={plotW} height={plotH}
             fill={colors.paper2} stroke={colors.ink} strokeWidth={0.8} />
 
@@ -397,8 +361,9 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
                 fillOpacity={0.85} stroke={isSel?colors.ink:colors.paper} strokeWidth={isSel?1.5:0.5} />
             );
           })}
-        </Svg>
-      </View>
+          </Svg>
+        </View>
+      </GestureDetector>
 
       {view && (
         <Pressable style={styles.resetZoom} onPress={() => { viewRef.current=null; setView(null); }}>
