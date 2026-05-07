@@ -18,6 +18,8 @@ import ResultRow from '../components/ResultRow';
 import SpeciesPicker from '../components/SpeciesPicker';
 import CountyMapPicker from '../components/CountyMapPicker';
 import ScatterPlot from '../components/ScatterPlot';
+import PaywallScreen from './PaywallScreen';
+import { useEntitlement } from '../useEntitlement';
 import type { RootStackParamList } from '../navigation';
 import {
   colors, text, space, hairline,
@@ -71,6 +73,8 @@ export default function SearchScreen() {
   const [showInfo, setShowInfo] = useState(false);
   const [showSort, setShowSort] = useState(false);
   const [stateLakeCounts, setStateLakeCounts] = useState<Partial<Record<StateKey, number>>>({});
+  const [paywallFor, setPaywallFor] = useState<StateKey | null>(null);
+  const { hasAllStates } = useEntitlement();
 
   const prevStateRef = useRef(state);
   const sessionCache = useRef<Partial<Record<StateKey, SearchSession>>>({});
@@ -460,10 +464,19 @@ export default function SearchScreen() {
           <ScrollView>
             {(['sd', 'mn', 'nd', 'ia', 'ne', 'wi', 'mi'] as const).map(s => {
               const cfg = STATE_CONFIGS[s];
+              const locked = s !== 'mn' && !hasAllStates;
               return (
                 <Pressable
                   key={s}
-                  onPress={() => { setState(s); setShowStatePicker(false); }}
+                  onPress={() => {
+                    if (locked) {
+                      setShowStatePicker(false);
+                      setPaywallFor(s);
+                      return;
+                    }
+                    setState(s);
+                    setShowStatePicker(false);
+                  }}
                   style={({ pressed }) => [
                     styles.stateOption,
                     { backgroundColor: pressed ? colors.paper2 : colors.paper },
@@ -474,6 +487,11 @@ export default function SearchScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={[text.displayL, { color: colors.ink }]}>{cfg.label}</Text>
                       <Text style={[text.labelM, { color: colors.inkSoft, marginTop: 4 }]}>{cfg.agency}</Text>
+                      {locked && (
+                        <Text style={[text.labelS, { color: colors.walleye2, marginTop: 6 }]}>
+                          🔒  ALL-STATES
+                        </Text>
+                      )}
                     </View>
                     {stateLakeCounts[s] != null && (
                       <View style={{ alignItems: 'flex-end' }}>
@@ -490,6 +508,19 @@ export default function SearchScreen() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
+
+      {/* Paywall — opens when a free user taps a locked state in the picker */}
+      <PaywallScreen
+        visible={paywallFor != null}
+        triggeredFrom={paywallFor ?? undefined}
+        onClose={() => setPaywallFor(null)}
+        onPurchased={() => {
+          if (paywallFor) {
+            setState(paywallFor);
+            setPaywallFor(null);
+          }
+        }}
+      />
     </SafeAreaView>
   );
 }
