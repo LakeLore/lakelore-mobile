@@ -24,11 +24,12 @@ import Purchases, {
 //
 // iOS: real key — App Store Connect API + In-App Purchase Key linked in
 //      RC dashboard 2026-05-07.
-// Android: still on the project-level `test_…` key while waiting on Google
-//      Play Console bank verification → service account → RC link. Swap to
-//      the real `goog_…` key when that pipeline is complete.
+// Android: real key — service account + Play Console permissions linked in
+//      RC dashboard 2026-05-08. RC's dashboard may show "credentials need
+//      attention" for up to 36 hours due to Google's propagation lag (per
+//      RC docs); the public SDK key is available immediately regardless.
 const APPLE_PUBLIC_KEY  = 'appl_dzAkMHKpPUIBlKYqfKSiOUCiXPE';
-const GOOGLE_PUBLIC_KEY = 'test_dZCCVGGeZrUTSYjetHnOZTGEiOb';
+const GOOGLE_PUBLIC_KEY = 'goog_RxootIJqJGYHBGrvCRIwsVIYcQl';
 
 // Identifiers configured in the RevenueCat dashboard.
 // The entitlement identifier matches what's in the RC dashboard literally —
