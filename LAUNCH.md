@@ -4,7 +4,7 @@ The single source of truth for what's left before LakeLore ships to the App Stor
 
 For listing copy, screenshot capture, and store-form answers, see [STORE_LISTING.md](./STORE_LISTING.md). This file tracks the *infrastructure and code* work that surrounds those.
 
-Last reviewed: 2026-05-07.
+Last reviewed: 2026-05-08.
 
 ## Monetization model (locked in 2026-05-07)
 
@@ -23,26 +23,38 @@ Last reviewed: 2026-05-07.
 | | Item | Owner | Status |
 |---|---|---|---|
 | ✅ | Apple Developer Program enrollment | you | Approved 2026-05-07 |
-| 🛑 | Google Play Console enrollment | you | App created; bank verification pending |
-| 🛑 | [Expo / EAS account](#expo--eas-account) | you | 5 min — `eas login` |
-| 🛑 | [EAS Build setup](#eas-build-setup) | shared | Config done; you run `eas init` + first `eas build` |
-| 🛑 | [Capture screenshots](#capture-screenshots) | you | After first dev build |
-| 🛑 | [`support@lakeloreapp.com` Google Workspace alias](#supportlakeloreappcom-alias) | you | 5 min |
+| ✅ | Google Play Console enrollment | you | Approved 2026-05-08 |
+| ✅ | Expo / EAS account | you | `eas login` done; project linked at `@ndrwtp/lakelore` |
+| ✅ | EAS Build setup | shared | iOS dev build live; Android preview build in progress 2026-05-08 |
+| 🛑 | [Capture screenshots](#capture-screenshots) | you | iOS dev client installed; capture session pending |
+| ✅ | `support@lakeloreapp.com` Google Workspace alias | you | Live |
 | 🛑 | [iPad decision: `supportsTablet`](#ipad-decision-supportstablet) | you | Pending |
-| ✅ | RevenueCat account + iOS app linked | you | Real `appl_` key in code; Android still on test key |
-| 🛑💳 | App Store Connect: Paid Apps + iOS subscription product | you | Agreement signed; banking validation pending; subscription product pending |
-| 🛑💳 | Play Console: subscription product | you | Pending bank verification |
-| ✅ | Server entitlement gating | me | Live in production (fail-closed in prod, awaits `REVENUECAT_SECRET_KEY`) |
-| 🟡💳 | Mobile RevenueCat SDK + paywall UX | me | All UX shipped; needs real Android `goog_` key + sandbox testing |
+| ✅ | RevenueCat account + iOS + Android apps linked | you | Real `appl_` and `goog_` keys in code |
+| 🛑💳 | App Store Connect: iOS subscription product | you | Apple banking validation in flight; product creation pending |
+| 🛑💳 | Play Console: Android subscription product | you | Pending Android APK upload (build in progress); then create `lakelore_allstates_annual` |
+| ✅ | Server entitlement gating | me | Live in production with v2 RC API; real entitlement lookups verified |
+| ✅ | Mobile RevenueCat SDK + paywall UX | me | All UX shipped; both platform keys real |
 | ✅ | Privacy + Terms updates for subscriptions | me | Live on lakeloreapp.com (effective 2026-05-07) |
 | ✅ | Sentry crash + error monitoring | shared | Live · mobile + server wired |
 | ⚠️ | [Offsite DB backups](#offsite-db-backups) | shared | 30 min |
 | ✅ | Auto-discover dev API host | me | Shipped (commit `e250df4`) |
 | ✅ | In-app "Sources / About" page | me | Shipped (commit `f0f8362`) |
 | 🧹 | [Empty / error state polish](#empty--error-state-polish) | me | 1 hr |
-| 🧹 | [Replace `Alert.alert` validation with toast](#replace-alertalert-validation-with-toast) | me | 30 min |
+| ✅ | Replace `Alert.alert` validation with toast | me | Shipped (commit `aa24543`) |
 
 🛑 = blocker · 💳 = paywall track · ⚠️ = strongly recommended pre-launch · 🧹 = polish, post-launch fine
+
+## Remaining blockers, in order
+
+1. **iPad decision** — flip `supportsTablet:false` for v1 (no iPad screenshots needed) or commit to iPad screenshots.
+2. **Android APK upload to Play Console Internal Testing** — the in-flight build, then upload via Test and release → Internal testing → Create release.
+3. **Create Android subscription product** in Play Console (after step 2): product ID `lakelore_allstates_annual`, $5.99/yr, auto-renewing.
+4. **Apple banking validation** to complete (waiting on Apple).
+5. **Create iOS subscription product** in App Store Connect (after step 4): product ID `com.lakeloreapp.lakelore.allstates_annual`, USD $5.99 yearly.
+6. **Capture screenshots** (iOS Simulator on iPhone 16 Pro Max, plus Android phone) — see STORE_LISTING.md.
+7. **Submit to App Store and Play Store.**
+
+Steps 1–3 unblock you to ship Android first. iOS follows once Apple's banking clears. Same code base — single submission flow on both stores.
 
 ---
 
