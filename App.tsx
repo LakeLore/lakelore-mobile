@@ -24,6 +24,7 @@ import {
 import { StateProvider, useAppState } from './src/StateContext';
 import { initIAP } from './src/iap';
 import { getUserId } from './src/userId';
+import { ToastProvider } from './src/Toast';
 import StateSelectScreen from './src/screens/StateSelectScreen';
 import SearchScreen from './src/screens/SearchScreen';
 import LakeDetailScreen from './src/screens/LakeDetailScreen';
@@ -99,7 +100,9 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StateProvider>
-        <AppInner />
+        <ToastProvider>
+          <AppInner />
+        </ToastProvider>
       </StateProvider>
     </GestureHandlerRootView>
   );

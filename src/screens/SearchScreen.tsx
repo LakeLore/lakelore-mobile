@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, TextInput, Pressable, FlatList,
   ActivityIndicator, StyleSheet, SafeAreaView, Modal,
-  ScrollView, Alert,
+  ScrollView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
@@ -20,6 +20,7 @@ import CountyMapPicker from '../components/CountyMapPicker';
 import ScatterPlot from '../components/ScatterPlot';
 import PaywallScreen from './PaywallScreen';
 import { useEntitlement } from '../useEntitlement';
+import { useToast } from '../Toast';
 import type { RootStackParamList } from '../navigation';
 import {
   colors, text, space, hairline,
@@ -75,6 +76,7 @@ export default function SearchScreen() {
   const [stateLakeCounts, setStateLakeCounts] = useState<Partial<Record<StateKey, number>>>({});
   const [paywallFor, setPaywallFor] = useState<StateKey | null>(null);
   const { hasAllStates } = useEntitlement();
+  const { toast } = useToast();
 
   const prevStateRef = useRef(state);
   const sessionCache = useRef<Partial<Record<StateKey, SearchSession>>>({});
@@ -145,7 +147,7 @@ export default function SearchScreen() {
   const handleSearch = useCallback(async (nextPage = 0, overrideFilters?: Partial<FilterState>) => {
     const f = overrideFilters ? { ...filters, ...overrideFilters } : filters;
     if (!f.species && !f.lakeName) {
-      Alert.alert('Search', 'Enter a species or lake name to search.');
+      toast('Pick a species or enter a lake name to search.');
       return;
     }
     setLoading(true);
