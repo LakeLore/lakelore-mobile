@@ -53,7 +53,14 @@
     },
     "plugins": [
       "expo-font",
-      "@sentry/react-native"
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "lakelore",
+          "project": "lakelore-mobile",
+          "url": "https://sentry.io/"
+        }
+      ]
     ],
     "owner": "ndrwtp"
   }
