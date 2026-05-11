@@ -58,6 +58,7 @@ export default function SearchScreen() {
   const [filters, setFilters] = useState<FilterState>(() => defaultFilters(state));
   const [options, setOptions] = useState<FilterOptions | null>(null);
   const [dbStatus, setDbStatus] = useState<DbStatus | null>(null);
+  const [loadingOptions, setLoadingOptions] = useState(false);
   const [results, setResults] = useState<Result[]>([]);
   const [scatterResults, setScatterResults] = useState<Result[]>([]);
   const [total, setTotal] = useState(0);
@@ -92,6 +93,36 @@ export default function SearchScreen() {
 
   useEffect(() => { setShowCountyPicker(true); }, []);
 
+  const loadStateOptions = useCallback(async (stateKey: StateKey) => {
+    setLoadingOptions(true);
+    setError(null);
+    setDbStatus(null);
+    try {
+      const s = await fetchStatus(stateKey);
+      setDbStatus(s);
+      if (!s.ready) {
+        setLoadingOptions(false);
+        return;
+      }
+      const opts = await fetchFilters(stateKey);
+      setOptions(opts);
+      if (opts.gearTypes.length > 0) {
+        setFilters(prev => {
+          const valid = prev.gearTypes.filter(g => opts.gearTypes.includes(g));
+          if (valid.length > 0) return prev;
+          const gear = stateKey === 'ia'
+            ? (opts.defaultGear || opts.gearTypes.find(g => g === 'FN') || opts.gearTypes.find(g => g === 'HN') || opts.gearTypes[0])
+            : opts.gearTypes[0];
+          return { ...prev, gearTypes: [gear] };
+        });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load filters');
+    } finally {
+      setLoadingOptions(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (prevStateRef.current !== state) {
       sessionCache.current[prevStateRef.current as StateKey] = {
@@ -120,27 +151,7 @@ export default function SearchScreen() {
       }
       setOptions(null);
     }
-    setError(null);
-    setDbStatus(null);
-
-    fetchStatus(state)
-      .then(s => {
-        setDbStatus(s);
-        if (s.ready) return fetchFilters(state).then(opts => {
-          setOptions(opts);
-          if (opts.gearTypes.length > 0) {
-            setFilters(prev => {
-              const valid = prev.gearTypes.filter(g => opts.gearTypes.includes(g));
-              if (valid.length > 0) return prev;
-              const gear = state === 'ia'
-                ? (opts.defaultGear || opts.gearTypes.find(g => g === 'FN') || opts.gearTypes.find(g => g === 'HN') || opts.gearTypes[0])
-                : opts.gearTypes[0];
-              return { ...prev, gearTypes: [gear] };
-            });
-          }
-        });
-      })
-      .catch(err => setError(err.message));
+    loadStateOptions(state);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
@@ -252,15 +263,23 @@ export default function SearchScreen() {
       {/* State stripe */}
       <View style={[styles.stripe, { backgroundColor: STATE_STRIPES[state] ?? colors.lake3 }]} />
 
-      {/* Species selector */}
-      <Pressable onPress={() => setShowSpeciesPicker(true)} style={styles.speciesBtn}>
+      {/* Species selector — disabled while options load or if load failed */}
+      <Pressable
+        onPress={() => options && setShowSpeciesPicker(true)}
+        disabled={!options}
+        style={[styles.speciesBtn, !options && { opacity: 0.55 }]}
+      >
         <Text style={[
           text.displayM,
           { color: filters.species ? colors.ink : colors.inkSoft },
         ]} numberOfLines={1}>
-          {speciesLabel}
+          {loadingOptions && !options ? 'Loading…'
+            : !options && error ? 'Couldn’t load species'
+            : speciesLabel}
         </Text>
-        <Text style={{ color: colors.inkSoft, fontSize: 18 }}>›</Text>
+        {loadingOptions && !options
+          ? <ActivityIndicator size="small" color={colors.inkSoft} />
+          : <Text style={{ color: colors.inkSoft, fontSize: 18 }}>›</Text>}
       </Pressable>
 
       {/* Lake name + Search */}
@@ -280,14 +299,19 @@ export default function SearchScreen() {
         </PrimaryButton>
       </View>
 
-      {/* Filter chips row */}
+      {/* Filter chips row — Filters + Counties disabled until options load */}
       <View style={styles.filterRow}>
-        <Chip dot={!!hasFilters} onPress={() => setShowAdvanced(true)}>
+        <Chip
+          dot={!!hasFilters}
+          disabled={!options}
+          onPress={() => options && setShowAdvanced(true)}
+        >
           Filters
         </Chip>
         <Chip
           active={filters.counties.length > 0}
-          onPress={() => setShowCountyPicker(true)}
+          disabled={!options}
+          onPress={() => options && setShowCountyPicker(true)}
         >
           {filters.counties.length > 0 ? `${filters.counties.length} Counties` : 'Counties'}
         </Chip>
@@ -318,11 +342,19 @@ export default function SearchScreen() {
 
       <InfoModal visible={showInfo} state={state} onClose={() => setShowInfo(false)} />
 
-      {/* Error */}
+      {/* Error — retry is smart: re-fetch options if they're missing,
+          otherwise re-run the last search. */}
       {error && (
         <View style={styles.errorBanner}>
-          <Text style={[text.bodyS, { color: colors.paper }]}>{error}</Text>
-          <Pressable onPress={() => { setError(null); handleSearch(0); }} style={styles.retryButton}>
+          <Text style={[text.bodyS, { color: colors.paper, flex: 1 }]} numberOfLines={3}>{error}</Text>
+          <Pressable
+            onPress={() => {
+              setError(null);
+              if (!options) loadStateOptions(state);
+              else if (searched) handleSearch(0);
+            }}
+            style={styles.retryButton}
+          >
             <Text style={[text.labelM, { color: colors.ink }]}>Retry</Text>
           </Pressable>
         </View>

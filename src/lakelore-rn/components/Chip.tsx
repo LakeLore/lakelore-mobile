@@ -10,19 +10,21 @@ type Props = {
   active?: boolean;
   dot?: boolean;       // tiny gold pip at left (used for "Filters •")
   soft?: boolean;      // hairline-only border, paper background
+  disabled?: boolean;  // greyed out + non-interactive (loading / unavailable)
   onPress?: () => void;
   style?: ViewStyle;
 };
 
-export function Chip({ children, active, dot, soft, onPress, style }: Props) {
+export function Chip({ children, active, dot, soft, disabled, onPress, style }: Props) {
   return (
-    <Pressable onPress={onPress} hitSlop={6}>
+    <Pressable onPress={disabled ? undefined : onPress} hitSlop={6} disabled={disabled}>
       <View
         style={[
           styles.chip,
           {
             borderColor: soft ? colors.paper3 : colors.ink,
             backgroundColor: active ? colors.walleye : colors.paper,
+            opacity: disabled ? 0.4 : 1,
           },
           style,
         ]}

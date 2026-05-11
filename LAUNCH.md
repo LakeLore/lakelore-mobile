@@ -39,7 +39,7 @@ Last reviewed: 2026-05-08.
 | ⚠️ | [Offsite DB backups](#offsite-db-backups) | shared | 30 min |
 | ✅ | Auto-discover dev API host | me | Shipped (commit `e250df4`) |
 | ✅ | In-app "Sources / About" page | me | Shipped (commit `f0f8362`) |
-| 🧹 | [Empty / error state polish](#empty--error-state-polish) | me | 1 hr |
+| ✅ | Empty / error state polish | me | Shipped — see commit below |
 | ✅ | Replace `Alert.alert` validation with toast | me | Shipped (commit `aa24543`) |
 
 🛑 = blocker · 💳 = paywall track · ⚠️ = strongly recommended pre-launch · 🧹 = polish, post-launch fine
