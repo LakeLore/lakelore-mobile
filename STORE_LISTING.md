@@ -95,7 +95,7 @@ DATA COVERED
 • Minnesota — 9,477 lakes, 22,952 surveys, 386,104 catch records (MN DNR)
 • Wisconsin — 2,329 lakes (WI DNR)
 • Iowa — 1,258 lakes (Iowa DNR)
-• Nebraska — 541 lakes (Nebraska Game & Parks)
+• Nebraska — 487 lakes (Nebraska Game & Parks)
 • North Dakota — 452 lakes (ND Game & Fish)
 • Michigan — 367 lakes (MI DNR)
 • South Dakota — 327 lakes (SD Game, Fish & Parks)

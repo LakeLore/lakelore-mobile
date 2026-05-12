@@ -222,7 +222,7 @@ const VALUE_PROPS = [
   },
   {
     label: 'Nebraska Game & Parks',
-    detail: '541 lakes — survey PDFs linked inline',
+    detail: '487 lakes — survey PDFs linked inline',
   },
   {
     label: 'Iowa DNR',
