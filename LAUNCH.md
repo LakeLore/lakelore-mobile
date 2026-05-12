@@ -57,7 +57,7 @@ Items 1 and 2 can be done in any order. Item 3 is the final step; the iOS subscr
 
 ## Known minor open items (not blocking)
 
-- **Sentry source map upload disabled** in `eas.json` (`SENTRY_DISABLE_AUTO_UPLOAD: true`). Production stack traces won't be deobfuscated until you generate a Sentry auth token, set it as an EAS env var, and re-enable upload. Crashes still get reported, just with minified line numbers.
+- **Sentry source map upload enabled** as of 2026-05-12 (commit removing `SENTRY_DISABLE_AUTO_UPLOAD` + adding `SENTRY_AUTH_TOKEN` as an EAS project secret env var). The two builds in flight on the queue at that moment still have the old config; the next build kicked off after the commit will upload source maps.
 - **RC dashboard "Credentials need attention" warning** on the Play Store credential block. Cosmetic — verified directly against Google's API that all permissions are correct and Google accepts the credentials. Worth filing as an RC support ticket.
 - **Offsite DB backups** (the only remaining ⚠️ item) — needs a Cloudflare R2 / Backblaze B2 account first.
 
