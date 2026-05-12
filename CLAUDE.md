@@ -77,3 +77,15 @@ EAS config: `eas.json`. Project ID + owner in `app.json` `extra.eas`. Owner `ndr
 4. `~/CLAUDE.md` — top-level project overview.
 5. `./STORE_LISTING.md` if working on store submission.
 6. `~/RUNBOOK.md` if something is on fire.
+
+## Self-check before ending a mobile task
+
+The full trigger table lives in `~/CLAUDE.md` "Documentation discipline". Mobile-specific things to verify before you stop:
+
+- [ ] If I changed `app.json` `version` or any identifier — `STORE_LISTING.md` and `~/APP_OPS.md` still match.
+- [ ] If I added/removed a screen or modal — this file's architecture section reflects it.
+- [ ] If I touched the paywall flow (`PaywallScreen`, `useEntitlement`, `iap.ts`) — paywall section here and `~/APP_OPS.md` RC summary are still accurate.
+- [ ] If I shipped a `LAUNCH.md` ⏳/🛑 item — moved it to ✅ with a commit ref.
+- [ ] If I changed the price, name, or behavior of the subscription — `STORE_LISTING.md` description + `PaywallScreen.tsx` value props match Apple+Google+RC.
+- [ ] If I introduced a new dependency that's a native module — noted the implication (Expo Go can't load it; dev client required) somewhere relevant.
+- [ ] If I changed brand tokens, fonts, or paywall layout — design notes in this file are still right.
