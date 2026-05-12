@@ -47,11 +47,11 @@
     "production": {
       "ios": {
         "appleId": "ndrwtp@gmail.com",
-        "ascAppId": "TBD-after-app-created-in-app-store-connect",
-        "appleTeamId": "TBD-from-developer-membership-page"
+        "ascAppId": "6767341863",
+        "appleTeamId": "2SXGANA52C"
       },
       "android": {
-        "serviceAccountKeyPath": "./google-play-service-account.json",
+        "serviceAccountKeyPath": "/Users/andrewtop/Documents/lakelore-keys/lakelore-play-872e8a9ea73b.json",
         "track": "internal",
         "releaseStatus": "draft"
       }
