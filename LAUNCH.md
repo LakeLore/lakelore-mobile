@@ -28,7 +28,7 @@ Last reviewed: 2026-05-08.
 | ✅ | EAS Build setup | shared | iOS dev build live; Android preview build in progress 2026-05-08 |
 | 🛑 | [Capture screenshots](#capture-screenshots) | you | iOS dev client installed; capture session pending |
 | ✅ | `support@lakeloreapp.com` Google Workspace alias | you | Live |
-| 🛑 | [iPad decision: `supportsTablet`](#ipad-decision-supportstablet) | you | Pending |
+| ✅ | iPad decision: `supportsTablet` | you | Set to `false` for v1 (iPhone-only); iPad considered for v1.x |
 | ✅ | RevenueCat account + iOS + Android apps linked | you | Real `appl_` and `goog_` keys in code |
 | ✅ | App Store Connect: iOS subscription product | you | `com.lakeloreapp.lakelore.allstates_annual` created, $5.99 USD, Ready to Submit (submits with binary) |
 | ✅ | Play Console: Android subscription product | you | `lakelore_allstates_annual` (base plan `annual`) created and Active, $5.99 USD |
@@ -47,8 +47,7 @@ Last reviewed: 2026-05-08.
 
 ## Remaining blockers, in order
 
-1. **iPad decision** — flip `supportsTablet:false` for v1 (no iPad screenshots needed) or commit to iPad screenshots.
-2. **Sandbox-test a purchase** end-to-end on at least one platform before submission:
+1. **Sandbox-test a purchase** end-to-end on at least one platform before submission:
    - **iOS**: App Store Connect → Users and Access → Sandbox Testers → create a sandbox Apple ID. TestFlight build, sign out of real Apple ID on simulator/device, sign in with sandbox account, tap a non-MN state → paywall → Subscribe.
    - **Android**: Play Console → Setup → License testing → add yourself as a tester. Internal Testing track build, install on a real device, tap a non-MN state → paywall → Subscribe.
 3. **Capture screenshots** — iOS Simulator on iPhone 16 Pro Max, plus Android phone. Use the existing dev/preview builds. See STORE_LISTING.md for shot list.
