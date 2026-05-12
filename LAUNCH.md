@@ -50,10 +50,10 @@ Last reviewed: 2026-05-08.
 1. **Sandbox-test a purchase** end-to-end on at least one platform before submission:
    - **iOS**: App Store Connect → Users and Access → Sandbox Testers → create a sandbox Apple ID. TestFlight build, sign out of real Apple ID on simulator/device, sign in with sandbox account, tap a non-MN state → paywall → Subscribe.
    - **Android**: Play Console → Setup → License testing → add yourself as a tester. Internal Testing track build, install on a real device, tap a non-MN state → paywall → Subscribe.
-3. **Capture screenshots** — iOS Simulator on iPhone 16 Pro Max, plus Android phone. Use the existing dev/preview builds. See STORE_LISTING.md for shot list.
-4. **Submit to App Store and Play Store.**
+2. **Capture screenshots** — iPhone 6.9" / 6.5" required for App Store (1320×2868 / 1284×2778), Android phone (1080×1920 or larger 9:16) for Play. With `supportsTablet:false`, no iPad screenshots required. See STORE_LISTING.md for shot list.
+3. **Submit to App Store and Play Store.**
 
-Items 1–3 can be done in any order. Item 4 is the final step; the iOS subscription product gets submitted to App Review alongside the binary in a single submission.
+Items 1 and 2 can be done in any order. Item 3 is the final step; the iOS subscription product gets submitted to App Review alongside the binary in a single submission.
 
 ## Known minor open items (not blocking)
 
