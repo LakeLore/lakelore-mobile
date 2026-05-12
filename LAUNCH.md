@@ -30,8 +30,9 @@ Last reviewed: 2026-05-08.
 | ✅ | `support@lakeloreapp.com` Google Workspace alias | you | Live |
 | 🛑 | [iPad decision: `supportsTablet`](#ipad-decision-supportstablet) | you | Pending |
 | ✅ | RevenueCat account + iOS + Android apps linked | you | Real `appl_` and `goog_` keys in code |
-| 🛑💳 | App Store Connect: iOS subscription product | you | Apple banking validation in flight; product creation pending |
-| 🛑💳 | Play Console: Android subscription product | you | Pending Android APK upload (build in progress); then create `lakelore_allstates_annual` |
+| ✅ | App Store Connect: iOS subscription product | you | `com.lakeloreapp.lakelore.allstates_annual` created, $5.99 USD, Ready to Submit (submits with binary) |
+| ✅ | Play Console: Android subscription product | you | `lakelore_allstates_annual` (base plan `annual`) created and Active, $5.99 USD |
+| ✅ | RevenueCat entitlement + offering wired | shared | Both products attached to `LakeLore All-States` entitlement and to `$rc_annual` package in `default` (Current) offering |
 | ✅ | Server entitlement gating | me | Live in production with v2 RC API; real entitlement lookups verified |
 | ✅ | Mobile RevenueCat SDK + paywall UX | me | All UX shipped; both platform keys real |
 | ✅ | Privacy + Terms updates for subscriptions | me | Live on lakeloreapp.com (effective 2026-05-07) |
@@ -47,14 +48,19 @@ Last reviewed: 2026-05-08.
 ## Remaining blockers, in order
 
 1. **iPad decision** — flip `supportsTablet:false` for v1 (no iPad screenshots needed) or commit to iPad screenshots.
-2. **Android APK upload to Play Console Internal Testing** — the in-flight build, then upload via Test and release → Internal testing → Create release.
-3. **Create Android subscription product** in Play Console (after step 2): product ID `lakelore_allstates_annual`, $5.99/yr, auto-renewing.
-4. **Apple banking validation** to complete (waiting on Apple).
-5. **Create iOS subscription product** in App Store Connect (after step 4): product ID `com.lakeloreapp.lakelore.allstates_annual`, USD $5.99 yearly.
-6. **Capture screenshots** (iOS Simulator on iPhone 16 Pro Max, plus Android phone) — see STORE_LISTING.md.
-7. **Submit to App Store and Play Store.**
+2. **Sandbox-test a purchase** end-to-end on at least one platform before submission:
+   - **iOS**: App Store Connect → Users and Access → Sandbox Testers → create a sandbox Apple ID. TestFlight build, sign out of real Apple ID on simulator/device, sign in with sandbox account, tap a non-MN state → paywall → Subscribe.
+   - **Android**: Play Console → Setup → License testing → add yourself as a tester. Internal Testing track build, install on a real device, tap a non-MN state → paywall → Subscribe.
+3. **Capture screenshots** — iOS Simulator on iPhone 16 Pro Max, plus Android phone. Use the existing dev/preview builds. See STORE_LISTING.md for shot list.
+4. **Submit to App Store and Play Store.**
 
-Steps 1–3 unblock you to ship Android first. iOS follows once Apple's banking clears. Same code base — single submission flow on both stores.
+Items 1–3 can be done in any order. Item 4 is the final step; the iOS subscription product gets submitted to App Review alongside the binary in a single submission.
+
+## Known minor open items (not blocking)
+
+- **Sentry source map upload disabled** in `eas.json` (`SENTRY_DISABLE_AUTO_UPLOAD: true`). Production stack traces won't be deobfuscated until you generate a Sentry auth token, set it as an EAS env var, and re-enable upload. Crashes still get reported, just with minified line numbers.
+- **RC dashboard "Credentials need attention" warning** on the Play Store credential block. Cosmetic — verified directly against Google's API that all permissions are correct and Google accepts the credentials. Worth filing as an RC support ticket.
+- **Offsite DB backups** (the only remaining ⚠️ item) — needs a Cloudflare R2 / Backblaze B2 account first.
 
 ---
 
