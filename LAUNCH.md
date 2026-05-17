@@ -8,7 +8,7 @@ Last reviewed: 2026-05-08.
 
 ## Monetization model (locked in 2026-05-07)
 
-- **Free tier:** Minnesota only. Full access to all 9,477 MN lakes, all features.
+- **Free tier:** Minnesota only. Full access to all 9,490 MN lakes, all features.
 - **Paid tier — "LakeLore All-States":** Unlocks the other six states (WI, MI, ND, SD, NE, IA).
 - **Price:** $5.99 / year, auto-renewing.
 - **Free trial:** None.
