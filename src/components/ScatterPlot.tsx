@@ -5,10 +5,26 @@ import Svg, { Circle, Line, Text as SvgText, Rect, Defs, LinearGradient, Stop } 
 import { Result, StateKey, SD_SPECIES_NAMES, MN_SPECIES_NAMES, ND_SPECIES_NAMES } from '../types';
 import { colors, text, space, hairline, fonts } from '../lakelore-rn/theme';
 
-function stockedColor(stocked: number|null|undefined, min: number, max: number): string {
-  if (stocked==null) return colors.paper3;
-  if (max===min) return colors.lake3;
-  const t = Math.max(0,Math.min(1,(stocked-min)/(max-min)));
+// Rank-based color mapping. Maps `stocked` to its quantile within `sorted`
+// (a precomputed ascending list of all non-null stocked values across the
+// current result set) and interpolates between gradient stops. This avoids the
+// outlier-collapse failure mode of linear normalization on highly-skewed
+// per-100-acre stocking distributions, where one tiny lake compresses everyone
+// else to the bottom of the scale. Ties share a rank.
+function stockedColor(stocked: number|null|undefined, sorted: number[]): string {
+  if (stocked == null) return colors.paper3;
+  const n = sorted.length;
+  if (n <= 1) return colors.lake3;
+  let lo = 0, hi = n;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (sorted[mid] < stocked) lo = mid + 1;
+    else hi = mid;
+  }
+  let last = lo;
+  while (last + 1 < n && sorted[last + 1] === stocked) last++;
+  const rank = (lo + last) / 2;
+  const t = rank / (n - 1);
   // paper-and-ink stock gradient: lake → moss → walleye → flash → rust
   const stops:[number,number,number][] = [
     [74,106,122],   // lake3
@@ -80,7 +96,7 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
   const pointsRef = useRef<DotData[]>([]);
   const selectedDotRef = useRef<DotData|null>(null);
 
-  const { points, minStocked, maxStocked, dataBounds, xLabel, yLabel } = useMemo(() => {
+  const { points, sortedStocked, dataBounds, xLabel, yLabel } = useMemo(() => {
     const pts: DotData[] = [];
     const namesMap = state==='mn' ? MN_SPECIES_NAMES : state==='nd' ? ND_SPECIES_NAMES : SD_SPECIES_NAMES;
 
@@ -155,9 +171,10 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
       }
     }
 
-    const allStocked = results.filter(r=>r.stocked_per_100ac!=null).map(r=>r.stocked_per_100ac as number);
-    const minStocked = allStocked.length ? Math.min(...allStocked) : 0;
-    const maxStocked = allStocked.length ? Math.max(...allStocked) : 0;
+    const sortedStocked = results
+      .map(r => r.stocked_per_100ac)
+      .filter((v): v is number => v != null)
+      .sort((a, b) => a - b);
 
     const xs = pts.map(p=>p.x);
     const ys = pts.map(p=>p.y);
@@ -170,7 +187,7 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
     const xLabel = state==='mn' ? 'Avg Weight (lb)' : 'Avg Length (in)';
     // desc shown in render — keep in sync with xLabel
     const yLabel = 'CPUE';
-    return { points: pts, minStocked, maxStocked, dataBounds, xLabel, yLabel };
+    return { points: pts, sortedStocked, dataBounds, xLabel, yLabel };
   }, [results, state]);
 
   // Keep refs in sync with latest render values
@@ -361,7 +378,7 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
             const noData = p.stocked == null;
             return (
               <Circle key={i} cx={px} cy={py} r={isSel?7:5}
-                fill={noData ? 'none' : stockedColor(p.stocked, minStocked, maxStocked)}
+                fill={noData ? 'none' : stockedColor(p.stocked, sortedStocked)}
                 fillOpacity={noData ? 1 : 0.85}
                 stroke={isSel ? colors.ink : noData ? colors.inkSoft : colors.paper}
                 strokeWidth={isSel ? 1.5 : noData ? 1.2 : 0.5} />

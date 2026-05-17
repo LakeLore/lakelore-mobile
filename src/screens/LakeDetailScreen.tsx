@@ -24,6 +24,15 @@ const SD_REPORT_URL = (id: number) =>
   `https://apps.sd.gov/GF56FisheriesReports/ExportPDF.ashx?ReportID=${id}`;
 const MN_LAKEFINDER_URL = (id: number | string) =>
   `https://www.dnr.state.mn.us/lakefind/lake.html?id=${id}`;
+// Iowa DNR's Fisheries Data Dashboard is a public Power BI report whose
+// lake slicer reads `report_SurveySummary.SiteName`. The PBI URL filter
+// syntax accepts `Table/Column eq 'value'`; apostrophes in the value are
+// escaped by doubling (OData rule).
+const IA_PBI_KEY = 'eyJrIjoiOTNlM2M0YzQtNjUzNS00Yzk5LTlmMjYtNmQ5NGM3NTk0MTIxIiwidCI6ImU5MDM1MTk5LWQwNWEtNDExZS1iNzFkLWRkN2E5NWZkZGI2OCIsImMiOjZ9';
+const IA_PBI_URL = (name: string) => {
+  const filter = `report_SurveySummary/SiteName eq '${name.replace(/'/g, "''")}'`;
+  return `https://app.powerbi.com/view?r=${IA_PBI_KEY}&filter=${encodeURIComponent(filter)}`;
+};
 
 interface Lake {
   id: number | string; name: string; county: string;
@@ -497,8 +506,8 @@ export default function LakeDetailScreen() {
               </Pressable>
             ) : null}
             {state === 'ia' ? (
-              <Pressable onPress={() => Linking.openURL(`https://programs.iowadnr.gov/lakemanagement/fishiowa/LakeDetails/${lake.id}`)}>
-                <Text style={[text.labelM, { color: colors.walleye2 }]}>Iowa DNR Lake Page ↗</Text>
+              <Pressable onPress={() => Linking.openURL(IA_PBI_URL(lake.name))}>
+                <Text style={[text.labelM, { color: colors.walleye2 }]}>Iowa DNR Fish Survey Data ↗</Text>
               </Pressable>
             ) : null}
             {(state === 'ne' || state === 'mi' || state === 'wi') && (() => {
@@ -522,11 +531,8 @@ export default function LakeDetailScreen() {
               );
             })()}
             {state === 'nd' && (
-              // ND GFP doesn't expose per-lake URLs (their public site is an
-              // ASP.NET WebForms search with no deep linking). Link to the
-              // statewide "Where to Fish" search where users can pick the lake.
-              <Pressable onPress={() => Linking.openURL('https://gfappspublic.nd.gov/wheretofish/Search.aspx')}>
-                <Text style={[text.labelM, { color: colors.walleye2 }]}>ND Where to Fish ↗</Text>
+              <Pressable onPress={() => Linking.openURL(`https://gfappspublic.nd.gov/wheretofish/SurveyReport.aspx?Lake=${lake.id}`)}>
+                <Text style={[text.labelM, { color: colors.walleye2 }]}>ND Survey Report ↗</Text>
               </Pressable>
             )}
           </View>
