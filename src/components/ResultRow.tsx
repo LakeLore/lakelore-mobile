@@ -52,6 +52,7 @@ function ndStats(r: Result): Stat[] {
   return [
     { key: 'cpue',    label: 'Catch / Net', value: r.cpue           != null ? r.cpue.toFixed(2)                : null },
     { key: 'length',  label: 'Avg length', value: r.average_length != null ? `${r.average_length.toFixed(1)}"` : null },
+    { key: 'catch',   label: 'Total catch', value: r.total_catch    != null ? r.total_catch.toLocaleString()    : null },
     { key: 'stocked', label: 'Stck Adults / 100AC', value: r.stocked_per_100ac != null ? r.stocked_per_100ac.toFixed(0) : null },
     ...metaStats(r),
   ];
@@ -61,6 +62,7 @@ function wiStats(r: Result): Stat[] {
   return [
     { key: 'cpue',    label: 'Catch / Net', value: r.cpue              != null ? r.cpue.toFixed(2)                : null },
     { key: 'length',  label: 'Avg length',  value: r.average_length    != null ? `${r.average_length.toFixed(1)}"` : null },
+    { key: 'catch',   label: 'Total catch', value: r.total_catch       != null ? r.total_catch.toLocaleString()    : null },
     { key: 'stocked', label: 'Stck Adults / 100AC',  value: r.stocked_per_100ac != null ? r.stocked_per_100ac.toFixed(0)    : null },
     ...metaStats(r),
   ];
@@ -123,9 +125,6 @@ function iaStats(r: Result): Stat[] {
     { key: 'catch',   label: 'Total catch',  value: r.total_catch       != null ? r.total_catch.toLocaleString()    : null },
     { key: 'length',  label: 'Avg length',   value: r.average_length    != null ? `${r.average_length.toFixed(1)}"` : null },
     { key: 'stocked', label: 'Stck Adults / 100AC',   value: r.stocked_per_100ac != null ? r.stocked_per_100ac.toFixed(0)    : null },
-    { key: 'ef_cpue', label: 'EF Catch / Hour', value: fmtCpue(r.ef_cpue) },
-    { key: 'hn_cpue', label: 'HN Catch / Net',  value: fmtCpue(r.hn_cpue) },
-    { key: 'fn_cpue', label: 'FN Catch / Net',  value: fmtCpue(r.fn_cpue) },
     ...metaStats(r),
   ];
 }

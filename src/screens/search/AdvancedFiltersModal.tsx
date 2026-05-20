@@ -87,10 +87,8 @@ export function AdvancedFiltersModal({
               showMoreThreshold={100}
             />
           ) : null}
-          {state !== 'ia' && (
-            <RangeField label="Catch Rate" minVal={filters.minCpue} maxVal={filters.maxCpue}
-              onMinChange={v => onChange({ minCpue: v })} onMaxChange={v => onChange({ maxCpue: v })} />
-          )}
+          <RangeField label="Catch Rate" minVal={filters.minCpue} maxVal={filters.maxCpue}
+            onMinChange={v => onChange({ minCpue: v })} onMaxChange={v => onChange({ maxCpue: v })} />
           <RangeField label="Survey Year" minVal={filters.minYear} maxVal={filters.maxYear}
             onMinChange={v => onChange({ minYear: v })} onMaxChange={v => onChange({ maxYear: v })}
             keyboardType="number-pad"
@@ -99,12 +97,24 @@ export function AdvancedFiltersModal({
             onMinChange={v => onChange({ minAcres: v })} onMaxChange={v => onChange({ maxAcres: v })} />
           <RangeField label="Stck Adults / 100AC" minVal={filters.minStocked} maxVal={filters.maxStocked}
             onMinChange={v => onChange({ minStocked: v })} onMaxChange={v => onChange({ maxStocked: v })} />
+          {/* Avg Length range: shown for every state except MN (MN reports
+              weight, not length — see the MN-specific Avg Weight field below). */}
+          {state !== 'mn' && (
+            <RangeField label="Avg Length (in)" minVal={filters.minLength} maxVal={filters.maxLength}
+              onMinChange={v => onChange({ minLength: v })} onMaxChange={v => onChange({ maxLength: v })} />
+          )}
+          {/* Total Catch range: shown wherever fc.total_catch is populated
+              (MN/ND/IA/WI/MI). SD uses sample_n (a different metric) and NE
+              doesn't have a total_catch column at all. */}
+          {(state === 'mn' || state === 'nd' || state === 'ia' || state === 'wi' || state === 'mi') && (
+            <RangeField label="Total Catch" minVal={filters.minCatch} maxVal={filters.maxCatch}
+              onMinChange={v => onChange({ minCatch: v })} onMaxChange={v => onChange({ maxCatch: v })}
+              keyboardType="number-pad" />
+          )}
           {state === 'mn' && (
             <>
               <RangeField label="Avg Weight (lb)" minVal={filters.minWeight} maxVal={filters.maxWeight}
                 onMinChange={v => onChange({ minWeight: v })} onMaxChange={v => onChange({ maxWeight: v })} />
-              <RangeField label="Total Catch" minVal={filters.minCatch} maxVal={filters.maxCatch}
-                onMinChange={v => onChange({ minCatch: v })} onMaxChange={v => onChange({ maxCatch: v })} />
               <RangeField label="# Gear Sets" minVal={filters.minGearCount} maxVal={filters.maxGearCount}
                 onMinChange={v => onChange({ minGearCount: v })} onMaxChange={v => onChange({ maxGearCount: v })}
                 keyboardType="number-pad" />

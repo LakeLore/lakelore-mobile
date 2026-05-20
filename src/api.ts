@@ -204,17 +204,17 @@ function buildParams(
   if (f.maxAcres)         params.set('maxAcres', f.maxAcres);
   if (f.minStocked)       params.set('minStocked', f.minStocked);
   if (f.maxStocked)       params.set('maxStocked', f.maxStocked);
+  if (f.minLength)        params.set('minLength', f.minLength);
+  if (f.maxLength)        params.set('maxLength', f.maxLength);
+  if (f.minCatch)         params.set('minCatch', f.minCatch);
+  if (f.maxCatch)         params.set('maxCatch', f.maxCatch);
 
   if (state === 'mn') {
     if (f.surveyTypes?.length) params.set('surveyType', f.surveyTypes.join(','));
     if (f.minWeight)           params.set('minWeight', f.minWeight);
     if (f.maxWeight)           params.set('maxWeight', f.maxWeight);
-    if (f.minCatch)            params.set('minCatch', f.minCatch);
-    if (f.maxCatch)            params.set('maxCatch', f.maxCatch);
     if (f.minGearCount)        params.set('minGearCount', f.minGearCount);
     if (f.maxGearCount)        params.set('maxGearCount', f.maxGearCount);
-    if (f.cpueVsNormal && f.cpueVsNormal !== 'any')
-      params.set('cpueVsNormal', f.cpueVsNormal);
   }
 
   return params;

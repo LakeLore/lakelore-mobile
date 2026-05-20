@@ -21,6 +21,7 @@ export const STATE_CONFIGS: Record<StateKey, StateConfig> = {
     sortOptions: [
       { value: 'cpue', label: 'Catch / Net' },
       { value: 'length', label: 'Avg Length' },
+      { value: 'catch', label: 'Total Catch' },
       { value: 'stocked', label: 'Stck Adults / 100AC' },
     ],
   },
@@ -74,6 +75,7 @@ export const STATE_CONFIGS: Record<StateKey, StateConfig> = {
     sortOptions: [
       { value: 'cpue',    label: 'Catch / Net' },
       { value: 'length',  label: 'Avg Length' },
+      { value: 'catch',   label: 'Total Catch' },
       { value: 'stocked', label: 'Stck Adults / 100AC' },
     ],
   },
@@ -120,16 +122,17 @@ export interface FilterState {
   maxAcres: string;
   minStocked: string;
   maxStocked: string;
+  minLength: string;
+  maxLength: string;
+  minCatch: string;
+  maxCatch: string;
   mostRecentOnly: boolean;
   sortBy: string;
   sortDir: 'asc' | 'desc';
   // MN-specific
   surveyTypes: string[];
-  cpueVsNormal: 'any' | 'above' | 'below' | 'within';
   minWeight: string;
   maxWeight: string;
-  minCatch: string;
-  maxCatch: string;
   minGearCount: string;
   maxGearCount: string;
 }
@@ -149,15 +152,16 @@ export function defaultFilters(state: StateKey): FilterState {
     maxAcres: '',
     minStocked: '',
     maxStocked: '',
+    minLength: '',
+    maxLength: '',
+    minCatch: '',
+    maxCatch: '',
     mostRecentOnly: true,
     sortBy: cfg.sortOptions[0]?.value ?? 'cpue',
     sortDir: 'desc',
     surveyTypes: cfg.defaultSurveyTypes,
-    cpueVsNormal: 'any',
     minWeight: '',
     maxWeight: '',
-    minCatch: '',
-    maxCatch: '',
     minGearCount: '',
     maxGearCount: '',
   };
@@ -217,11 +221,8 @@ export interface Result {
   n_measured?: number | null;
   min_length?: number | null;
   max_length?: number | null;
-  ef_cpue?: number | null;
   ef_stations?: number | null;
-  hn_cpue?: number | null;
   hn_stations?: number | null;
-  fn_cpue?: number | null;
   fn_stations?: number | null;
 }
 
