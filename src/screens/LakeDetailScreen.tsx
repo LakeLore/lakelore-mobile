@@ -1,16 +1,20 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, SafeAreaView,
+  View, Text, ScrollView, StyleSheet,
   Pressable, ActivityIndicator, Linking, useWindowDimensions,
-  GestureResponderEvent,
+  GestureResponderEvent, Modal, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import * as Application from 'expo-application';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import Svg, { Line, Polyline, Circle, Rect, Text as SvgText, G } from 'react-native-svg';
-import { fetchLakeWithSpecies, API_BASE_URL } from '../api';
-import { StateKey, speciesDisplayName, SD_SPECIES_FROM_NAME } from '../types';
+import { fetchLakeWithSpecies, SubscriptionRequiredError, submitFeedback } from '../api';
+import { useToast } from '../Toast';
+import { StateKey, STATE_CONFIGS, speciesDisplayName, SD_SPECIES_FROM_NAME } from '../types';
+import PaywallScreen from './PaywallScreen';
 import { colors, text, space, hairline, fonts } from '../lakelore-rn/theme';
-import { PaperHeader, Chip } from '../lakelore-rn/components';
+import { PaperHeader, Chip, PrimaryButton } from '../lakelore-rn/components';
 
 const GAME_FISH_CODES = new Set([
   'WAE','NOP','LMB','SMB','MUE','TME','BLC','WHC','BLG','YEP',
@@ -24,15 +28,26 @@ const SD_REPORT_URL = (id: number) =>
   `https://apps.sd.gov/GF56FisheriesReports/ExportPDF.ashx?ReportID=${id}`;
 const MN_LAKEFINDER_URL = (id: number | string) =>
   `https://www.dnr.state.mn.us/lakefind/lake.html?id=${id}`;
-// Iowa DNR's Fisheries Data Dashboard is a public Power BI report whose
-// lake slicer reads `report_SurveySummary.SiteName`. The PBI URL filter
-// syntax accepts `Table/Column eq 'value'`; apostrophes in the value are
-// escaped by doubling (OData rule).
-const IA_PBI_KEY = 'eyJrIjoiOTNlM2M0YzQtNjUzNS00Yzk5LTlmMjYtNmQ5NGM3NTk0MTIxIiwidCI6ImU5MDM1MTk5LWQwNWEtNDExZS1iNzFkLWRkN2E5NWZkZGI2OCIsImMiOjZ9';
-const IA_PBI_URL = (name: string) => {
-  const filter = `report_SurveySummary/SiteName eq '${name.replace(/'/g, "''")}'`;
-  return `https://app.powerbi.com/view?r=${IA_PBI_KEY}&filter=${encodeURIComponent(filter)}`;
-};
+// Iowa DNR's Fisheries Data Dashboard is a public Power BI report. We deep-link
+// to the Survey Visit Summary tab so users skip the Menu landing page. The
+// SiteName/SampleDate slicers are ChicletSlicer custom visuals that ignore
+// Power BI's `?filter=` URL param, so the user types the lake name in the
+// in-page search box to filter to their lake.
+const IA_PBI_SURVEY_URL =
+  'https://app.powerbi.com/view?r=eyJrIjoiOTNlM2M0YzQtNjUzNS00Yzk5LTlmMjYtNmQ5NGM3NTk0MTIxIiwidCI6ImU5MDM1MTk5LWQwNWEtNDExZS1iNzFkLWRkN2E5NWZkZGI2OCIsImMiOjZ9&pageName=ReportSectione96673ea27f95717c464';
+// IA stocking comes from the lake's public Fish Iowa LakeDetails page — same
+// URL the scraper hits to extract stocking rows.
+const IA_LAKE_DETAILS_URL = (id: number | string) =>
+  `https://programs.iowadnr.gov/lakemanagement/fishiowa/LakeDetails/${id}`;
+// ND has separate per-lake report pages for survey vs stocking.
+const ND_SURVEY_URL = (id: number | string) =>
+  `https://gfappspublic.nd.gov/wheretofish/SurveyReport.aspx?Lake=${id}`;
+const ND_STOCKING_URL = (id: number | string) =>
+  `https://gfappspublic.nd.gov/wheretofish/StockingReport.aspx?Lake=${id}`;
+// NE and WI scrape stocking from internal/staff APIs with no per-lake user
+// page — link to the state-wide stocking database/search interface instead.
+const NE_STOCKING_URL = 'https://outdoornebraska.gov/conservation/fisheries-management/fish-stocking-program/fish-stocking-database/';
+const WI_STOCKING_URL = 'https://apps.dnr.wi.gov/fisheriesmanagement/Public/Summary/Index';
 
 interface Lake {
   id: number | string; name: string; county: string;
@@ -49,7 +64,7 @@ interface CatchRow {
 interface StockRow { stock_year: number; species: string; life_stage: string; quantity: number }
 interface MetricRow { species: string; adults_per_100ac: number }
 interface MetricByYearRow { species: string; year: number; adults_per_100ac: number }
-interface LakeData { lake: Lake; surveys: { id: number|string; report_id?: number|null; source_pdf?: string|null; source_url?: string|null }[]; catches: CatchRow[]; stocking: StockRow[]; metrics: MetricRow[]; metrics_by_year?: MetricByYearRow[] }
+interface LakeData { lake: Lake; surveys: { id: number|string; report_id?: number|null; source_pdf?: string|null; source_url?: string|null }[]; catches: CatchRow[]; stocking: StockRow[]; metrics: MetricRow[]; metrics_by_year?: MetricByYearRow[]; latest_stocking_report_id?: number|null }
 
 // Palette — paper-and-ink chart palette
 const LINE_COLORS = [colors.rust, colors.walleye, colors.moss, colors.lake3, '#8a6aa8', colors.lakeInk];
@@ -101,7 +116,7 @@ function fmtK(v: number) { return v >= 1000 ? `${(v/1000).toFixed(0)}k` : String
 
 const CHART_TICK_FONT = { fontFamily: fonts.mono, fontSize: 9 };
 
-function CpueChart({ data, seriesKeys, scaledGear, width, onDotPress, yLabel = 'CPUE' }: {
+function CpueChart({ data, seriesKeys, scaledGear, width, onDotPress, yLabel = 'Catch Rate' }: {
   data: Record<string,number|null>[];
   seriesKeys: string[];
   scaledGear?: string | null;
@@ -210,7 +225,17 @@ function StockingChart({ data, stageKeys, width, onBarPress, adultsPerYear }: {
 
   const yMax = Math.max(...data.map(d => stageKeys.reduce((s,k)=>s+(d[k]||0),0))) * 1.1;
   const yTicks = niceTicks(0, yMax, 5);
-  const barW = Math.max(3, Math.min(20, (plotW / Math.max(stockYears.length, 1)) * 0.5));
+  // Bar width scales to the actual smallest gap between consecutive stocking
+  // years on the x-scale — not bars-per-plotW. The x-scale extends to include
+  // adultsPerYear (which runs to the current year for the overlay line), so
+  // sparse stocking years can sit much closer together than plotW/stockYears.length
+  // would suggest. Without this, lakes with multiple consecutive stocking years
+  // get bars wider than their year-to-year spacing, causing overlap.
+  const pxPerYear = xScaleRange > 0 ? plotW / xScaleRange : plotW;
+  const minStockGap = stockYears.length > 1
+    ? Math.min(...stockYears.slice(1).map((y, i) => y - stockYears[i]))
+    : Math.max(xScaleRange, 1);
+  const barW = Math.max(3, Math.min(20, pxPerYear * minStockGap * 0.8));
 
   const aMax = hasOverlay
     ? (Math.max(...adultsPerYear!.map(a => a.adults_per_100ac)) * 1.15 || 1)
@@ -318,18 +343,25 @@ function StockingChart({ data, stageKeys, width, onBarPress, adultsPerYear }: {
       {hasOverlay && (
         <SvgText x={width-8} y={PAD_T+plotH/2} {...CHART_TICK_FONT}
           textAnchor="middle" fill={ADULT_LINE}
-          rotation="-90" originX={width-8} originY={PAD_T+plotH/2}>Est. adults/100ac</SvgText>
+          rotation="-90" originX={width-8} originY={PAD_T+plotH/2}>Stck Adults / 100AC</SvgText>
       )}
     </Svg>
   );
 }
 
-function Legend({ items }: { items: { label: string; color: string }[] }) {
+function Legend({ items }: { items: { label: string; color: string; dashed?: boolean }[] }) {
   return (
     <View style={styles.legend}>
       {items.map(item => (
         <View key={item.label} style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: item.color }]} />
+          {item.dashed ? (
+            <Svg width={12} height={12}>
+              <Line x1={0} y1={6} x2={12} y2={6}
+                stroke={item.color} strokeWidth={2} strokeDasharray="5 3" />
+            </Svg>
+          ) : (
+            <View style={[styles.legendDot, { backgroundColor: item.color }]} />
+          )}
           <Text style={[text.labelM, { color: colors.inkSoft }]}>{item.label}</Text>
         </View>
       ))}
@@ -351,8 +383,15 @@ export default function LakeDetailScreen() {
   const [scaledGear, setScaledGear] = useState<string|null>(null);
   const [selectedStockYear, setSelectedStockYear] = useState<{year: number; row: Record<string,number> | undefined} | null>(null);
   const [selectedCpueYear, setSelectedCpueYear] = useState<{year: number; row: Record<string,number|null>} | null>(null);
+  const [paywallTriggered, setPaywallTriggered] = useState<StateKey | null>(null);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [feedbackSending, setFeedbackSending] = useState(false);
+  const { toast } = useToast();
 
-  useEffect(() => {
+  const loadLake = React.useCallback(() => {
+    setLoading(true);
+    setError(null);
     fetchLakeWithSpecies(lakeId, state, initialSpecies)
       .then(d => {
         const ld = d as LakeData;
@@ -364,9 +403,17 @@ export default function LakeDetailScreen() {
           if (top) setLocalSpecies(top[0]);
         }
       })
-      .catch(err => setError(err.message))
+      .catch(err => {
+        if (err instanceof SubscriptionRequiredError) {
+          setPaywallTriggered(err.state);
+        } else {
+          setError(err instanceof Error ? err.message : 'Could not load lake');
+        }
+      })
       .finally(() => setLoading(false));
   }, [lakeId, state, initialSpecies]);
+
+  useEffect(() => { loadLake(); }, [loadLake]);
 
   const lakeSpecies = useMemo(() => {
     if (!data) return [];
@@ -446,7 +493,25 @@ export default function LakeDetailScreen() {
       .sort((a, b) => a.year - b.year);
   }, [data, localSpecies]);
 
-  const latestReportId = data?.surveys?.[0]?.report_id;
+  // When a species is selected, the source-document link should point at the
+  // most-recent survey that actually contains that species — not the lake's
+  // overall latest report. The user might be viewing Crappie data from a
+  // 2020 trap-net survey, but the lake's latest report (e.g. 2023 gill net)
+  // wouldn't contain Crappie at all.
+  // Surveys are returned year-DESC by the server, so the first match wins.
+  const speciesSurveyIds = useMemo(() => {
+    if (!localSpecies || !data?.catches) return null;
+    return new Set(data.catches
+      .filter(c => c.species === localSpecies)
+      .map(c => String(c.survey_id)));
+  }, [localSpecies, data?.catches]);
+
+  const latestReportId = useMemo(() => {
+    const pick = (data?.surveys ?? []).find(s =>
+      s.report_id != null && (!speciesSurveyIds || speciesSurveyIds.has(String(s.id))),
+    );
+    return pick?.report_id ?? null;
+  }, [data?.surveys, speciesSurveyIds]);
   const chartWidth = width - 32;
 
   const speciesName = localSpecies
@@ -456,20 +521,39 @@ export default function LakeDetailScreen() {
   if (loading) return (
     <SafeAreaView style={styles.safe}>
       <StatusBar style="light" />
+      <PaperHeader
+        title="Loading…"
+        eyebrow={state.toUpperCase()}
+        onBack={() => navigation.goBack()}
+        backLabel="←"
+      />
       <ActivityIndicator style={{flex:1}} size="large" color={colors.ink} />
     </SafeAreaView>
   );
   if (error || !data) return (
     <SafeAreaView style={styles.safe}>
+      <StatusBar style="light" />
+      <PaperHeader
+        title="Couldn’t load lake"
+        eyebrow={state.toUpperCase()}
+        onBack={() => navigation.goBack()}
+        backLabel="←"
+      />
       <View style={styles.errorBox}>
-        <Text style={[text.bodyL, { color: colors.destructive }]}>{error ?? 'No data'}</Text>
+        <Text style={[text.bodyL, { color: colors.destructive, textAlign: 'center' }]}>
+          {error ?? 'No data for this lake.'}
+        </Text>
+        <PrimaryButton onPress={loadLake} style={styles.errorRetry}>
+          Try again
+        </PrimaryButton>
+        <Pressable onPress={() => navigation.goBack()} hitSlop={8} style={{ marginTop: space.lg }}>
+          <Text style={[text.labelL, { color: colors.inkSoft }]}>Go back</Text>
+        </Pressable>
       </View>
     </SafeAreaView>
   );
 
-  const { lake, metrics } = data;
-  const metricsForSpecies = metrics.filter(m => !localSpecies || m.species === localSpecies);
-  const headlineMetric = metricsForSpecies[0];
+  const { lake } = data;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -481,7 +565,7 @@ export default function LakeDetailScreen() {
           : state.toUpperCase()}
         onBack={() => navigation.goBack()}
         backLabel="←"
-        right={lake.max_depth_feet ? `${lake.max_depth_feet} FT` : undefined}
+        right={lake.max_depth_feet ? `${Math.round(lake.max_depth_feet)} FT` : undefined}
       />
 
       <ScrollView style={{ backgroundColor: colors.paper }}>
@@ -490,14 +574,19 @@ export default function LakeDetailScreen() {
           <Text style={[text.labelM, { color: colors.inkSoft }]}>
             {[
               lake.county ? `${lake.county.toUpperCase()} CO` : null,
-              lake.area_acres ? `${lake.area_acres.toLocaleString()} AC` : null,
-              lake.max_depth_feet ? `${lake.max_depth_feet} FT` : null,
+              lake.area_acres ? `${Math.round(lake.area_acres).toLocaleString()} AC` : null,
+              lake.max_depth_feet ? `${Math.round(lake.max_depth_feet)} FT` : null,
             ].filter(Boolean).join(' · ')}
           </Text>
           <View style={styles.linkRow}>
-            {state === 'sd' && latestReportId ? (
+            {state === 'sd' && tab === 'cpue' && latestReportId ? (
               <Pressable onPress={() => Linking.openURL(SD_REPORT_URL(latestReportId))}>
                 <Text style={[text.labelM, { color: colors.walleye2 }]}>SD GFP Report ↗</Text>
+              </Pressable>
+            ) : null}
+            {state === 'sd' && tab === 'stocking' && (data?.latest_stocking_report_id ?? latestReportId) ? (
+              <Pressable onPress={() => Linking.openURL(SD_REPORT_URL((data?.latest_stocking_report_id ?? latestReportId) as number))}>
+                <Text style={[text.labelM, { color: colors.walleye2 }]}>SD GFP Stocking Report ↗</Text>
               </Pressable>
             ) : null}
             {state === 'mn' ? (
@@ -505,22 +594,31 @@ export default function LakeDetailScreen() {
                 <Text style={[text.labelM, { color: colors.walleye2 }]}>MN DNR LakeFinder ↗</Text>
               </Pressable>
             ) : null}
-            {state === 'ia' ? (
-              <Pressable onPress={() => Linking.openURL(IA_PBI_URL(lake.name))}>
-                <Text style={[text.labelM, { color: colors.walleye2 }]}>Iowa DNR Fish Survey Data ↗</Text>
+            {state === 'ia' && tab === 'cpue' && (
+              <Pressable onPress={() => Linking.openURL(IA_PBI_SURVEY_URL)}>
+                <Text style={[text.labelM, { color: colors.walleye2 }]}>Iowa DNR Survey Visit Summary ↗</Text>
               </Pressable>
-            ) : null}
-            {(state === 'ne' || state === 'mi' || state === 'wi') && (() => {
-              // Surveys are returned year-DESC by the server; the first row with
-              // a source_pdf is the most recent assessment for the lake. URL per state:
-              //   NE: source_url captured directly during scrape (Cloudflare-protected page)
-              //   WI: source_url captured from WDNR's reports index (no fixed directory pattern)
-              //   MI: stable DNR directory listing — built from the filename
-              const latest = (data?.surveys ?? []).find(s => s.source_pdf);
-              if (!latest?.source_pdf) return null;
-              const filename = latest.source_pdf;
+            )}
+            {state === 'ia' && tab === 'stocking' && (
+              <Pressable onPress={() => Linking.openURL(IA_LAKE_DETAILS_URL(lake.id))}>
+                <Text style={[text.labelM, { color: colors.walleye2 }]}>Iowa DNR Lake Stocking Record ↗</Text>
+              </Pressable>
+            )}
+            {/* NE/MI/WI — CPUE tab (and MI Stocking too): per-lake survey PDF.
+                Most recent survey with a source_pdf, narrowed by the currently-
+                selected species when one is picked. URL per state:
+                  NE: source_url captured directly during scrape (Cloudflare page)
+                  WI: source_url captured from WDNR's reports index
+                  MI: stable DNR directory listing — built from the filename */}
+            {(state === 'ne' || state === 'mi' || state === 'wi') &&
+              (tab === 'cpue' || state === 'mi') && (() => {
+              const pick = (data?.surveys ?? []).find(s =>
+                s.source_pdf && (!speciesSurveyIds || speciesSurveyIds.has(String(s.id))),
+              );
+              if (!pick?.source_pdf) return null;
+              const filename = pick.source_pdf;
               let url: string | null = null;
-              if (state === 'ne' || state === 'wi') url = latest.source_url ?? null;
+              if (state === 'ne' || state === 'wi') url = pick.source_url ?? null;
               else if (state === 'mi') url = `https://www2.dnr.state.mi.us/publications/pdfs/DNRFishLibrary/StatusoftheFisheryResourceReports/${filename}`;
               if (!url) return null;
               const label = filename.replace(/^Reports_/i, '').replace(/[-_]/g, ' ').replace(/\.pdf$/i, '').replace(/\b(20\d\d)\b/, '($1)').trim();
@@ -530,26 +628,31 @@ export default function LakeDetailScreen() {
                 </Pressable>
               );
             })()}
-            {state === 'nd' && (
-              <Pressable onPress={() => Linking.openURL(`https://gfappspublic.nd.gov/wheretofish/SurveyReport.aspx?Lake=${lake.id}`)}>
+            {state === 'ne' && tab === 'stocking' && (
+              <Pressable onPress={() => Linking.openURL(NE_STOCKING_URL)}>
+                <Text style={[text.labelM, { color: colors.walleye2 }]}>NE Fish Stocking Database ↗</Text>
+              </Pressable>
+            )}
+            {state === 'wi' && tab === 'stocking' && (
+              <Pressable onPress={() => Linking.openURL(WI_STOCKING_URL)}>
+                <Text style={[text.labelM, { color: colors.walleye2 }]}>WI Stocking Records Search ↗</Text>
+              </Pressable>
+            )}
+            {state === 'nd' && tab === 'cpue' && (
+              <Pressable onPress={() => Linking.openURL(ND_SURVEY_URL(lake.id))}>
                 <Text style={[text.labelM, { color: colors.walleye2 }]}>ND Survey Report ↗</Text>
               </Pressable>
             )}
+            {state === 'nd' && tab === 'stocking' && (
+              <Pressable onPress={() => Linking.openURL(ND_STOCKING_URL(lake.id))}>
+                <Text style={[text.labelM, { color: colors.walleye2 }]}>ND Stocking Report ↗</Text>
+              </Pressable>
+            )}
+            <Pressable onPress={() => { setFeedbackText(''); setFeedbackOpen(true); }}>
+              <Text style={[text.labelM, { color: colors.inkSoft }]}>Report data issue</Text>
+            </Pressable>
           </View>
         </View>
-
-        {/* Headline reading */}
-        {headlineMetric && (
-          <View style={styles.headline}>
-            <Text style={[text.labelS, { color: colors.inkSoft }]}>
-              {speciesDisplayName(headlineMetric.species, state).toUpperCase()} · POPULATION READING
-            </Text>
-            <Text style={[text.dataXL, { color: colors.ink, marginTop: 4 }]}>
-              {headlineMetric.adults_per_100ac.toFixed(1)}{' '}
-              <Text style={[text.bodyS, { color: colors.inkSoft }]}>est. adults / 100 ac</Text>
-            </Text>
-          </View>
-        )}
 
         {/* Species selector */}
         {lakeSpecies.length > 1 && (
@@ -578,7 +681,7 @@ export default function LakeDetailScreen() {
                   text.labelL,
                   { color: on ? colors.ink : colors.inkSoft, fontFamily: on ? fonts.monoSemi : fonts.mono },
                 ]}>
-                  {t === 'cpue' ? 'CPUE Over Time' : 'Stocking History'}
+                  {t === 'cpue' ? 'Catch Over Time' : 'Stocking History'}
                 </Text>
               </Pressable>
             );
@@ -592,12 +695,12 @@ export default function LakeDetailScreen() {
               <Text style={[text.bodyS, { color: colors.inkSoft, marginBottom: 8 }]}>
                 {state === 'ia'
                   ? 'Total fish caught from Iowa DNR comprehensive surveys. Each line = one gear type.'
-                  : `CPUE (catch per net) from ${state==='sd'?'SD GFP':state==='nd'?'ND GF&P':state==='ne'?'Nebraska Game & Parks':'MN DNR'} netting surveys. Each line = one gear type.`}
+                  : `Catch / Net from ${state==='sd'?'SD GFP':state==='nd'?'ND GF&P':state==='ne'?'Nebraska Game & Parks':'MN DNR'} netting surveys. Each line = one gear type.`}
               </Text>
               <CpueChart data={cpueChartData} seriesKeys={gearKeys} scaledGear={scaledGear} width={chartWidth}
-                yLabel="CPUE"
+                yLabel="Catch Rate"
                 onDotPress={(year, row) => setSelectedCpueYear(prev => prev?.year === year ? null : { year, row })} />
-              <Text style={[text.labelS, { color: colors.paper3, textAlign: 'center', marginTop: 4 }]}>
+              <Text style={[text.bodyS, { color: colors.inkSoft, textAlign: 'center', marginTop: 4 }]}>
                 Tap a dot to see year detail · tap a gear to rescale Y axis
               </Text>
               {selectedCpueYear && (
@@ -640,7 +743,7 @@ export default function LakeDetailScreen() {
             </View>
           ) : (
             <View style={styles.emptyChart}>
-              <Text style={[text.editorialS, { color: colors.inkSoft }]}>No CPUE data for {speciesName}</Text>
+              <Text style={[text.editorialS, { color: colors.inkSoft }]}>No catch data for {speciesName}</Text>
             </View>
           )
         )}
@@ -651,7 +754,7 @@ export default function LakeDetailScreen() {
             <View style={styles.chartSection}>
               <Text style={[text.bodyS, { color: colors.inkSoft, marginBottom: 8 }]}>
                 Fish stocked by year. Bar colors = life stage at stocking.
-                {stockingAdultsPerYear.length > 0 ? ' Dashed line = estimated adult fish/100ac from stocking (right axis).' : ''}
+                {stockingAdultsPerYear.length > 0 ? ' Dashed line = Stck Adults / 100AC from stocking (right axis).' : ''}
               </Text>
               <StockingChart data={stockChartData} stageKeys={stageKeys} width={chartWidth}
                 onBarPress={(year, row) => setSelectedStockYear(prev => prev?.year === year ? null : { year, row })}
@@ -696,7 +799,7 @@ export default function LakeDetailScreen() {
                         <View style={styles.popupDivider} />
                         <View style={styles.popupRow}>
                           <View style={[styles.popupDot, { backgroundColor: ADULT_LINE }]} />
-                          <Text style={[text.bodyM, { flex: 1, color: colors.ink2 }]}>Est. adults/100ac</Text>
+                          <Text style={[text.bodyM, { flex: 1, color: colors.ink2 }]}>Stck Adults / 100AC</Text>
                           <Text style={[text.dataM, { color: ADULT_LINE }]}>
                             {entry.adults_per_100ac.toFixed(1)}
                           </Text>
@@ -708,7 +811,7 @@ export default function LakeDetailScreen() {
               )}
               <Legend items={[
                 ...stageKeys.map(s => ({ label: s.charAt(0).toUpperCase()+s.slice(1), color: STAGE_COLORS[s] ?? DEFAULT_COLOR })),
-                ...(stockingAdultsPerYear.length > 0 ? [{ label: 'Est. adults/100ac', color: ADULT_LINE }] : []),
+                ...(stockingAdultsPerYear.length > 0 ? [{ label: 'Stck Adults / 100AC', color: ADULT_LINE, dashed: true }] : []),
               ]} />
             </View>
           ) : (
@@ -720,13 +823,142 @@ export default function LakeDetailScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Report data issue: posts to /api/feedback so the user doesn't need
+          Mail/Gmail configured. */}
+      <Modal
+        visible={feedbackOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setFeedbackOpen(false)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.paper }}>
+          <PaperHeader
+            modal
+            title="Report data issue"
+            right={
+              <Pressable onPress={() => setFeedbackOpen(false)} hitSlop={8}>
+                <Text style={[text.labelL, { color: colors.ink }]}>Cancel</Text>
+              </Pressable>
+            }
+          />
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={{ flex: 1 }}>
+            <ScrollView contentContainerStyle={{ padding: space.xl }}>
+              <Text style={[text.bodyM, { color: colors.ink2 }]}>
+                What looks wrong with {lake.name}? Be as specific as you can
+                (species, year, value you expected vs. what's shown).
+              </Text>
+              <Text style={[text.labelS, { color: colors.inkSoft, marginTop: space.lg }]}>
+                CONTEXT (auto-attached)
+              </Text>
+              <Text style={[text.dataS, { color: colors.inkSoft, marginTop: 4 }]}>
+                {`${STATE_CONFIGS[state]?.label ?? state.toUpperCase()} · ${lake.name} · ID ${lake.id} · `}
+                {`${localSpecies ? speciesDisplayName(localSpecies, state) : 'no species'} · `}
+                {`${tab === 'cpue' ? 'Catch tab' : 'Stocking tab'}`}
+              </Text>
+              <TextInput
+                style={styles.feedbackInput}
+                placeholder="Describe the issue…"
+                placeholderTextColor={colors.inkSoft}
+                multiline
+                value={feedbackText}
+                onChangeText={setFeedbackText}
+                maxLength={2000}
+                editable={!feedbackSending}
+              />
+              <Pressable
+                onPress={async () => {
+                  if (feedbackSending) return;
+                  if (feedbackText.trim().length === 0) {
+                    toast('Add a description before sending.');
+                    return;
+                  }
+                  setFeedbackSending(true);
+                  try {
+                    await submitFeedback({
+                      message: feedbackText,
+                      state,
+                      lakeId: lake.id,
+                      lakeName: lake.name,
+                      species: localSpecies ?? null,
+                      tab: tab === 'cpue' ? 'catch' : 'stocking',
+                      version: Application.nativeApplicationVersion ?? null,
+                      build: Application.nativeBuildVersion ?? null,
+                    });
+                    setFeedbackOpen(false);
+                    toast('Thanks — sent.');
+                  } catch (e) {
+                    toast(e instanceof Error ? e.message : 'Could not send. Try again.');
+                  } finally {
+                    setFeedbackSending(false);
+                  }
+                }}
+                style={({ pressed }) => [
+                  styles.feedbackSend,
+                  { opacity: pressed || feedbackSending ? 0.7 : 1 },
+                ]}>
+                <Text style={[text.labelL, { color: colors.paper }]}>
+                  {feedbackSending ? 'Sending…' : 'Send'}
+                </Text>
+              </Pressable>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Subscription gate: shown when the lake fetch returns 402. */}
+      <PaywallScreen
+        visible={paywallTriggered !== null}
+        triggeredFrom={paywallTriggered ? STATE_CONFIGS[paywallTriggered].label : undefined}
+        onClose={() => {
+          // Dismiss without subscribing — just back out of the lake detail.
+          // The user's chosen state stays as-is; if they came from the search
+          // screen for a paid state, that screen will show its own error and
+          // re-trigger the paywall on next action.
+          setPaywallTriggered(null);
+          navigation.goBack();
+        }}
+        onPurchased={() => {
+          setPaywallTriggered(null);
+          loadLake();
+        }}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
-  errorBox: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: space.xxxl },
+  errorBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: space.xxxl,
+    gap: space.md,
+  },
+  errorRetry: { marginTop: space.lg, paddingHorizontal: space.xxl },
+
+  feedbackInput: {
+    marginTop: space.lg,
+    minHeight: 160,
+    padding: space.md,
+    borderWidth: hairline,
+    borderColor: colors.paper3,
+    borderRadius: 6,
+    backgroundColor: colors.paper,
+    color: colors.ink,
+    fontFamily: fonts.body,
+    fontSize: 16,
+    textAlignVertical: 'top',
+  },
+  feedbackSend: {
+    marginTop: space.xl,
+    backgroundColor: colors.ink,
+    paddingVertical: 14,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
 
   metaBar: {
     paddingHorizontal: space.xl,
