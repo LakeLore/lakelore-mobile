@@ -57,6 +57,8 @@ interface DotData {
   name: string; county: string; species: string; year: number;
   lake_id: number|string;
   survey_date?: string;
+  area_acres?: number|null;
+  max_depth_feet?: number|null;
   average_length?: number|null;
   average_weight?: number|null;
   total_catch?: number|null;
@@ -101,15 +103,25 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
     const pts: DotData[] = [];
     const namesMap = state==='mn' ? MN_SPECIES_NAMES : state==='nd' ? ND_SPECIES_NAMES : SD_SPECIES_NAMES;
 
+    // Lake-level fields shared across every state branch. Kept separate from
+    // the per-state population so the popup can render acres/depth/county
+    // consistently with the list view's location row.
+    const lakeMeta = (r: Result) => ({
+      name: r.lake_name, county: r.county ?? '',
+      lake_id: r.lake_id,
+      area_acres: r.area_acres ?? null,
+      max_depth_feet: r.max_depth_feet ?? null,
+    });
+
     if (state==='mn') {
       for (const r of results) {
         if (r.cpue==null) continue;
         pts.push({
           x: r.average_weight??0, y: r.cpue,
           stocked: r.stocked_per_100ac,
-          name: r.lake_name, county: r.county ?? '',
+          ...lakeMeta(r),
           species: namesMap[r.species]??r.species,
-          year: r.survey_year, lake_id: r.lake_id,
+          year: r.survey_year,
           survey_date: r.survey_date??undefined,
           average_weight: r.average_weight,
           total_catch: r.total_catch,
@@ -121,9 +133,9 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
         pts.push({
           x: r.average_length, y: r.cpue,
           stocked: r.stocked_per_100ac,
-          name: r.lake_name, county: r.county ?? '',
+          ...lakeMeta(r),
           species: namesMap[r.species]??r.species,
-          year: r.survey_year, lake_id: r.lake_id,
+          year: r.survey_year,
           average_length: r.average_length,
         });
       }
@@ -133,9 +145,9 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
         pts.push({
           x: r.average_length, y: r.cpue,
           stocked: r.stocked_per_100ac,
-          name: r.lake_name, county: r.county ?? '',
+          ...lakeMeta(r),
           species: r.species,
-          year: r.survey_year, lake_id: r.lake_id,
+          year: r.survey_year,
           survey_date: r.survey_date ?? undefined,
           average_length: r.average_length,
           total_catch: r.total_catch,
@@ -147,9 +159,9 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
         pts.push({
           x: r.average_length, y: r.cpue,
           stocked: r.stocked_per_100ac,
-          name: r.lake_name, county: r.county ?? '',
+          ...lakeMeta(r),
           species: r.species,
-          year: r.survey_year, lake_id: r.lake_id,
+          year: r.survey_year,
           average_length: r.average_length,
         });
       }
@@ -159,9 +171,9 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
         pts.push({
           x: r.average_length, y: r.cpue,
           stocked: r.stocked_per_100ac,
-          name: r.lake_name, county: r.county ?? '',
+          ...lakeMeta(r),
           species: r.species,
-          year: r.survey_year, lake_id: r.lake_id,
+          year: r.survey_year,
           average_length: r.average_length,
           total_catch: r.total_catch,
         });
@@ -172,9 +184,9 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
         pts.push({
           x: r.average_length, y: r.cpue,
           stocked: r.stocked_per_100ac,
-          name: r.lake_name, county: r.county ?? '',
+          ...lakeMeta(r),
           species: r.species,
-          year: r.survey_year, lake_id: r.lake_id,
+          year: r.survey_year,
           average_length: r.average_length,
         });
       }
@@ -185,9 +197,9 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
         pts.push({
           x: r.average_length, y: r.cpue,
           stocked: r.stocked_per_100ac,
-          name: r.lake_name, county: r.county ?? '',
+          ...lakeMeta(r),
           species: namesMap[r.species]??r.species,
-          year: r.survey_year, lake_id: r.lake_id,
+          year: r.survey_year,
           estLength: r.average_length,
         });
       }
@@ -429,14 +441,20 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
         <Pressable style={styles.dotCard}
           onPress={() => { onLakePress(selectedDot.lake_id, selectedDot.name); setSelectedDot(null); }}
         >
-          {selectedDot.county ? (
-            <Text style={[text.labelS, { color: colors.inkSoft, marginBottom: 2 }]}>
-              {selectedDot.county.toUpperCase()} CO · {state.toUpperCase()}
-            </Text>
-          ) : null}
           <Text style={[text.displayM, { color: colors.ink }]}>{selectedDot.name}</Text>
+          {/* Single-line meta row — County, State, acres, depth, year all
+              together. Mirrors the list-row info; wraps only if the screen
+              can't fit it on one line. Species stays on its own line below. */}
+          <Text style={[text.dataS, { color: colors.inkSoft, marginTop: 2 }]}>
+            {[
+              selectedDot.county ? `${selectedDot.county} Co · ${state.toUpperCase()}` : state.toUpperCase(),
+              selectedDot.area_acres != null ? `${Math.round(selectedDot.area_acres).toLocaleString()} ac` : null,
+              selectedDot.max_depth_feet != null ? `${Math.round(selectedDot.max_depth_feet)} ft` : null,
+              selectedDot.survey_date ?? selectedDot.year,
+            ].filter(Boolean).join(' · ')}
+          </Text>
           <Text style={[text.dataS, { color: colors.inkSoft, marginTop: 2, marginBottom: 8 }]}>
-            {selectedDot.species} · {selectedDot.survey_date ?? selectedDot.year}
+            {selectedDot.species}
           </Text>
           <View style={styles.dotStats}>
             {/* Field set mirrors STATE_CONFIGS[state].sortOptions so the popup

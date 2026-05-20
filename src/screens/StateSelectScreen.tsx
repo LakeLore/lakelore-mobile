@@ -40,7 +40,7 @@ const FREE_STATE: StateKey = 'mn';
 export default function StateSelectScreen({ onSelect }: Props) {
   const insets = useSafeAreaInsets();
   const { setState } = useAppState();
-  const { hasAllStates } = useEntitlement();
+  const { hasAllStates, loading: entitlementLoading } = useEntitlement();
   const [paywallFor, setPaywallFor] = useState<StateKey | null>(null);
   const [showAbout, setShowAbout] = useState(false);
 
@@ -91,7 +91,11 @@ export default function StateSelectScreen({ onSelect }: Props) {
         </View>
 
         {STATE_ROWS.map(s => {
-          const locked = s.key !== FREE_STATE && !hasAllStates;
+          // While entitlement is still loading (no cached value on first
+          // launch), don't render either chip — avoids the flash of "locked"
+          // for users who turn out to be subscribed.
+          const locked = !entitlementLoading && s.key !== FREE_STATE && !hasAllStates;
+          const showFreeChip = !entitlementLoading && s.key === FREE_STATE;
           return (
             <Pressable key={s.key} onPress={() => pick(s.key)}
               style={({ pressed }) => [
@@ -112,7 +116,7 @@ export default function StateSelectScreen({ onSelect }: Props) {
                         ALL-STATES
                       </Text>
                     </View>
-                  ) : s.key === FREE_STATE ? (
+                  ) : showFreeChip ? (
                     <View style={styles.freeChip}>
                       <Text style={[text.labelS, { color: colors.moss }]}>FREE</Text>
                     </View>

@@ -13,6 +13,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Purchases, { type CustomerInfo } from 'react-native-purchases';
 import {
   ALL_STATES_ENTITLEMENT,
@@ -20,6 +21,12 @@ import {
   isIapConfigured,
 } from './iap';
 import { fetchMyEntitlement } from './api';
+
+// Cache the last-known entitlement so subsequent app launches render the
+// correct lock/unlock chips immediately, instead of flashing "locked" while
+// the RC SDK + server round-trip resolves. Server is still authoritative on
+// every refresh — this only primes the initial UI.
+const ENTITLEMENT_CACHE_KEY = 'entitlement.allStates.v1';
 
 export interface EntitlementState {
   hasAllStates: boolean;
@@ -52,10 +59,23 @@ export function useEntitlement(): EntitlementState {
       setHasAllStates(final);
       setLoading(false);
     }
+    AsyncStorage.setItem(ENTITLEMENT_CACHE_KEY, final ? '1' : '0').catch(() => {});
   }, []);
 
   useEffect(() => {
     mountedRef.current = true;
+
+    // Prime from cache so the first render after a cold start matches the
+    // user's last-known entitlement, not the false default. Mark `loading`
+    // false too so the screen can show the correct chips immediately; the
+    // background refresh below still runs and reconciles if state changed
+    // (e.g. subscription lapsed while the app was closed).
+    AsyncStorage.getItem(ENTITLEMENT_CACHE_KEY).then(cached => {
+      if (!mountedRef.current || cached == null) return;
+      setHasAllStates(cached === '1');
+      setLoading(false);
+    }).catch(() => {});
+
     refresh();
 
     // Subscribe to RC customer info updates — fires after purchase, restore,
@@ -65,8 +85,10 @@ export function useEntitlement(): EntitlementState {
     if (isIapConfigured()) {
       const listener = (info: CustomerInfo) => {
         if (!mountedRef.current) return;
-        setHasAllStates(!!info.entitlements.active[ALL_STATES_ENTITLEMENT]);
+        const next = !!info.entitlements.active[ALL_STATES_ENTITLEMENT];
+        setHasAllStates(next);
         setLoading(false);
+        AsyncStorage.setItem(ENTITLEMENT_CACHE_KEY, next ? '1' : '0').catch(() => {});
       };
       Purchases.addCustomerInfoUpdateListener(listener);
       unsubscribe = () => Purchases.removeCustomerInfoUpdateListener(listener);

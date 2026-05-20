@@ -96,18 +96,23 @@ function fmtCpue(v: number | null | undefined): string | null {
 // override doesn't apply.
 //
 // Electrofishing aliases across states:
+//   MN  — "Backpack/Fall/Special/Standard electrofishing"
+//   ND  — "Electrofishing-Boat"
 //   IA  — "EF"
-//   ND  — "electrofishing*"
-//   SD  — "boat shocker (night/day)", "spring/fall ... ef-lmb/smb/wae", "spring day ef*",
-//          "electrofishing (flathead)"
-//   NE  — bass electrofishing variants
+//   NE  — "Electrofishing"
+//   MI  — "Electrofishing"
+//   SD  — "boat shocker (night/day)", "spring/fall ... ef-lmb/smb/wae",
+//         "spring day ef*", "electrofishing (flathead)"
+//   WI  — 2-letter codes: "SE1"/"SE2" (Spring EF), "FE" (Fall EF)
 // Matches on "electrofish", "shocker", or "ef" as a standalone token / hyphen
-// prefix (so "ef-lmb" and "spring ef*" hit but "frame net" doesn't).
+// prefix, plus WI's SE/FE codes (whole-string match — gating on state to
+// avoid false positives in other states' gear strings).
 export function cpueLabelForGear(state: StateKey, gear?: string | null): string {
   const fallback = STATE_CONFIGS[state].sortOptions.find(o => o.value === 'cpue')?.label ?? 'Catch / Net';
   if (!gear) return fallback;
   const g = gear.toLowerCase();
   if (/electrofish|shocker|(?:^|[\s-])ef(?:[-\s*]|$)/.test(g)) return 'Catch / Hour';
+  if (state === 'wi' && /^(se|fe)\d?$/.test(g)) return 'Catch / Hour';
   if (g.includes('net')) return 'Catch / Net';
   return fallback;
 }

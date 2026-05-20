@@ -306,16 +306,22 @@ function StockingChart({ data, stageKeys, width, onBarPress, adultsPerYear }: {
 
       {hasOverlay && (() => {
         const pts = adultsPerYear!.map(a => `${yearToX(a.year)},${toYAdult(a.adults_per_100ac)}`);
-        const stockYearSet = new Set(stockYears);
+        const lastYear = adultsPerYear![adultsPerYear!.length - 1]?.year;
         return (
           <G>
             {pts.length >= 2 && (
               <Polyline points={pts.join(' ')} fill="none"
                 stroke={ADULT_LINE} strokeWidth={2} strokeDasharray="5 3" />
             )}
-            {adultsPerYear!.filter(a => stockYearSet.has(a.year)).map(a => (
+            {/* Mark every overlay point — stocking-year vs non-stocking-year is
+                already conveyed by the bars below, so dots here just anchor the
+                survival curve so the latest value (often years after the last
+                stocking event) is visible, not just clickable. The most recent
+                year gets a larger dot to emphasize the current population. */}
+            {adultsPerYear!.map(a => (
               <Circle key={a.year} cx={yearToX(a.year)} cy={toYAdult(a.adults_per_100ac)}
-                r={3} fill={ADULT_LINE} stroke={colors.paper} strokeWidth={1.5} />
+                r={a.year === lastYear ? 4 : 3}
+                fill={ADULT_LINE} stroke={colors.paper} strokeWidth={1.5} />
             ))}
           </G>
         );

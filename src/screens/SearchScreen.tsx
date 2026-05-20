@@ -414,7 +414,6 @@ export default function SearchScreen() {
         <View style={styles.resultsHeader}>
           <Text style={[text.labelL, { color: colors.inkSoft, flexShrink: 1 }]} numberOfLines={1}>
             {total.toLocaleString()} {total === 1 ? 'RESULT' : 'RESULTS'}
-            {viewMode === 'list' && total > results.length ? ` · ${results.length} SHOWN` : ''}
           </Text>
           <View style={styles.viewToggle}>
             <Segmented
