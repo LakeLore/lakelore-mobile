@@ -21,7 +21,7 @@ This is the source of truth for every text field in App Store Connect and Google
 | Primary category (Android) | `Sports` | — |
 | Content rating | 4+ (iOS) / Everyone (Android) | — |
 
-> **Support email:** `support@lakeloreapp.com` is the contact published on the support page. The privacy and terms pages still reference `hello@lakeloreapp.com` for legal/privacy correspondence. Both should be configured as aliases in Google Workspace.
+> **Support email:** `support@lakeloreapp.com` is the single contact published across the support page, privacy policy, and terms. Configure as an alias in Google Workspace.
 
 ---
 
@@ -52,7 +52,7 @@ Alternates if you want to A/B:
 ## Promotional text (iOS only — updateable any time)
 
 ```
-Now in seven states: MN, WI, MI, ND, SD, NE, IA. Free, no account, no ads — the netting and stocking atlas for northern game fish.
+Now in five states: MN, ND, SD, NE, IA. Free, no account, no ads — the netting and stocking atlas for northern game fish.
 ```
 
 (125 chars. Use this for seasonal hooks: launch, ice-fishing, opener, fall walleye, etc.)
@@ -60,15 +60,14 @@ Now in seven states: MN, WI, MI, ND, SD, NE, IA. Free, no account, no ads — th
 ## Keywords (iOS, 100 chars max, comma-separated, no spaces between)
 
 ```
-fishing,walleye,muskellunge,stocking,survey,dnr,perch,crappie,minnesota,wisconsin,michigan,iowa
+fishing,walleye,muskellunge,stocking,survey,dnr,perch,crappie,minnesota,iowa,nebraska,dakota
 ```
 
-(94 chars. Apple already indexes the app name, subtitle, and category, so don't repeat words from those.)
+(91 chars. Apple already indexes the app name, subtitle, and category, so don't repeat words from those. WI + MI keywords removed for v1 — those states are inactive.)
 
 Variants to swap in if rankings shift:
 
 - Trade `crappie` for `bass` (5→4 chars, frees up 1 char)
-- Trade `wisconsin` for `nebraska` (9→8, frees up 1)
 - Add `sunfish,bluegill` (frees up by dropping 2 from above)
 
 Apple expands singulars to plurals automatically; don't waste chars on `walleyes`.
@@ -93,11 +92,9 @@ WHAT YOU CAN DO
 DATA COVERED
 
 • Minnesota — 9,490 lakes, 23,618 surveys, 396,371 catch records (MN DNR)
-• Wisconsin — 2,329 lakes (WI DNR)
 • Iowa — 1,258 lakes (Iowa DNR)
 • Nebraska — 487 lakes (Nebraska Game & Parks)
 • North Dakota — 452 lakes (ND Game & Fish)
-• Michigan — 367 lakes (MI DNR)
 • South Dakota — 327 lakes (SD Game, Fish & Parks)
 
 SPECIES TRACKED
@@ -261,7 +258,7 @@ Real device screenshots also work — Expo Go renders the app screens identicall
 
 Aim for editorial framing: include search results that *say something*. e.g. WAE results sorted by stocking density in MN, with a stripe of high-density lakes at the top.
 
-1. **State Select** — the opening screen, "Lakes by State" with seven state cards.
+1. **State Select** — the opening screen, "Lakes by State" with five state cards.
 2. **Search · List view** — Minnesota, Walleye, sorted by CPUE. Shows the brand on a results page.
 3. **Search · Scatter view** — same query, switched to scatter. Visual variety + makes the data look rich.
 4. **Search · Filters open** — Advanced Filters modal, partly filled in. Shows depth of features.

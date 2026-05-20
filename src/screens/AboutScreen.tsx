@@ -6,19 +6,65 @@
 // agencies?" — having a dedicated, prominent screen that answers that
 // question is the cleanest defense.
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  Modal, View, Text, ScrollView, Pressable, StyleSheet, SafeAreaView, Linking,
+  Modal, View, Text, ScrollView, Pressable, StyleSheet, Linking,
+  Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Purchases from 'react-native-purchases';
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
-import { PaperHeader } from '../lakelore-rn/components';
+import { PaperHeader, SectionLabel } from '../lakelore-rn/components';
+import { useEntitlement } from '../useEntitlement';
+import { restorePurchases } from '../iap';
+import { useToast } from '../Toast';
+import { ACTIVE_STATES } from '../activeStates';
+import { StateKey } from '../types';
+
+// Subscription product IDs — used to deep-link Play Store directly to the
+// LakeLore row rather than the user's full subscription list. iOS uses the
+// native StoreKit "manage" sheet via RC's SDK; it doesn't take a product ID.
+const ANDROID_SKU = 'lakelore_allstates_annual';
+const ANDROID_PACKAGE = 'com.lakeloreapp.lakelore';
+
+const ANDROID_MANAGE_URL =
+  `https://play.google.com/store/account/subscriptions?sku=${ANDROID_SKU}&package=${ANDROID_PACKAGE}`;
+const IOS_FALLBACK_MANAGE_URL = 'itms-apps://apps.apple.com/account/subscriptions';
+const WEB_FALLBACK_MANAGE_URL = 'https://lakeloreapp.com/support';
+
+/**
+ * Open the platform's subscription management surface.
+ * - iOS 13+: native StoreKit sheet via RC SDK (stays in-app). Falls back to
+ *   the App Store account-subscriptions URL if the native call fails.
+ * - Android: deep-link straight to the LakeLore row in Play subscriptions.
+ * - Web / unknown: support page (Linking.openURL handles the same way).
+ */
+async function openManageSubscription(): Promise<void> {
+  if (Platform.OS === 'ios') {
+    try {
+      await Purchases.showManageSubscriptions();
+      return;
+    } catch {
+      // Native sheet failed (rare; usually iOS <13). Fall through to URL.
+      Linking.openURL(IOS_FALLBACK_MANAGE_URL).catch(() => {});
+      return;
+    }
+  }
+  const url = Platform.OS === 'android' ? ANDROID_MANAGE_URL : WEB_FALLBACK_MANAGE_URL;
+  Linking.openURL(url).catch(() => {});
+}
 
 interface Props {
   visible: boolean;
+  /** Current state — when provided, renders a state-specific glossary block
+   *  with CPUE / gear / agency-specific terminology. Omit (or undefined)
+   *  from StateSelectScreen where no state has been entered yet. */
+  state?: StateKey;
   onClose: () => void;
 }
 
 interface AgencySource {
+  key: StateKey;
   state: string;
   agency: string;
   abbr: string;
@@ -26,8 +72,9 @@ interface AgencySource {
   blurb: string;
 }
 
-const AGENCIES: AgencySource[] = [
+const ALL_AGENCIES: AgencySource[] = [
   {
+    key: 'mn',
     state: 'Minnesota',
     agency: 'Minnesota Department of Natural Resources',
     abbr: 'MN DNR',
@@ -35,6 +82,7 @@ const AGENCIES: AgencySource[] = [
     blurb: 'Standardized netting and electrofishing surveys, plus stocking records, published through MN DNR LakeFinder.',
   },
   {
+    key: 'wi',
     state: 'Wisconsin',
     agency: 'Wisconsin Department of Natural Resources',
     abbr: 'WI DNR',
@@ -42,6 +90,7 @@ const AGENCIES: AgencySource[] = [
     blurb: 'Treaty-area netting and electrofishing surveys with length and weight measurements, published through the WI DNR Lake Pages.',
   },
   {
+    key: 'mi',
     state: 'Michigan',
     agency: 'Michigan Department of Natural Resources',
     abbr: 'MI DNR',
@@ -49,6 +98,7 @@ const AGENCIES: AgencySource[] = [
     blurb: 'Inland-lake survey reports and fish stocking records published in the MI DNR Status of Fishery Resource Reports.',
   },
   {
+    key: 'nd',
     state: 'North Dakota',
     agency: 'North Dakota Game and Fish Department',
     abbr: 'ND Game & Fish',
@@ -56,13 +106,15 @@ const AGENCIES: AgencySource[] = [
     blurb: 'Standardized gill-net surveys and stocking records published through the ND Game and Fish public ArcGIS portal.',
   },
   {
+    key: 'sd',
     state: 'South Dakota',
     agency: 'South Dakota Game, Fish and Parks',
     abbr: 'SD GFP',
     url: 'https://gfp.sd.gov/fishing-reports/',
-    blurb: 'Annual fisheries survey reports with PSD, Wr, and CPUE statistics, published as PDFs through the SD GFP report portal.',
+    blurb: 'Annual fisheries survey reports with PSD, Wr, and Catch / Net statistics, published as PDFs through the SD GFP report portal.',
   },
   {
+    key: 'ne',
     state: 'Nebraska',
     agency: 'Nebraska Game and Parks Commission',
     abbr: 'NE Game & Parks',
@@ -70,6 +122,7 @@ const AGENCIES: AgencySource[] = [
     blurb: 'Standardized netting surveys and stocking records, published as agency PDFs.',
   },
   {
+    key: 'ia',
     state: 'Iowa',
     agency: 'Iowa Department of Natural Resources',
     abbr: 'IA DNR',
@@ -78,7 +131,168 @@ const AGENCIES: AgencySource[] = [
   },
 ];
 
-export default function AboutScreen({ visible, onClose }: Props) {
+// Only credit agencies for states that ship in this build. Re-add WI/MI to
+// ACTIVE_STATES (src/activeStates.ts) and they appear here automatically.
+const AGENCIES = ALL_AGENCIES.filter(a => ACTIVE_STATES.includes(a.key));
+
+function numWord(n: number): string {
+  return ['zero','one','two','three','four','five','six','seven','eight','nine'][n] ?? String(n);
+}
+
+// ── State-specific glossary blocks ────────────────────────────────────────
+// Previously lived in src/screens/search/InfoModal.tsx (the "Glossary &
+// Help" modal). Merged here so users have one combined "What is this and
+// how do I read it" surface per state.
+
+function StateGlossarySection({ state }: { state: StateKey }) {
+  const isSD = state === 'sd';
+  const isMN = state === 'mn';
+  const isND = state === 'nd';
+  const isIA = state === 'ia';
+  const isNE = state === 'ne';
+  const stateLabel = ALL_AGENCIES.find(a => a.key === state)?.state ?? state.toUpperCase();
+  return (
+    <View>
+      <View style={styles.sectionHeader}>
+        <Text style={[text.labelL, { color: colors.inkSoft }]}>
+          FOR {stateLabel.toUpperCase()} — HOW TO READ THIS
+        </Text>
+      </View>
+
+      {!isIA && (
+        <GlossarySection title="Catch Rate">
+          {isSD
+            ? 'Fish caught per standard sampling unit. Gill nets: Catch / Net (fish per net-night). Electrofishing: Catch / Hour. Higher catch rate = more abundant fish population.'
+            : isND
+            ? 'Catch / Net — fish caught per net-night. Calculated as total fish caught of a species per sample divided by the number of net-nights. Higher = more abundant fish population.'
+            : isNE
+            ? 'Catch / Net — fish caught per standard gill net set. Higher = more abundant fish population. Nebraska Game & Parks uses standardized overnight gill nets for most open-water species assessments.'
+            : 'Catch / Net — fish caught per standard gill net set. Higher = more abundant fish population.'}
+        </GlossarySection>
+      )}
+
+      {isIA && (
+        <GlossarySection title="Catch Rate">
+          Fish caught per gear unit. Calculated separately for each gear type:{'\n'}
+          • FN Catch / Net: fish per fyke net{'\n'}
+          • HN Catch / Net: fish per hoop net{'\n'}
+          • EF Catch / Hour: fish per hour of electrofishing{'\n'}
+          Higher catch rate = more abundant fish population. The gear filter defaults to whichever gear the Iowa DNR returns as the most-used for the selected lake — switch to a different gear from the filter to see other results.
+        </GlossarySection>
+      )}
+
+      {isIA && (
+        <GlossarySection title="Gear Types (IA)">
+          • FN — Fyke Net: A mesh trap with funnel-shaped entrance wings staked along the shoreline. Set overnight or for multiple nights; effective for most species in shallow to mid-depth water.{'\n'}
+          • HN — Hoop Net: A cylindrical mesh trap held open by rigid hoops and anchored on the bottom. Commonly used in rivers and reservoirs; good for catfish, buffalo, and rough fish.{'\n'}
+          • EF — Electrofishing: A boat-mounted electric current temporarily stuns fish near the surface. Used in spring and fall for walleye, bass, and other nearshore species.{'\n'}
+          Iowa DNR surveys often combine multiple gear types in a single Comprehensive survey visit.
+        </GlossarySection>
+      )}
+
+      {isIA && (
+        <GlossarySection title="Avg Length">
+          Average length in inches for measured fish from Iowa DNR individual fish measurement records.
+        </GlossarySection>
+      )}
+
+      {isSD && (
+        <GlossarySection title="PSD — Proportional Size Distribution">
+          Percentage of stock-length fish that are at or above quality size. Ranges 0–100; higher = better size structure (more large fish).{'\n'}
+          • PSD-Q (default): stock → quality size{'\n'}
+          • PSD-P: stock → preferred size (larger, trophy-potential fish)
+        </GlossarySection>
+      )}
+
+      {isSD && (
+        <GlossarySection title="Wr — Relative Weight">
+          Actual weight compared to the expected weight for a fish of that length. Wr = 100 means average condition; above 100 means well-fed, healthy fish.
+        </GlossarySection>
+      )}
+
+      {isSD && (
+        <GlossarySection title="Gear Types (SD)">
+          • AFS Std Gill Net: Multi-mesh overnight gill net; the SD GFP standard for most open-water species.{'\n'}
+          • Trap Net: Mesh trap set at the shoreline; used for panfish and rough fish.{'\n'}
+          • Electrofishing: Electric current temporarily stuns fish; used for bass, pike, and walleye in shallow water.{'\n'}
+          • Seine: Encircling net dragged through the water; used for small or schooling fish.
+        </GlossarySection>
+      )}
+
+      {isMN && (
+        <GlossarySection title="Gear Types (MN)">
+          • Standard Gill Net: Multi-mesh overnight gill net following MN DNR protocol; primary gear for most open-water species.{'\n'}
+          • Trap Net: Mesh trap set at the shoreline; used for panfish, carp, and rough fish.{'\n'}
+          • Electrofishing: Electric current temporarily stuns fish; used for bass, pike, and walleye in shallow water.{'\n'}
+          • Seine: Encircling net dragged through the water; used for small or schooling fish.
+        </GlossarySection>
+      )}
+
+      {isMN && (
+        <GlossarySection title="Survey Types (MN)">
+          • Standard Survey: Full population assessment conducted on a rotating basin schedule.{'\n'}
+          • Special Assessment: Targeted survey addressing a specific management question.{'\n'}
+          • Targeted Survey: Survey focused on a single species or issue.{'\n'}
+          • Population Assessment: Comprehensive multi-species evaluation.
+        </GlossarySection>
+      )}
+
+      {isND && (
+        <GlossarySection title="Avg Length">
+          Average length of fish caught in each sample, converted from millimeters to inches. Only fish with recorded lengths are included in the average.
+        </GlossarySection>
+      )}
+
+      {isND && (
+        <GlossarySection title="Gear Types (ND)">
+          Gear types shown are those used in ND GF&P standardized netting surveys. The most common is monofilament multi-mesh gill nets set overnight (net-nights).
+        </GlossarySection>
+      )}
+
+      {isNE && (
+        <GlossarySection title="Avg Length">
+          Average length in inches for fish sampled during Nebraska Game & Parks standardized netting surveys.
+        </GlossarySection>
+      )}
+
+      {isNE && (
+        <GlossarySection title="Gear Types (NE)">
+          • Gill Net: Multi-mesh monofilament overnight gill net; the NE Game & Parks standard for walleye, pike, and perch assessments.{'\n'}
+          • Frame Net / Trap Net: Mesh trap set at the shoreline; used for panfish (crappie, bluegill) and rough fish.{'\n'}
+          • Electrofishing: Electric current temporarily stuns fish; used for bass, pike, and walleye in shallow water.
+        </GlossarySection>
+      )}
+    </View>
+  );
+}
+
+function GlossarySection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <View style={styles.glossaryItem}>
+      <SectionLabel>{title}</SectionLabel>
+      <Text style={[text.bodyM, { color: colors.ink2, marginTop: 6 }]}>{children}</Text>
+    </View>
+  );
+}
+
+export default function AboutScreen({ visible, state, onClose }: Props) {
+  const { hasAllStates, refresh } = useEntitlement();
+  const { toast } = useToast();
+  const [restoring, setRestoring] = useState(false);
+
+  const handleRestore = async () => {
+    if (restoring) return;
+    setRestoring(true);
+    const ok = await restorePurchases();
+    setRestoring(false);
+    if (ok) {
+      await refresh();
+      toast('Subscription restored.');
+    } else {
+      toast('No active subscription found on this account.');
+    }
+  };
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={styles.safe}>
@@ -95,6 +309,14 @@ export default function AboutScreen({ visible, onClose }: Props) {
             <Text style={[text.labelM, { color: colors.walleye2 }]}>LAKELORE · FIELD GUIDE</Text>
           </View>
 
+          {hasAllStates && (
+            <View style={styles.subscriberPill}>
+              <Text style={[text.labelS, { color: colors.moss }]}>
+                ALL-STATES PASS · ACTIVE
+              </Text>
+            </View>
+          )}
+
           <Text style={[text.displayM, { color: colors.ink, marginTop: 8 }]}>
             Public records,{' '}
             <Text style={{ fontStyle: 'italic' }}>quietly assembled.</Text>
@@ -102,8 +324,9 @@ export default function AboutScreen({ visible, onClose }: Props) {
 
           <Text style={[text.bodyL, { color: colors.ink2, marginTop: 16 }]}>
             LakeLore is an independent project that gathers fish-population data from
-            seven U.S. state fish &amp; wildlife agencies, normalizes their assessment
-            methods, and renders the result as a single field guide.
+            {' '}{numWord(AGENCIES.length)} U.S. state fish &amp; wildlife agencies,
+            normalizes their assessment methods, and renders the result as a single
+            field guide.
           </Text>
 
           <View style={styles.callout}>
@@ -145,6 +368,8 @@ export default function AboutScreen({ visible, onClose }: Props) {
             </Pressable>
           ))}
 
+          {state && <StateGlossarySection state={state} />}
+
           <View style={styles.sectionHeader}>
             <Text style={[text.labelL, { color: colors.inkSoft }]}>NOTES ON THE DATA</Text>
           </View>
@@ -153,15 +378,30 @@ export default function AboutScreen({ visible, onClose }: Props) {
             <Text style={{ fontWeight: '600', color: colors.ink }}>Survey methods vary by agency.</Text>{' '}
             Each state runs its own protocol — gill-net mesh sizes, electrofishing
             voltage, fyke / hoop net configurations, and seasonal timing differ. The
-            CPUE numbers between states are roughly comparable but not interchangeable.
+            catch-rate numbers between states are roughly comparable but not interchangeable.
           </Text>
 
           <Text style={[text.bodyM, { color: colors.ink2, marginTop: 12 }]}>
-            <Text style={{ fontWeight: '600', color: colors.ink }}>The estimated &ldquo;adults per 100 acres&rdquo; metric</Text>{' '}
-            comes from a survival model applied to stocking records — not from observed
-            catches. It assumes a constant survival rate per life stage and does not
-            model natural reproduction or density-dependent mortality. Treat it as a
-            rough indicator, not a fish count.
+            <Text style={{ fontWeight: '600', color: colors.ink }}>The &ldquo;Stck Adults / 100AC&rdquo; metric</Text>{' '}
+            is an estimate of adult fish per 100 acres derived from stocking records
+            and a per-species survival model. Survival is compounded year-by-year
+            through each life stage.{'\n\n'}
+            Example — walleye (other species have their own assumptions):{'\n'}
+            • fry → fingerling (yr 1): 1%{'\n'}
+            • fingerling → yearling (yr 2): 10%{'\n'}
+            • yearling → adult (yr 3): 40%{'\n'}
+            • adult → adult (each year thereafter): 55%{'\n\n'}
+            Example math: 100,000 walleye fry stocked → 1,000 fingerlings → 100
+            yearlings → 40 catchable adults by yr 3. Each subsequent year the
+            survivor count is multiplied by 55%. Does not model natural reproduction
+            or density-dependent mortality. Treat as a rough indicator, not a fish
+            count.
+          </Text>
+
+          <Text style={[text.bodyM, { color: colors.ink2, marginTop: 12 }]}>
+            <Text style={{ fontWeight: '600', color: colors.ink }}>Latest Survey Only.</Text>{' '}
+            The toggle near the search bar limits results to each lake&rsquo;s most
+            recent survey. Turn it off to see every historical survey record.
           </Text>
 
           <Text style={[text.bodyM, { color: colors.ink2, marginTop: 12 }]}>
@@ -198,6 +438,19 @@ export default function AboutScreen({ visible, onClose }: Props) {
               <Text style={[text.labelS, { color: colors.walleye2 }]}>↗</Text>
             </Pressable>
             <Pressable
+              onPress={openManageSubscription}
+              style={styles.linkRow}
+            >
+              <Text style={[text.bodyM, { color: colors.ink }]}>Manage subscription</Text>
+              <Text style={[text.labelS, { color: colors.walleye2 }]}>↗</Text>
+            </Pressable>
+            <Pressable onPress={handleRestore} style={styles.linkRow}>
+              <Text style={[text.bodyM, { color: colors.ink }]}>
+                {restoring ? 'Restoring…' : 'Restore purchases'}
+              </Text>
+              <Text style={[text.labelS, { color: colors.walleye2 }]}>›</Text>
+            </Pressable>
+            <Pressable
               onPress={() => Linking.openURL('mailto:support@lakeloreapp.com')}
               style={styles.linkRow}
             >
@@ -224,6 +477,16 @@ const styles = StyleSheet.create({
   eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.walleye },
 
+  subscriberPill: {
+    alignSelf: 'flex-start',
+    marginTop: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: hairline,
+    borderColor: colors.moss,
+    backgroundColor: colors.paper2,
+  },
+
   callout: {
     marginTop: 24,
     padding: space.lg,
@@ -243,6 +506,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: hairline,
     borderBottomColor: colors.paper3,
+  },
+
+  glossaryItem: {
+    marginTop: 18,
+    paddingBottom: 4,
   },
   agencyHeader: {
     flexDirection: 'row',

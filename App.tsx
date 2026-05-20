@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -21,10 +22,13 @@ import {
   JetBrainsMono_600SemiBold,
   JetBrainsMono_700Bold,
 } from '@expo-google-fonts/jetbrains-mono';
-import { StateProvider, useAppState } from './src/StateContext';
+import { StateProvider } from './src/StateContext';
 import { initIAP } from './src/iap';
 import { getUserId } from './src/userId';
 import { ToastProvider } from './src/Toast';
+import { ErrorBoundary } from './src/ErrorBoundary';
+import { OfflineBanner } from './src/OfflineBanner';
+import { Sentry } from './src/sentry';
 import StateSelectScreen from './src/screens/StateSelectScreen';
 import SearchScreen from './src/screens/SearchScreen';
 import LakeDetailScreen from './src/screens/LakeDetailScreen';
@@ -67,7 +71,7 @@ function AppInner() {
   );
 }
 
-export default function App() {
+function App() {
   const [fontsLoaded] = useFonts({
     YoungSerif_400Regular,
     InstrumentSerif_400Regular,
@@ -98,12 +102,19 @@ export default function App() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <StateProvider>
-        <ToastProvider>
-          <AppInner />
-        </ToastProvider>
-      </StateProvider>
-    </GestureHandlerRootView>
+    <SafeAreaProvider>
+      <ErrorBoundary>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <StateProvider>
+            <ToastProvider>
+              <AppInner />
+              <OfflineBanner />
+            </ToastProvider>
+          </StateProvider>
+        </GestureHandlerRootView>
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }
+
+export default Sentry.wrap(App);

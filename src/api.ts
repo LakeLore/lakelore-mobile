@@ -95,11 +95,59 @@ export async function fetchStatus(state: StateKey): Promise<DbStatus> {
   return get(`${baseUrl(state)}/status`);
 }
 
-export async function fetchFilters(state: StateKey, species?: string): Promise<FilterOptions> {
-  const url = species
-    ? `${baseUrl(state)}/filters?species=${encodeURIComponent(species)}`
-    : `${baseUrl(state)}/filters`;
-  return get(url);
+export interface MyEntitlement {
+  hasAllStates: boolean;
+  expiresAt: string | null;
+  source: string;
+}
+
+/**
+ * Server-side entitlement check. Authoritative — matches the same RC lookup
+ * the API gate uses. Call this alongside the on-device RC SDK so the UI's
+ * lock chips don't disagree with what /api/{state}/results will actually
+ * allow.
+ */
+export async function fetchMyEntitlement(): Promise<MyEntitlement> {
+  return get(`${API_BASE_URL}/api/me/entitlement`);
+}
+
+export interface FeedbackPayload {
+  message: string;
+  state?: StateKey;
+  lakeId?: number | string | null;
+  lakeName?: string | null;
+  species?: string | null;
+  tab?: string | null;
+  version?: string | null;
+  build?: string | null;
+}
+
+export async function submitFeedback(payload: FeedbackPayload): Promise<void> {
+  const userId = await getUserId();
+  const res = await fetch(`${API_BASE_URL}/api/feedback`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-User-Id': userId,
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? `Server error (${res.status})`);
+  }
+}
+
+export async function fetchFilters(
+  state: StateKey,
+  species?: string,
+  counties?: string[],
+): Promise<FilterOptions> {
+  const params = new URLSearchParams();
+  if (species) params.set('species', species);
+  if (counties && counties.length > 0) params.set('county', counties.join(','));
+  const qs = params.toString();
+  return get(qs ? `${baseUrl(state)}/filters?${qs}` : `${baseUrl(state)}/filters`);
 }
 
 export async function fetchResults(

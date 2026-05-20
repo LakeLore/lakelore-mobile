@@ -81,21 +81,6 @@ export async function initIAP(appUserID?: string): Promise<void> {
 }
 
 /**
- * Return the App User ID RevenueCat is using. For an anonymous user this
- * is an `$RCAnonymousID:...` string that persists across launches. We send
- * this as `X-User-Id` on every API request so the server can check
- * entitlement against the same identity.
- */
-export async function getUserId(): Promise<string | null> {
-  if (!isIapConfigured()) return null;
-  try {
-    return await Purchases.getAppUserID();
-  } catch {
-    return null;
-  }
-}
-
-/**
  * Fetch the active offering (the "default" offering with the annual
  * package). Returns null if RC is not configured or the offering hasn't
  * been published yet on the dashboard.

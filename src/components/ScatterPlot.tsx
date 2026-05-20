@@ -2,7 +2,7 @@ import React, { useMemo, useState, useRef, useCallback } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Svg, { Circle, Line, Text as SvgText, Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
-import { Result, StateKey, SD_SPECIES_NAMES, MN_SPECIES_NAMES, ND_SPECIES_NAMES } from '../types';
+import { Result, StateKey, STATE_CONFIGS, SD_SPECIES_NAMES, MN_SPECIES_NAMES, ND_SPECIES_NAMES } from '../types';
 import { colors, text, space, hairline, fonts } from '../lakelore-rn/theme';
 
 // Rank-based color mapping. Maps `stocked` to its quantile within `sorted`
@@ -54,9 +54,10 @@ function niceTicks(min: number, max: number, count = 5): number[] {
 interface DotData {
   x: number; y: number;
   stocked: number|null|undefined;
-  name: string; species: string; year: number;
+  name: string; county: string; species: string; year: number;
   lake_id: number|string;
   survey_date?: string;
+  average_length?: number|null;
   average_weight?: number|null;
   total_catch?: number|null;
   estLength?: number;
@@ -106,7 +107,8 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
         pts.push({
           x: r.average_weight??0, y: r.cpue,
           stocked: r.stocked_per_100ac,
-          name: r.lake_name, species: namesMap[r.species]??r.species,
+          name: r.lake_name, county: r.county ?? '',
+          species: namesMap[r.species]??r.species,
           year: r.survey_year, lake_id: r.lake_id,
           survey_date: r.survey_date??undefined,
           average_weight: r.average_weight,
@@ -119,8 +121,10 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
         pts.push({
           x: r.average_length, y: r.cpue,
           stocked: r.stocked_per_100ac,
-          name: r.lake_name, species: namesMap[r.species]??r.species,
+          name: r.lake_name, county: r.county ?? '',
+          species: namesMap[r.species]??r.species,
           year: r.survey_year, lake_id: r.lake_id,
+          average_length: r.average_length,
         });
       }
     } else if (state==='ia') {
@@ -129,9 +133,11 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
         pts.push({
           x: r.average_length, y: r.cpue,
           stocked: r.stocked_per_100ac,
-          name: r.lake_name, species: r.species,
+          name: r.lake_name, county: r.county ?? '',
+          species: r.species,
           year: r.survey_year, lake_id: r.lake_id,
           survey_date: r.survey_date ?? undefined,
+          average_length: r.average_length,
           total_catch: r.total_catch,
         });
       }
@@ -141,20 +147,35 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
         pts.push({
           x: r.average_length, y: r.cpue,
           stocked: r.stocked_per_100ac,
-          name: r.lake_name, species: r.species,
+          name: r.lake_name, county: r.county ?? '',
+          species: r.species,
           year: r.survey_year, lake_id: r.lake_id,
+          average_length: r.average_length,
         });
       }
-    } else if (state === 'mi' || state === 'wi') {
+    } else if (state === 'mi') {
       for (const r of results) {
         if (r.cpue == null || r.average_length == null) continue;
         pts.push({
           x: r.average_length, y: r.cpue,
           stocked: r.stocked_per_100ac,
-          name: r.lake_name, species: r.species,
+          name: r.lake_name, county: r.county ?? '',
+          species: r.species,
           year: r.survey_year, lake_id: r.lake_id,
+          average_length: r.average_length,
           total_catch: r.total_catch,
-          average_weight: r.average_weight,
+        });
+      }
+    } else if (state === 'wi') {
+      for (const r of results) {
+        if (r.cpue == null || r.average_length == null) continue;
+        pts.push({
+          x: r.average_length, y: r.cpue,
+          stocked: r.stocked_per_100ac,
+          name: r.lake_name, county: r.county ?? '',
+          species: r.species,
+          year: r.survey_year, lake_id: r.lake_id,
+          average_length: r.average_length,
         });
       }
     } else {
@@ -164,7 +185,8 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
         pts.push({
           x: r.average_length, y: r.cpue,
           stocked: r.stocked_per_100ac,
-          name: r.lake_name, species: namesMap[r.species]??r.species,
+          name: r.lake_name, county: r.county ?? '',
+          species: namesMap[r.species]??r.species,
           year: r.survey_year, lake_id: r.lake_id,
           estLength: r.average_length,
         });
@@ -186,7 +208,7 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
     };
     const xLabel = state==='mn' ? 'Avg Weight (lb)' : 'Avg Length (in)';
     // desc shown in render — keep in sync with xLabel
-    const yLabel = 'CPUE';
+    const yLabel = 'Catch Rate';
     return { points: pts, sortedStocked, dataBounds, xLabel, yLabel };
   }, [results, state]);
 
@@ -322,9 +344,9 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: space.xxl }}>
       <Text style={[text.bodyS, { color: colors.inkSoft, marginHorizontal: space.lg, marginTop: space.md, marginBottom: space.xs }]}>
-        {state === 'mn' ? 'CPUE vs. avg weight'
-          : state === 'sd' ? 'CPUE vs. est. mean length'
-          : 'CPUE vs. avg length'} · color = stocked/100ac · tap a dot
+        {state === 'mn' ? 'Catch rate vs. avg weight'
+          : state === 'sd' ? 'Catch rate vs. est. mean length'
+          : 'Catch rate vs. avg length'} · color = Stck Adults / 100AC · tap a dot
       </Text>
 
       <GestureDetector gesture={gesture}>
@@ -400,23 +422,32 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
         <Text style={[text.labelS, { color: colors.paper3 }]}>·</Text>
         <Text style={[text.labelS, { color: colors.inkSoft }]}>low</Text>
         <GradientBar width={90} height={10} />
-        <Text style={[text.labelS, { color: colors.inkSoft }]}>high stocked/100ac</Text>
+        <Text style={[text.labelS, { color: colors.inkSoft }]}>high Stck Adults / 100AC</Text>
       </View>
 
       {selectedDot && (
         <Pressable style={styles.dotCard}
           onPress={() => { onLakePress(selectedDot.lake_id, selectedDot.name); setSelectedDot(null); }}
         >
+          {selectedDot.county ? (
+            <Text style={[text.labelS, { color: colors.inkSoft, marginBottom: 2 }]}>
+              {selectedDot.county.toUpperCase()} CO · {state.toUpperCase()}
+            </Text>
+          ) : null}
           <Text style={[text.displayM, { color: colors.ink }]}>{selectedDot.name}</Text>
           <Text style={[text.dataS, { color: colors.inkSoft, marginTop: 2, marginBottom: 8 }]}>
             {selectedDot.species} · {selectedDot.survey_date ?? selectedDot.year}
           </Text>
           <View style={styles.dotStats}>
-            <Stat label="CPUE" value={selectedDot.y.toFixed(2)} />
+            {/* Field set mirrors STATE_CONFIGS[state].sortOptions so the popup
+                shows the same metrics the user can sort/filter on. */}
+            <Stat label={STATE_CONFIGS[state].sortOptions.find(o => o.value === 'cpue')?.label ?? 'Catch / Net'}
+                  value={selectedDot.y.toFixed(2)} />
+            {selectedDot.average_length!=null && <Stat label="Avg length" value={`${selectedDot.average_length.toFixed(1)} in`} />}
             {selectedDot.estLength!=null && <Stat label="Est. length" value={`${selectedDot.estLength.toFixed(1)} in`} />}
             {selectedDot.average_weight!=null && selectedDot.average_weight>0 && <Stat label="Avg weight" value={`${selectedDot.average_weight.toFixed(2)} lb`} />}
             {selectedDot.total_catch!=null && <Stat label="Total catch" value={String(selectedDot.total_catch)} />}
-            {selectedDot.stocked!=null && <Stat label="Stocked/100ac" value={selectedDot.stocked.toFixed(1)} />}
+            {selectedDot.stocked!=null && <Stat label="Stck Adults / 100AC" value={selectedDot.stocked.toFixed(1)} />}
           </View>
           <Text style={[text.labelM, { color: colors.walleye2, marginTop: 4 }]}>Tap for lake history →</Text>
         </Pressable>

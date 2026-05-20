@@ -1,10 +1,12 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, SafeAreaView,
+  View, Text, Pressable, StyleSheet,
   Modal, ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Svg, { Path, Text as SvgText } from 'react-native-svg';
+import * as Haptics from 'expo-haptics';
 import { useWindowDimensions } from 'react-native';
 import { SD_COUNTIES, SD_VIEWBOX } from '../data/sdCountyPaths';
 import { MN_COUNTIES, MN_VIEWBOX } from '../data/mnCountyPaths';
@@ -95,6 +97,7 @@ function MapCountyPicker({ visible, state, selected, onConfirm, onClose }: Props
         if (d < bestDist) { bestDist = d; bestName = name; }
       }
       if (bestName) {
+        Haptics.selectionAsync().catch(() => {});
         setDraft(prev => prev.includes(bestName!) ? prev.filter(c => c !== bestName) : [...prev, bestName!]);
       }
     }),

@@ -19,11 +19,9 @@ export const STATE_CONFIGS: Record<StateKey, StateConfig> = {
     defaultGear: '',
     defaultSurveyTypes: [],
     sortOptions: [
-      { value: 'cpue', label: 'CPUE' },
+      { value: 'cpue', label: 'Catch / Net' },
       { value: 'length', label: 'Avg Length' },
-      { value: 'year', label: 'Survey Year' },
-      { value: 'lake', label: 'Lake Name' },
-      { value: 'acres', label: 'Lake Size' },
+      { value: 'stocked', label: 'Stck Adults / 100AC' },
     ],
   },
   sd: {
@@ -34,16 +32,9 @@ export const STATE_CONFIGS: Record<StateKey, StateConfig> = {
     defaultGear: '',
     defaultSurveyTypes: [],
     sortOptions: [
-      { value: 'cpue', label: 'CPUE' },
+      { value: 'cpue', label: 'Catch / Net' },
       { value: 'length', label: 'Avg Length' },
-      { value: 'psd', label: 'PSD' },
-      { value: 'psd_p', label: 'PSD-P' },
-      { value: 'wr', label: 'Relative Weight (Wr)' },
-      { value: 'stocked', label: 'Stocked / 100ac' },
-      { value: 'year', label: 'Survey Year' },
-      { value: 'lake', label: 'Lake Name' },
-      { value: 'acres', label: 'Lake Size' },
-      { value: 'depth', label: 'Lake Depth' },
+      { value: 'stocked', label: 'Stck Adults / 100AC' },
     ],
   },
   ia: {
@@ -54,13 +45,10 @@ export const STATE_CONFIGS: Record<StateKey, StateConfig> = {
     defaultGear: '',
     defaultSurveyTypes: [],
     sortOptions: [
-      { value: 'cpue',    label: 'CPUE' },
-      { value: 'catch',   label: 'Total Catch' },
+      { value: 'cpue',    label: 'Catch / Net' },
       { value: 'length',  label: 'Avg Length' },
-      { value: 'stocked', label: 'Stocked / 100ac' },
-      { value: 'date',    label: 'Survey Date' },
-      { value: 'lake',    label: 'Lake Name' },
-      { value: 'acres',   label: 'Lake Size' },
+      { value: 'catch',   label: 'Total Catch' },
+      { value: 'stocked', label: 'Stck Adults / 100AC' },
     ],
   },
   ne: {
@@ -73,10 +61,7 @@ export const STATE_CONFIGS: Record<StateKey, StateConfig> = {
     sortOptions: [
       { value: 'cpue', label: 'Catch / Net' },
       { value: 'length', label: 'Avg Length' },
-      { value: 'stocked', label: 'Stocked / 100ac' },
-      { value: 'year', label: 'Survey Year' },
-      { value: 'lake', label: 'Lake Name' },
-      { value: 'acres', label: 'Lake Size' },
+      { value: 'stocked', label: 'Stck Adults / 100AC' },
     ],
   },
   wi: {
@@ -87,12 +72,9 @@ export const STATE_CONFIGS: Record<StateKey, StateConfig> = {
     defaultGear: '',
     defaultSurveyTypes: [],
     sortOptions: [
-      { value: 'cpue',    label: 'CPUE' },
+      { value: 'cpue',    label: 'Catch / Net' },
       { value: 'length',  label: 'Avg Length' },
-      { value: 'stocked', label: 'Stocked / 100ac' },
-      { value: 'year',    label: 'Survey Year' },
-      { value: 'lake',    label: 'Lake Name' },
-      { value: 'acres',   label: 'Lake Size' },
+      { value: 'stocked', label: 'Stck Adults / 100AC' },
     ],
   },
   mn: {
@@ -103,14 +85,10 @@ export const STATE_CONFIGS: Record<StateKey, StateConfig> = {
     defaultGear: '',
     defaultSurveyTypes: ['Standard Survey'],
     sortOptions: [
-      { value: 'cpue', label: 'CPUE' },
+      { value: 'cpue', label: 'Catch / Net' },
       { value: 'weight', label: 'Avg Weight' },
       { value: 'catch', label: 'Total Catch' },
-      { value: 'stocked', label: 'Stocked / 100ac' },
-      { value: 'date', label: 'Survey Date' },
-      { value: 'lake', label: 'Lake Name' },
-      { value: 'acres', label: 'Lake Size' },
-      { value: 'depth', label: 'Lake Depth' },
+      { value: 'stocked', label: 'Stck Adults / 100AC' },
     ],
   },
   mi: {
@@ -121,14 +99,10 @@ export const STATE_CONFIGS: Record<StateKey, StateConfig> = {
     defaultGear: '',
     defaultSurveyTypes: [],
     sortOptions: [
-      { value: 'cpue',    label: 'CPUE' },
+      { value: 'cpue',    label: 'Catch / Net' },
       { value: 'length',  label: 'Avg Length' },
       { value: 'catch',   label: 'Total Catch' },
-      { value: 'stocked', label: 'Stocked / 100ac' },
-      { value: 'year',    label: 'Survey Year' },
-      { value: 'lake',    label: 'Lake Name' },
-      { value: 'acres',   label: 'Lake Size' },
-      { value: 'depth',   label: 'Lake Depth' },
+      { value: 'stocked', label: 'Stck Adults / 100AC' },
     ],
   },
 };
@@ -267,14 +241,46 @@ export const SD_SPECIES_NAMES: Record<string, string> = {
 };
 
 export const MN_SPECIES_NAMES: Record<string, string> = {
+  // Game fish
   WAE: 'Walleye', NOP: 'Northern Pike', LMB: 'Largemouth Bass', SMB: 'Smallmouth Bass',
-  MUE: 'Muskellunge', TME: 'Tiger Muskellunge', YEP: 'Yellow Perch', BLC: 'Black Crappie',
-  WHC: 'White Crappie', BLG: 'Bluegill', PMK: 'Pumpkinseed', RKB: 'Rock Bass',
-  WHB: 'White Bass', TLC: 'Tullibee (Cisco)', BUR: 'Burbot', FRD: 'Freshwater Drum',
-  CAP: 'Common Carp', CCF: 'Channel Catfish', BLB: 'Black Bullhead', YEB: 'Yellow Bullhead',
-  BRB: 'Brown Bullhead', LAK: 'Lake Trout', BNT: 'Brown Trout', RBT: 'Rainbow Trout',
-  BKT: 'Brook Trout', LKS: 'Lake Sturgeon', SAR: 'Sauger', SAU: 'Saugeye',
-  WTS: 'White Sucker', SHR: 'Shorthead Redhorse',
+  MUE: 'Muskellunge', TME: 'Tiger Muskellunge', YEP: 'Yellow Perch',
+  BLC: 'Black Crappie', WHC: 'White Crappie', BLG: 'Bluegill', PMK: 'Pumpkinseed',
+  RKB: 'Rock Bass', WHB: 'White Bass',
+  // Sunfish
+  GSF: 'Green Sunfish', OSS: 'Orangespotted Sunfish', HSF: 'Hybrid Sunfish',
+  SUN: 'Sunfish',
+  // Coldwater
+  TLC: 'Tullibee (Cisco)', LKW: 'Lake Whitefish', BUR: 'Burbot',
+  LAK: 'Lake Trout', BNT: 'Brown Trout', RBT: 'Rainbow Trout',
+  BKT: 'Brook Trout', SPT: 'Splake',
+  // Sturgeon / paddlefish / gar
+  LKS: 'Lake Sturgeon', BOF: 'Bowfin',
+  // Perch family
+  SAR: 'Sauger', SAU: 'Saugeye',
+  // Catfish / bullheads
+  CCF: 'Channel Catfish', BLB: 'Black Bullhead', YEB: 'Yellow Bullhead',
+  BRB: 'Brown Bullhead', TPM: 'Tadpole Madtom',
+  // Buffalo / sucker family
+  BIB: 'Bigmouth Buffalo', BUB: 'Black Buffalo',
+  WTS: 'White Sucker', SHR: 'Shorthead Redhorse', GLR: 'Golden Redhorse',
+  SLR: 'Silver Redhorse', GRR: 'Greater Redhorse', RHS: 'River Redhorse',
+  QBS: 'Quillback',
+  // Other
+  FRD: 'Freshwater Drum', CAP: 'Common Carp',
+  // Minnows / shiners / darters
+  CSH: 'Common Shiner', EMS: 'Emerald Shiner', GOS: 'Golden Shiner',
+  SFS: 'Spotfin Shiner', MMS: 'Mimic Shiner', SPO: 'Spottail Shiner',
+  BNM: 'Bluntnose Minnow', FHM: 'Fathead Minnow', CRC: 'Creek Chub',
+  CNM: 'Central Mudminnow',
+  JND: 'Johnny Darter', IOD: 'Iowa Darter', LGP: 'Logperch',
+  LED: 'Least Darter', BST: 'Brook Stickleback', BKS: 'Brook Silverside',
+  BKF: 'Banded Killifish', MTS: 'Mottled Sculpin', TRP: 'Trout-Perch',
+  PGS: 'Pugnose Shiner', NRD: 'Northern Redbelly Dace', FND: 'Finescale Dace',
+  PRD: 'Pearl Dace', BRM: 'Brassy Minnow',
+  // Other generics + less common
+  CRP: 'Crappie', CIS: 'Cisco', GIS: 'Gizzard Shad',
+  RBS: 'Rainbow Smelt', LNG: 'Longnose Gar', SNG: 'Shortnose Gar',
+  SAB: 'Smallmouth Buffalo',
 };
 
 export const WI_SPECIES_NAMES: Record<string, string> = {
@@ -289,15 +295,35 @@ export const WI_SPECIES_NAMES: Record<string, string> = {
   STH: 'Striped Bass Hybrid (Wiper)',
 };
 
-// ND uses species codes matching the ArcGIS Species field (same codes as MN/SD for common species)
+// ND species codes — these come from the GF&P ArcGIS Species field. NOT the
+// same as MN/SD codes for several common species (e.g. Common Carp is CAR in
+// ND but CAP in MN; White Sucker is WHS in ND but WTS in MN; Bigmouth Buffalo
+// is BIB in ND but BUF in MN). Built directly from `fish_catch.species` ↔
+// `species_name` in the ND DB.
 export const ND_SPECIES_NAMES: Record<string, string> = {
   WAE: 'Walleye', NOP: 'Northern Pike', LMB: 'Largemouth Bass', SMB: 'Smallmouth Bass',
-  MUE: 'Muskellunge', YEP: 'Yellow Perch', BLC: 'Black Crappie', WHC: 'White Crappie',
-  BLG: 'Bluegill', RKB: 'Rock Bass', WHB: 'White Bass', FRD: 'Freshwater Drum',
-  CAP: 'Common Carp', BLB: 'Black Bullhead', YEB: 'Yellow Bullhead', BRB: 'Brown Bullhead',
-  CCF: 'Channel Catfish', SAU: 'Saugeye', SAR: 'Sauger', BKT: 'Brook Trout',
-  RBT: 'Rainbow Trout', BNT: 'Brown Trout', PMK: 'Pumpkinseed', WTS: 'White Sucker',
-  GSH: 'Gizzard Shad', BUF: 'Bigmouth Buffalo', GOS: 'Green Sunfish',
+  MUE: 'Muskellunge', MUH: 'Tiger Muskellunge', YEP: 'Yellow Perch',
+  BLC: 'Black Crappie', WHC: 'White Crappie', CRP: 'Crappie Species',
+  BLG: 'Bluegill', PSD: 'Pumpkinseed', GSF: 'Green Sunfish',
+  HSF: 'Hybrid Sunfish', OSS: 'Orangespotted Sunfish',
+  WHB: 'White Bass', WXS: 'Saugeye', SAR: 'Sauger',
+  BKT: 'Brook Trout', BNT: 'Brown Trout', RBT: 'Rainbow Trout',
+  CUT: 'Cutthroat Trout', TGT: 'Tiger Trout', FCS: 'Chinook Salmon',
+  LWF: 'Lake Whitefish', CIS: 'Cisco', BUR: 'Burbot (Ling)',
+  CCF: 'Channel Catfish', FCF: 'Flathead Catfish', ZAN: 'Zander',
+  BLB: 'Black Bullhead', BRB: 'Brown Bullhead', BHS: 'Bullhead Species',
+  FWD: 'Freshwater Drum', GIS: 'Gizzard Shad', GOE: 'Goldeye',
+  CAR: 'Common Carp', SLC: 'Silver Carp',
+  WHS: 'White Sucker', LNS: 'Longnose Sucker', BLS: 'Blue Sucker',
+  RCS: 'River Carpsucker', SHR: 'Shorthead Redhorse', QUK: 'Quillback',
+  BIB: 'Bigmouth Buffalo', SAB: 'Smallmouth Buffalo', BFS: 'Buffalo Species',
+  PAH: 'Paddlefish', PLS: 'Pallid Sturgeon', SNS: 'Shovelnose Sturgeon',
+  SNG: 'Shortnose Gar', RBS: 'Rainbow Smelt',
+  CMS: 'Common Shiner', ESH: 'Emerald Shiner', GOS: 'Golden Shiner',
+  SPS: 'Spottail Shiner', BMS: 'Bigmouth Shiner', RDS: 'Red Shiner',
+  SDS: 'Sand Shiner', FHM: 'Fathead Minnow', CRC: 'Creek Chub',
+  IOD: 'Iowa Darter', JND: 'Johnny Darter', BSD: 'Blackside Darter',
+  BRS: 'Brook Stickleback', SNC: 'Stonecat', TPM: 'Tadpole Madtom',
 };
 
 // SD stores species as full names in DB; reverse map for PSD lookups

@@ -7,3 +7,4 @@ export { PrimaryButton } from './PrimaryButton';
 export { StatPill } from './StatPill';
 export { LakeRow } from './LakeRow';
 export { SectionLabel } from './SectionLabel';
+export { LockIcon } from './LockIcon';

@@ -19,6 +19,7 @@ import {
   hasAllStatesEntitlement,
   isIapConfigured,
 } from './iap';
+import { fetchMyEntitlement } from './api';
 
 export interface EntitlementState {
   hasAllStates: boolean;
@@ -33,9 +34,22 @@ export function useEntitlement(): EntitlementState {
   const mountedRef = useRef(true);
 
   const refresh = useCallback(async () => {
-    const result = await hasAllStatesEntitlement();
+    // Two checks in parallel: the on-device RC SDK (instant, but can be
+    // stale e.g. after a sandbox sub lapses) and the server's authoritative
+    // /api/me/entitlement (matches the same RC lookup the API gate uses).
+    //
+    // Server wins on disagreement so the lock chips on State Select match
+    // what the data endpoints will actually allow. Falls back to the SDK
+    // result if the server is unreachable, so the app keeps working offline.
+    const [sdkResult, serverResult] = await Promise.all([
+      hasAllStatesEntitlement(),
+      fetchMyEntitlement()
+        .then(r => r.hasAllStates as boolean | null)
+        .catch(() => null),
+    ]);
+    const final = serverResult !== null ? serverResult : sdkResult;
     if (mountedRef.current) {
-      setHasAllStates(result);
+      setHasAllStates(final);
       setLoading(false);
     }
   }, []);

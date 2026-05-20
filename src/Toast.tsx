@@ -7,9 +7,9 @@
 
 import React, { createContext, useContext, useRef, useState, useCallback, useEffect } from 'react';
 import {
-  View, Text, Animated, StyleSheet, Pressable, SafeAreaView,
-  Easing,
+  View, Text, Animated, StyleSheet, Pressable, Easing,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, text, space, hairline } from './lakelore-rn/theme';
 
 interface ToastContextValue {

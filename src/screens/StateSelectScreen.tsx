@@ -1,12 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, SafeAreaView, ScrollView,
+  View, Text, Pressable, StyleSheet, ScrollView,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
 import { useAppState } from '../StateContext';
 import { StateKey } from '../types';
-import { fetchStatus } from '../api';
+import { ACTIVE_STATES } from '../activeStates';
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
+import { LockIcon } from '../lakelore-rn/components';
 import { useEntitlement } from '../useEntitlement';
 import PaywallScreen from './PaywallScreen';
 import AboutScreen from './AboutScreen';
@@ -15,41 +18,39 @@ interface Props {
   onSelect: () => void;
 }
 
-const STATE_ROWS: { key: StateKey; name: string; agency: string; stripe: string }[] = [
-  { key: 'sd', name: 'South Dakota', agency: 'SD Game, Fish & Parks', stripe: colors.lakeInk },
+// Display order: MN first (free tier, marquee state), then by current lake
+// count desc. Order is intentionally static — re-sorting as `fetchStatus`
+// counts trickle in shifted the list under the user. If counts shift enough
+// to change rankings, update this list manually.
+const ALL_STATE_ROWS: { key: StateKey; name: string; agency: string; stripe: string }[] = [
   { key: 'mn', name: 'Minnesota',    agency: 'MN DNR',                stripe: '#2a4a3a' },
-  { key: 'nd', name: 'North Dakota', agency: 'ND Game, Fish & Parks', stripe: colors.rust },
   { key: 'ia', name: 'Iowa',         agency: 'Iowa DNR',              stripe: colors.moss },
   { key: 'ne', name: 'Nebraska',     agency: 'Nebraska Game & Parks', stripe: '#a04030' },
+  { key: 'nd', name: 'North Dakota', agency: 'ND Game, Fish & Parks', stripe: colors.rust },
+  { key: 'sd', name: 'South Dakota', agency: 'SD Game, Fish & Parks', stripe: colors.lakeInk },
   { key: 'wi', name: 'Wisconsin',    agency: 'WI DNR',                stripe: colors.lake3 },
   { key: 'mi', name: 'Michigan',     agency: 'MI DNR',                stripe: colors.lakeInk },
 ];
+const STATE_ROWS = ALL_STATE_ROWS.filter(s => ACTIVE_STATES.includes(s.key));
 
 // MN is the free tier. Tapping any other state without entitlement opens
 // the paywall instead of entering the state.
 const FREE_STATE: StateKey = 'mn';
 
 export default function StateSelectScreen({ onSelect }: Props) {
+  const insets = useSafeAreaInsets();
   const { setState } = useAppState();
-  const [lakeCounts, setLakeCounts] = useState<Partial<Record<StateKey, number>>>({});
   const { hasAllStates } = useEntitlement();
   const [paywallFor, setPaywallFor] = useState<StateKey | null>(null);
   const [showAbout, setShowAbout] = useState(false);
 
-  useEffect(() => {
-    STATE_ROWS.forEach(s =>
-      fetchStatus(s.key).then(st => {
-        if (st.ready && st.lakes != null)
-          setLakeCounts(prev => ({ ...prev, [s.key]: st.lakes }));
-      }).catch(() => {})
-    );
-  }, []);
-
   const pick = (s: StateKey) => {
     if (s !== FREE_STATE && !hasAllStates) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
       setPaywallFor(s);
       return;
     }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setState(s);
     onSelect();
   };
@@ -66,16 +67,27 @@ export default function StateSelectScreen({ onSelect }: Props) {
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar style="dark" />
+      <Pressable
+        onPress={() => setShowAbout(true)}
+        hitSlop={12}
+        style={({ pressed }) => [
+          styles.aboutBadge,
+          // SafeAreaView applies the safe-area inset as padding on its outer
+          // box, but `position: absolute` positions from that outer edge — so
+          // we add the top inset manually here to clear the status bar /
+          // Dynamic Island.
+          { top: insets.top + 12 },
+          { backgroundColor: pressed ? colors.paper2 : colors.paper },
+        ]}>
+        <Text style={[text.labelM, { color: colors.walleye2 }]}>ⓘ ABOUT</Text>
+      </Pressable>
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.intro}>
           <Text style={[text.labelL, { color: colors.walleye2 }]}>LAKELORE · ATLAS</Text>
-          <Text style={[text.displayXL, { color: colors.ink, marginTop: 6 }]}>Lakes by State</Text>
+          <Text style={[text.displayXL, { color: colors.ink, marginTop: 6 }]}>Select a State</Text>
           <Text style={[text.editorialS, { color: colors.inkSoft, marginTop: 6 }]}>
             A field guide to fish populations in surveyed lakes across the upper Midwest.
           </Text>
-          <Pressable onPress={() => setShowAbout(true)} style={styles.aboutLink} hitSlop={8}>
-            <Text style={[text.labelM, { color: colors.walleye2 }]}>About &amp; data sources ›</Text>
-          </Pressable>
         </View>
 
         {STATE_ROWS.map(s => {
@@ -95,8 +107,9 @@ export default function StateSelectScreen({ onSelect }: Props) {
                   </Text>
                   {locked ? (
                     <View style={styles.lockChip}>
+                      <LockIcon size={10} />
                       <Text style={[text.labelS, { color: colors.walleye2 }]}>
-                        🔒  ALL-STATES
+                        ALL-STATES
                       </Text>
                     </View>
                   ) : s.key === FREE_STATE ? (
@@ -105,20 +118,8 @@ export default function StateSelectScreen({ onSelect }: Props) {
                     </View>
                   ) : null}
                 </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  {lakeCounts[s.key] != null ? (
-                    <>
-                      <Text style={[text.dataL, { color: colors.ink }]}>
-                        {lakeCounts[s.key]!.toLocaleString()}
-                      </Text>
-                      <Text style={[text.labelS, { color: colors.walleye2, marginTop: 2 }]}>
-                        LAKES
-                      </Text>
-                    </>
-                  ) : (
-                    <Text style={[text.labelS, { color: colors.paper3 }]}>···</Text>
-                  )}
-                </View>
+                {/* Lake-count column intentionally omitted — we no longer
+                    advertise raw totals at the state-select entry point. */}
               </View>
             </Pressable>
           );
@@ -140,14 +141,21 @@ export default function StateSelectScreen({ onSelect }: Props) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
   scroll: { paddingBottom: space.xxxl },
+  aboutBadge: {
+    position: 'absolute',
+    // `top` is set inline using insets.top so the badge clears the status bar
+    // on Dynamic Island / notched iPhones. Don't add a static top here.
+    right: 16,
+    zIndex: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: hairline,
+    borderColor: colors.walleye2,
+  },
   intro: {
     paddingHorizontal: space.xl,
     paddingTop: space.xxxl,
     paddingBottom: space.xxl,
-  },
-  aboutLink: {
-    marginTop: 14,
-    alignSelf: 'flex-start',
   },
   row: {
     flexDirection: 'row',
@@ -171,6 +179,9 @@ const styles = StyleSheet.create({
     borderWidth: hairline,
     borderColor: colors.walleye2,
     backgroundColor: colors.paper2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   freeChip: {
     alignSelf: 'flex-start',

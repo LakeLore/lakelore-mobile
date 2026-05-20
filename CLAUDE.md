@@ -12,7 +12,7 @@ React Native + Expo app shipped to App Store + Google Play. iPhone-only for v1 (
 ## Architecture in 30 seconds
 
 **Three screens** (`src/screens/`):
-1. `StateSelectScreen` — picks one of 7 states (SD, MN, ND, IA, NE, WI, MI). MN is free; tapping any other opens the paywall for non-subscribers.
+1. `StateSelectScreen` — picks one of 5 active states (MN, SD, ND, IA, NE). MN is free; tapping any other opens the paywall for non-subscribers. WI and MI are wired (data, county maps, survival modules, conditionals) but hidden via `src/activeStates.ts` `ACTIVE_STATES`.
 2. `SearchScreen` — species + lake-name search, advanced filters, list or scatter view.
 3. `LakeDetailScreen` — CPUE-over-time chart, stocking history with adults/100ac overlay.
 
@@ -26,7 +26,7 @@ Plus three modals: `PaywallScreen`, `AboutScreen` (sources + agency credits, acc
 
 ## Paywall plumbing (locked 2026-05-11)
 
-- **Free**: MN. **Paid**: WI, MI, ND, SD, NE, IA via `LakeLore All-States` subscription at **$5.99/yr** auto-renewing.
+- **Free**: MN. **Paid**: ND, SD, NE, IA via `LakeLore All-States` subscription at **$5.99/yr** auto-renewing. (WI + MI inactive for v1 — see `src/activeStates.ts`; reactivate by adding their keys back to `ACTIVE_STATES` here, in `lake-fish-mobile-server/server.js`, and in `web/app/page.tsx`.)
 - **Provider**: RevenueCat. SDK key wired in `src/iap.ts`. Configured 2026-05-12.
 - **Server gate**: paid-state `/results`, `/lake/:id`, `/pdf` endpoints return 402 without entitlement. `/status` and `/filters` stay public (for marketing site stats).
 - **No accounts**: anonymous device UUID identity. Reinstall = new UUID; user taps "Restore Purchases" to reattach Apple/Google account-level receipt.
@@ -62,10 +62,73 @@ npm run submit:android         # uploads latest production AAB to Play Internal 
 
 EAS config: `eas.json`. Project ID + owner in `app.json` `extra.eas`. Owner `ndrwtp` (personal Expo account).
 
+## TestFlight iteration loop (preferred dev/test path on iOS)
+
+The owner does day-to-day app testing on a **physical iPhone via TestFlight**, not the iOS Simulator. Simulator workflow is reserved for one-off debugging. When iterating on the app:
+
+```bash
+cd ~/lake-fish-mobile
+npm run build:prod:ios && npm run submit:ios
+```
+
+Then wait for Apple processing (5–30 min after EAS finishes). TestFlight on the iPhone auto-updates the build; just open the app to get the new version.
+
+**Total iteration time:** ~25–40 min per cycle (EAS queue ~5 min + build ~10 min + ASC processing 5–25 min). Batch UI/feature changes; don't ship one-line fixes through this loop.
+
+**One-time setup (already done):**
+- App Store Connect → LakeLore → TestFlight → Internal Testing → group "Internal" with `ndrwtp@gmail.com` as tester. Build 1.0.0 (3) was the first attached.
+- Internal testers do not require Beta App Review — new builds become installable immediately after ASC processing.
+- "Build Distribution: Automatic for Xcode Builds" in the group settings is misleadingly named — it auto-distributes EAS-uploaded builds to internal testers too.
+
+**When you DO need the simulator** (e.g., to inspect a render bug Xcode/Hermes only shows in sim): use the dev build flow above. Known gotcha: macOS Simulator window can drop its GPU surface and show black; `xcrun simctl io <udid> screenshot` reads the framebuffer directly and bypasses the bug — that's the source of truth, not what the window shows.
+
+## OTA updates (expo-updates)
+
+`expo-updates` is wired and live on the `production` channel. JS-only fixes (copy, paywall blurb, network handling, anything inside the JS bundle) ship in ~2 min without a native rebuild and without re-submitting to the store.
+
+```bash
+cd ~/lake-fish-mobile
+eas update --branch production --message "fix paywall typo"
+```
+
+That bundles the current JS, uploads to EAS Updates, and the next time any installed build with matching `runtimeVersion` cold-launches it picks up the new bundle. First production OTA was published 2026-05-13 (update group `bfed3391`, runtime `1.0.0`).
+
+**Configuration (already done):**
+- `app.json` `updates.url`: `https://u.expo.dev/<projectId>`
+- `app.json` `updates.checkAutomatically: ON_LOAD`, `fallbackToCacheTimeout: 0`
+- `app.json` `runtimeVersion: { policy: "appVersion" }` — runtime tracks `version`, so every native rebuild starts a fresh OTA pipeline.
+- `eas.json` profile `production.channel: "production"` — builds emit on the production channel, OTA pushes go to the same channel.
+
+**When OTA is NOT enough — you need a fresh native build:**
+- Anything that changes `app.json` `version` (bumps `runtimeVersion` and orphans existing installs from new OTAs until they rebuild)
+- Adding/removing a native module (changes the binary)
+- Touching `app.json` plugins, permissions, or `infoPlist`
+- Bundle identifier, icon, splash, or Privacy Manifest changes
+
+For those, run the full `npm run build:prod:ios && npm run submit:ios` cycle and let the new build absorb both the native delta and the JS delta.
+
+**Channels and branches:** EAS Update separates *branches* (versioned bundles you publish) from *channels* (what installed apps subscribe to). The mapping is in `eas.json`. We use a single `production` branch → `production` channel pairing for now; if we ever want a staged rollout, we'd publish to a `next` branch and re-point the production channel via `eas channel:edit`.
+
+**Rollback:** `eas update:rollback --branch production` reverts the latest update — the next cold launch on any install picks up the previous bundle.
+
+## Native config: what EAS prebuild does vs. what's on disk
+
+The `ios/` (and `android/`) folder is `.gitignore`d. On every EAS Build, `expo prebuild` regenerates the native projects from `app.json` + the installed config plugins. So the truth about the production binary lives in `app.json`, **not** in any local `ios/LakeLore/Info.plist` you might see.
+
+Two consequences worth knowing for App Review:
+
+- **App Transport Security**. The local `Info.plist` after a previous prebuild has `NSAllowsArbitraryLoads: false` plus `NSAllowsLocalNetworking: true` — a hardened combo that lets the dev server use HTTP on the LAN without globally weakening ATS. **That hardening is not in `app.json`**, so EAS-built binaries use expo's default ATS block (`NSAllowsArbitraryLoads: true` with a localhost exception), which is more permissive. If App Review asks about the ATS exception, the rationale is: dev/preview builds reach a local Express API at `http://<lan-ip>:3100` — production builds only ever talk to `https://lake-fish-api.fly.dev`, so for production we could safely override ATS to `NSAllowsArbitraryLoads: false` via `app.json` `ios.infoPlist.NSAppTransportSecurity`. Currently left at expo's default because no reviewer has asked.
+
+- **`exp+lakelore` URL scheme**. `expo-dev-client`'s config plugin (`node_modules/expo-dev-client/plugin/build/withDevClient.js`) calls `withGeneratedIosScheme`/`withGeneratedAndroidScheme` unconditionally — there is no dev/prod gate. So the production binary registers `exp+lakelore` alongside the real `lakelore` scheme. Apple has not been reported to flag this in practice, but if it ever does, the fix is to add expo-dev-client to `app.json` `plugins` with `{ "addGeneratedScheme": false }`. Leaving it as-is for now.
+
+## Species code maps (src/types.ts)
+
+Each state has its own `<STATE>_SPECIES_NAMES` map from 3-letter code → display name. **Codes are NOT interchangeable across states** — Common Carp is `CAR` in ND but `CAP` in MN/SD; same for several other species. See `~/DATA_PIPELINES.md` ND "Key Differences" for the full list of mismatches. Always verify a new code against `fish_catch.species` in that state's DB before adding it. For ND specifically, `fish_catch.species_name` carries the full name from ArcGIS, so the ND map can (and should) be regenerated from data after a re-scrape, not hand-edited.
+
 ## Important constraints
 
 - **`react-native-purchases` is a native module.** Once it's in `package.json`, the legacy Expo Go QR-and-go dev flow doesn't work. Dev means a dev client; first dev build takes 10–15 min on EAS free-tier queue.
-- **`@sentry/react-native` plugin requires `organization` and `project` in `app.json`** (already set to `lakelore` / `lakelore-mobile`), OR `SENTRY_DISABLE_AUTO_UPLOAD=true` as a build env var, otherwise the Android Gradle step fails. `SENTRY_AUTH_TOKEN` is an EAS project-secret env var so source-map upload works on every build.
+- **`@sentry/react-native` plugin requires `organization` and `project` in `app.json`** (set to `lakelore` / `lakelore-mobile`), OR `SENTRY_DISABLE_AUTO_UPLOAD=true` as a build env var. As of 2026-05-12 the Sentry source-map upload step fails with "Project not found" on every prod build (Sentry org/project/token config seems off — `SENTRY_AUTH_TOKEN` is set as an EAS project secret but apparently doesn't have access to `lakelore/lakelore-mobile`), so the production profile in `eas.json` sets `SENTRY_DISABLE_AUTO_UPLOAD=true` to unblock shipping. Runtime error reporting still works (DSN is set in `src/sentry.ts`); stack traces just aren't symbolicated via uploaded source maps. Revisit when launch dust settles.
 - **iOS bundle ID and Android package name** (`com.lakeloreapp.lakelore`) are immutable post-publish — same for subscription product IDs. See `~/APP_OPS.md` for the full identifier table.
 - **No `ios/` or `android/` folder** is committed — managed Expo workflow. Native code regenerates from `app.json` on every EAS build.
 

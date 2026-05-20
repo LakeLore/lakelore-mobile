@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { Result, StateKey } from '../types';
+import { Result, StateKey, STATE_CONFIGS } from '../types';
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
 import { StatPill } from '../lakelore-rn/components';
 
@@ -13,55 +13,75 @@ interface Props {
 
 interface Stat { key: string; label: string; value: string | null }
 
+// Location-derived stats: these values also appear in the location row under
+// the lake name, so they're filtered out of the pill row below. They exist so
+// that sorting by any of them surfaces the value on the right side of the row.
+const metaStats = (r: Result): Stat[] => [
+  { key: 'acres', label: 'Lake Size',
+    value: r.area_acres != null ? `${Math.round(r.area_acres).toLocaleString()} ac` : null },
+  { key: 'depth', label: 'Lake Depth',
+    value: r.max_depth_feet != null ? `${Math.round(r.max_depth_feet)} ft` : null },
+  { key: 'year',  label: 'Survey Year',
+    value: r.survey_year != null ? String(r.survey_year) : null },
+  { key: 'date',  label: 'Survey Date',
+    value: r.survey_date ? r.survey_date.substring(0, 10) : null },
+];
+
+const META_KEYS = new Set(['acres', 'depth', 'year', 'date', 'lake']);
+
 function sdStats(r: Result): Stat[] {
   return [
-    { key: 'cpue',    label: 'CPUE',        value: r.cpue    != null ? r.cpue.toFixed(1)      : null },
+    { key: 'cpue',    label: 'Catch / Net', value: r.cpue    != null ? r.cpue.toFixed(1)      : null },
     { key: 'length',  label: 'Avg length',  value: r.average_length != null ? `${r.average_length.toFixed(1)}"` : null },
-    { key: 'psd',     label: 'PSD',         value: r.psd     != null ? String(r.psd)           : null },
-    { key: 'psd_p',   label: 'PSD-P',       value: r.psd_p   != null ? String(r.psd_p)         : null },
-    { key: 'wr',      label: 'Wr',          value: r.wr      != null ? String(r.wr)             : null },
-    { key: 'stocked', label: 'stck/100ac',  value: r.stocked_per_100ac != null ? r.stocked_per_100ac.toFixed(0) : null },
+    { key: 'stocked', label: 'Stck Adults / 100AC',  value: r.stocked_per_100ac != null ? r.stocked_per_100ac.toFixed(0) : null },
+    ...metaStats(r),
   ];
 }
 
 function mnStats(r: Result): Stat[] {
   return [
-    { key: 'cpue',    label: 'CPUE',        value: r.cpue           != null ? r.cpue.toFixed(1)           : null },
+    { key: 'cpue',    label: 'Catch / Net', value: r.cpue           != null ? r.cpue.toFixed(1)           : null },
     { key: 'weight',  label: 'Avg wt',      value: r.average_weight != null ? `${r.average_weight.toFixed(2)} lb` : null },
     { key: 'catch',   label: 'Catch',       value: r.total_catch    != null ? String(r.total_catch)        : null },
-    { key: 'stocked', label: 'stck/100ac',  value: r.stocked_per_100ac != null ? r.stocked_per_100ac.toFixed(0) : null },
+    { key: 'stocked', label: 'Stck Adults / 100AC',  value: r.stocked_per_100ac != null ? r.stocked_per_100ac.toFixed(0) : null },
+    ...metaStats(r),
   ];
 }
 
 function ndStats(r: Result): Stat[] {
   return [
-    { key: 'cpue',   label: 'CPUE',       value: r.cpue           != null ? r.cpue.toFixed(2)                : null },
-    { key: 'length', label: 'Avg length', value: r.average_length != null ? `${r.average_length.toFixed(1)}"` : null },
+    { key: 'cpue',    label: 'Catch / Net', value: r.cpue           != null ? r.cpue.toFixed(2)                : null },
+    { key: 'length',  label: 'Avg length', value: r.average_length != null ? `${r.average_length.toFixed(1)}"` : null },
+    { key: 'stocked', label: 'Stck Adults / 100AC', value: r.stocked_per_100ac != null ? r.stocked_per_100ac.toFixed(0) : null },
+    ...metaStats(r),
   ];
 }
 
 function wiStats(r: Result): Stat[] {
   return [
-    { key: 'cpue',    label: 'CPUE',        value: r.cpue              != null ? r.cpue.toFixed(2)                : null },
+    { key: 'cpue',    label: 'Catch / Net', value: r.cpue              != null ? r.cpue.toFixed(2)                : null },
     { key: 'length',  label: 'Avg length',  value: r.average_length    != null ? `${r.average_length.toFixed(1)}"` : null },
-    { key: 'stocked', label: 'stck/100ac',  value: r.stocked_per_100ac != null ? r.stocked_per_100ac.toFixed(0)    : null },
+    { key: 'stocked', label: 'Stck Adults / 100AC',  value: r.stocked_per_100ac != null ? r.stocked_per_100ac.toFixed(0)    : null },
+    ...metaStats(r),
   ];
 }
 
 function neStats(r: Result): Stat[] {
   return [
-    { key: 'cpue',    label: 'CPUE',       value: r.cpue           != null ? r.cpue.toFixed(2)                : null },
+    { key: 'cpue',    label: 'Catch / Net', value: r.cpue           != null ? r.cpue.toFixed(2)                : null },
     { key: 'length',  label: 'Avg length', value: r.average_length != null ? `${r.average_length.toFixed(1)}"` : null },
-    { key: 'stocked', label: 'stck/100ac', value: r.stocked_per_100ac != null ? r.stocked_per_100ac.toFixed(0) : null },
+    { key: 'stocked', label: 'Stck Adults / 100AC', value: r.stocked_per_100ac != null ? r.stocked_per_100ac.toFixed(0) : null },
+    ...metaStats(r),
   ];
 }
 
 function miStats(r: Result): Stat[] {
   return [
-    { key: 'cpue',    label: 'CPUE',        value: r.cpue              != null ? r.cpue.toFixed(2)              : null },
+    { key: 'cpue',    label: 'Catch / Net', value: r.cpue              != null ? r.cpue.toFixed(2)              : null },
     { key: 'length',  label: 'Avg length',  value: r.average_length    != null ? `${r.average_length.toFixed(1)}"` : null },
     { key: 'catch',   label: 'Total catch', value: r.total_catch       != null ? r.total_catch.toLocaleString() : null },
-    { key: 'stocked', label: 'stck/100ac',  value: r.stocked_per_100ac != null ? r.stocked_per_100ac.toFixed(0)  : null },
+    { key: 'stocked', label: 'Stck Adults / 100AC',  value: r.stocked_per_100ac != null ? r.stocked_per_100ac.toFixed(0)  : null },
+    ...metaStats(r),
   ];
 }
 
@@ -70,22 +90,56 @@ function fmtCpue(v: number | null | undefined): string | null {
   return v >= 10 ? v.toFixed(1) : v.toFixed(2);
 }
 
+// Pick the right catch-rate unit label for the gear that produced this row's
+// value. Electrofishing is reported as fish per hour; netting is per net-set.
+// Defaults to the state's configured sortOptions label when the gear-specific
+// override doesn't apply.
+//
+// Electrofishing aliases across states:
+//   IA  — "EF"
+//   ND  — "electrofishing*"
+//   SD  — "boat shocker (night/day)", "spring/fall ... ef-lmb/smb/wae", "spring day ef*",
+//          "electrofishing (flathead)"
+//   NE  — bass electrofishing variants
+// Matches on "electrofish", "shocker", or "ef" as a standalone token / hyphen
+// prefix (so "ef-lmb" and "spring ef*" hit but "frame net" doesn't).
+export function cpueLabelForGear(state: StateKey, gear?: string | null): string {
+  const fallback = STATE_CONFIGS[state].sortOptions.find(o => o.value === 'cpue')?.label ?? 'Catch / Net';
+  if (!gear) return fallback;
+  const g = gear.toLowerCase();
+  if (/electrofish|shocker|(?:^|[\s-])ef(?:[-\s*]|$)/.test(g)) return 'Catch / Hour';
+  if (g.includes('net')) return 'Catch / Net';
+  return fallback;
+}
+
 function iaStats(r: Result): Stat[] {
   return [
-    { key: 'cpue',    label: 'CPUE',         value: fmtCpue(r.cpue) },
+    { key: 'cpue',    label: 'Catch / Net',  value: fmtCpue(r.cpue) },
     { key: 'catch',   label: 'Total catch',  value: r.total_catch       != null ? r.total_catch.toLocaleString()    : null },
     { key: 'length',  label: 'Avg length',   value: r.average_length    != null ? `${r.average_length.toFixed(1)}"` : null },
-    { key: 'stocked', label: 'stck/100ac',   value: r.stocked_per_100ac != null ? r.stocked_per_100ac.toFixed(0)    : null },
-    { key: 'ef_cpue', label: 'EF CPUE',      value: fmtCpue(r.ef_cpue) },
-    { key: 'hn_cpue', label: 'HN CPUE',      value: fmtCpue(r.hn_cpue) },
-    { key: 'fn_cpue', label: 'FN CPUE',      value: fmtCpue(r.fn_cpue) },
+    { key: 'stocked', label: 'Stck Adults / 100AC',   value: r.stocked_per_100ac != null ? r.stocked_per_100ac.toFixed(0)    : null },
+    { key: 'ef_cpue', label: 'EF Catch / Hour', value: fmtCpue(r.ef_cpue) },
+    { key: 'hn_cpue', label: 'HN Catch / Net',  value: fmtCpue(r.hn_cpue) },
+    { key: 'fn_cpue', label: 'FN Catch / Net',  value: fmtCpue(r.fn_cpue) },
+    ...metaStats(r),
   ];
 }
 
 export default function ResultRow({ result: r, state, sortBy, onPress }: Props) {
   const allStats = state === 'sd' ? sdStats(r) : state === 'nd' ? ndStats(r) : state === 'ne' ? neStats(r) : state === 'ia' ? iaStats(r) : state === 'wi' ? wiStats(r) : state === 'mi' ? miStats(r) : mnStats(r);
   const sortStat = allStats.find(s => s.key === sortBy);
-  const otherStats = allStats.filter(s => s.key !== sortBy && s.value !== null && !(state === 'mn' && s.key === 'date'));
+  // Label always pulled from sortOptions so it stays readable ("Lake Name")
+  // even when there's no measurable value to show on the right (sortBy 'lake').
+  // For NE the configured 'cpue' label is "Catch / Net" — but bass are sampled
+  // by Electrofishing, where the unit is per-hour. Override per row so the
+  // label matches the gear that produced the value.
+  const sortLabel = sortBy === 'cpue'
+    ? cpueLabelForGear(state, r.gear)
+    : (STATE_CONFIGS[state].sortOptions.find(o => o.value === sortBy)?.label ?? sortBy);
+  // Meta keys (acres/depth/year/date/lake) are excluded from the pill row —
+  // their values appear in the location line beneath the lake name, so a pill
+  // would just duplicate. Pills are reserved for measurable per-survey stats.
+  const otherStats = allStats.filter(s => s.key !== sortBy && !META_KEYS.has(s.key) && s.value !== null);
 
   const yearLabel = (state === 'mn' || state === 'ia') && r.survey_date
     ? r.survey_date.substring(0, 10)
@@ -93,8 +147,8 @@ export default function ResultRow({ result: r, state, sortBy, onPress }: Props) 
 
   const location = [
     r.county,
-    r.area_acres ? `${r.area_acres.toLocaleString()} ac` : null,
-    r.max_depth_feet ? `${r.max_depth_feet} ft` : null,
+    r.area_acres ? `${Math.round(r.area_acres).toLocaleString()} ac` : null,
+    r.max_depth_feet ? `${Math.round(r.max_depth_feet)} ft` : null,
     yearLabel,
   ].filter(Boolean).join(' · ');
 
@@ -123,7 +177,7 @@ export default function ResultRow({ result: r, state, sortBy, onPress }: Props) 
           {sortStat?.value ?? '—'}
         </Text>
         <Text style={[text.labelS, { color: colors.walleye2, marginTop: 2 }]}>
-          {sortStat?.label ?? sortBy}
+          {sortLabel}
         </Text>
       </View>
     </Pressable>

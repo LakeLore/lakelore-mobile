@@ -57,7 +57,8 @@ Items 1 and 2 can be done in any order. Item 3 is the final step; the iOS subscr
 
 ## Known minor open items (not blocking)
 
-- **Sentry source map upload enabled** as of 2026-05-12 (commit removing `SENTRY_DISABLE_AUTO_UPLOAD` + adding `SENTRY_AUTH_TOKEN` as an EAS project secret env var). The two builds in flight on the queue at that moment still have the old config; the next build kicked off after the commit will upload source maps.
+- **Sentry source-map upload — still failing** with "Project not found" against `lakelore/lakelore-mobile`, even though the `SENTRY_AUTH_TOKEN` is set as an EAS project secret. Working around it with `SENTRY_ALLOW_FAILURE=true` in `eas.json` production profile so source-map upload is attempted but doesn't tank the build; symbolicated stack traces remain absent until the Sentry org/project/token access is sorted out. (Revisit when launch dust settles.)
+- **`expo-updates` (OTA) wired** as of 2026-05-13 — `production` channel, `runtimeVersion.policy: appVersion`. First production OTA published the same day (update group `bfed3391`). See `~/lake-fish-mobile/CLAUDE.md` "OTA updates" section for usage and `~/RUNBOOK.md §12` for rollback.
 - **RC dashboard "Credentials need attention" warning** on the Play Store credential block. Cosmetic — verified directly against Google's API that all permissions are correct and Google accepts the credentials. Worth filing as an RC support ticket.
 - **Offsite DB backups** (the only remaining ⚠️ item) — needs a Cloudflare R2 / Backblaze B2 account first.
 
@@ -432,6 +433,7 @@ For posterity / context:
 - Play Store 1024×500 feature graphic
 - Store listing copy in `STORE_LISTING.md`
 - CLAUDE.md updated for 7 states, repo locations, deploy/ symlink layout
+- **2026-05-13**: build 10 + 11 uploaded to TestFlight with hardened paywall copy, lock-icon SVG, AboutScreen Manage/Restore links, Sentry ErrorBoundary, expo-application for feedback metadata, SafeAreaProvider migration. `expo-updates` wired on the `production` channel; first OTA published (update group `bfed3391`, runtime `1.0.0`).
 
 ---
 

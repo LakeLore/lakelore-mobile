@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StateKey, StateConfig, STATE_CONFIGS } from './types';
+import { isActiveState } from './activeStates';
 
 interface StateContextValue {
   state: StateKey;
@@ -11,11 +12,13 @@ interface StateContextValue {
 const StateContext = createContext<StateContextValue | null>(null);
 
 export function StateProvider({ children }: { children: React.ReactNode }) {
-  const [state, setStateKey] = useState<StateKey>('sd');
+  // Default to MN (the free tier). Anything else risks a 402 on first render
+  // if a code path ever bypasses StateSelectScreen before AsyncStorage resolves.
+  const [state, setStateKey] = useState<StateKey>('mn');
 
   useEffect(() => {
     AsyncStorage.getItem('selectedState').then(saved => {
-      if (saved === 'sd' || saved === 'mn' || saved === 'nd' || saved === 'ia' || saved === 'ne' || saved === 'wi') setStateKey(saved as StateKey);
+      if (saved && isActiveState(saved as StateKey)) setStateKey(saved as StateKey);
     });
   }, []);
 

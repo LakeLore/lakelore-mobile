@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   View, Text, TextInput, FlatList, Pressable,
-  Modal, StyleSheet, SafeAreaView, Keyboard, Platform,
+  Modal, StyleSheet, Keyboard, Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { SpeciesOption, StateKey, SD_SPECIES_NAMES, MN_SPECIES_NAMES, ND_SPECIES_NAMES } from '../types';
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
 import { PaperHeader } from '../lakelore-rn/components';
@@ -82,6 +83,9 @@ export default function SpeciesPicker({ visible, species, selected, state, onSel
           onChangeText={setQuery}
           autoFocus
           clearButtonMode="while-editing"
+          autoCorrect={false}
+          autoCapitalize="words"
+          spellCheck={false}
         />
         <Pressable
           onPress={() => { onSelect(''); onClose(); }}

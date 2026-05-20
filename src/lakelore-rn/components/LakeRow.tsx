@@ -1,6 +1,6 @@
 // components/LakeRow.tsx
 // One row of the results list. Lake name (display), location (mono),
-// stat pills, and the big CPUE number on the right.
+// stat pills, and the big catch-rate number on the right.
 
 import React from 'react';
 import { Pressable, View, Text, StyleSheet } from 'react-native';
@@ -13,14 +13,14 @@ type Props = {
   name: string;
   location: string;        // pre-formatted "Murray · 1,209.24 ac · 10 ft · 2024-09-09"
   stats: Stat[];           // 0–3 stat pills
-  rightValue: string;      // the CPUE value, e.g. "46.7"
-  rightLabel?: string;     // small-caps label, default "CPUE"
+  rightValue: string;      // the catch-rate value, e.g. "46.7"
+  rightLabel?: string;     // small-caps label, default "Catch Rate"
   highlighted?: boolean;
   onPress?: () => void;
 };
 
 export function LakeRow({
-  name, location, stats, rightValue, rightLabel = 'CPUE', highlighted, onPress,
+  name, location, stats, rightValue, rightLabel = 'Catch Rate', highlighted, onPress,
 }: Props) {
   return (
     <Pressable onPress={onPress}>

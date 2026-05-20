@@ -26,9 +26,22 @@
         "buildType": "apk"
       }
     },
+    "preview-sim": {
+      "extends": "preview",
+      "env": {
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+      },
+      "ios": {
+        "simulator": true,
+        "resourceClass": "m-medium"
+      }
+    },
     "production": {
       "channel": "production",
       "autoIncrement": true,
+      "env": {
+        "SENTRY_ALLOW_FAILURE": "true"
+      },
       "ios": {
         "resourceClass": "m-medium"
       },
