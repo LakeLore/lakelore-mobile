@@ -29,7 +29,7 @@ import Purchases, {
 //      attention" for up to 36 hours due to Google's propagation lag (per
 //      RC docs); the public SDK key is available immediately regardless.
 const APPLE_PUBLIC_KEY  = 'appl_dzAkMHKpPUIBlKYqfKSiOUCiXPE';
-const GOOGLE_PUBLIC_KEY = 'goog_RxootIJqJGYHBGrvCRIwsVIYcQl';
+const GOOGLE_PUBLIC_KEY = 'goog_eyIYqvfBikNUnsBAlAwRZDFxXFN';
 
 // Identifiers configured in the RevenueCat dashboard.
 // The entitlement identifier matches what's in the RC dashboard literally —

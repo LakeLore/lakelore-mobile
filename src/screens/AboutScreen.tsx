@@ -30,7 +30,7 @@ const ANDROID_PACKAGE = 'com.lakeloreapp.lakelore';
 const ANDROID_MANAGE_URL =
   `https://play.google.com/store/account/subscriptions?sku=${ANDROID_SKU}&package=${ANDROID_PACKAGE}`;
 const IOS_FALLBACK_MANAGE_URL = 'itms-apps://apps.apple.com/account/subscriptions';
-const WEB_FALLBACK_MANAGE_URL = 'https://lakeloreapp.com/support';
+const WEB_FALLBACK_MANAGE_URL = 'https://www.lakeloreapp.com/support';
 
 /**
  * Open the platform's subscription management surface.
@@ -126,7 +126,7 @@ const ALL_AGENCIES: AgencySource[] = [
     state: 'Iowa',
     agency: 'Iowa Department of Natural Resources',
     abbr: 'IA DNR',
-    url: 'https://www.iowadnr.gov/Things-to-Do/Fishing',
+    url: 'https://www.iowadnr.gov/things-do/fishing',
     blurb: 'Comprehensive lake surveys (electrofishing, fyke, hoop) published through the Iowa DNR Fisheries Data Dashboard.',
   },
 ];
@@ -134,10 +134,6 @@ const ALL_AGENCIES: AgencySource[] = [
 // Only credit agencies for states that ship in this build. Re-add WI/MI to
 // ACTIVE_STATES (src/activeStates.ts) and they appear here automatically.
 const AGENCIES = ALL_AGENCIES.filter(a => ACTIVE_STATES.includes(a.key));
-
-function numWord(n: number): string {
-  return ['zero','one','two','three','four','five','six','seven','eight','nine'][n] ?? String(n);
-}
 
 // ── State-specific glossary blocks ────────────────────────────────────────
 // Previously lived in src/screens/search/InfoModal.tsx (the "Glossary &
@@ -164,10 +160,10 @@ function StateGlossarySection({ state }: { state: StateKey }) {
           {isSD
             ? 'Fish caught per standard sampling unit. Gill nets: Catch / Net (fish per net-night). Electrofishing: Catch / Hour. Higher catch rate = more abundant fish population.'
             : isND
-            ? 'Catch / Net — fish caught per net-night. Calculated as total fish caught of a species per sample divided by the number of net-nights. Higher = more abundant fish population.'
+            ? 'Catch / Net — fish caught per net-night across all net configurations (mesh-graded gill nets and others). Electrofishing surveys use Catch / Hour. Higher = more abundant fish population.'
             : isNE
-            ? 'Catch / Net — fish caught per standard gill net set. Higher = more abundant fish population. Nebraska Game & Parks uses standardized overnight gill nets for most open-water species assessments.'
-            : 'Catch / Net — fish caught per standard gill net set. Higher = more abundant fish population.'}
+            ? 'Catch / Net — fish caught per net set, across all net types (gill nets, frame nets, trap nets). Electrofishing surveys use Catch / Hour. Higher = more abundant fish population. Nebraska Game & Parks uses standardized overnight gill nets for most open-water species assessments.'
+            : 'Catch / Net — fish caught per net set, across all net types (gill nets, trap nets, and others). Electrofishing surveys use Catch / Hour. Higher = more abundant fish population.'}
         </GlossarySection>
       )}
 
@@ -317,18 +313,6 @@ export default function AboutScreen({ visible, state, onClose }: Props) {
             </View>
           )}
 
-          <Text style={[text.displayM, { color: colors.ink, marginTop: 8 }]}>
-            Public records,{' '}
-            <Text style={{ fontStyle: 'italic' }}>quietly assembled.</Text>
-          </Text>
-
-          <Text style={[text.bodyL, { color: colors.ink2, marginTop: 16 }]}>
-            LakeLore is an independent project that gathers fish-population data from
-            {' '}{numWord(AGENCIES.length)} U.S. state fish &amp; wildlife agencies,
-            normalizes their assessment methods, and renders the result as a single
-            field guide.
-          </Text>
-
           <View style={styles.callout}>
             <Text style={[text.labelS, { color: colors.walleye2, marginBottom: 6 }]}>
               INDEPENDENCE
@@ -350,6 +334,9 @@ export default function AboutScreen({ visible, state, onClose }: Props) {
             <Pressable
               key={a.abbr}
               onPress={() => Linking.openURL(a.url)}
+              accessibilityRole="link"
+              accessibilityLabel={`${a.state} — ${a.agency}`}
+              accessibilityHint="Opens agency website in browser"
               style={({ pressed }) => [
                 styles.agencyRow,
                 { backgroundColor: pressed ? colors.paper2 : colors.paper },
@@ -417,45 +404,64 @@ export default function AboutScreen({ visible, state, onClose }: Props) {
 
           <View style={styles.linkList}>
             <Pressable
-              onPress={() => Linking.openURL('https://lakeloreapp.com')}
+              onPress={() => Linking.openURL('https://www.lakeloreapp.com')}
+              accessibilityRole="link"
+              accessibilityLabel="lakeloreapp.com"
+              accessibilityHint="Opens in browser"
               style={styles.linkRow}
             >
               <Text style={[text.bodyM, { color: colors.ink }]}>lakeloreapp.com</Text>
-              <Text style={[text.labelS, { color: colors.walleye2 }]}>↗</Text>
+              <Text style={[text.labelS, { color: colors.walleye2 }]} accessibilityElementsHidden>↗</Text>
             </Pressable>
             <Pressable
-              onPress={() => Linking.openURL('https://lakeloreapp.com/privacy')}
+              onPress={() => Linking.openURL('https://www.lakeloreapp.com/privacy')}
+              accessibilityRole="link"
+              accessibilityLabel="Privacy policy"
+              accessibilityHint="Opens in browser"
               style={styles.linkRow}
             >
               <Text style={[text.bodyM, { color: colors.ink }]}>Privacy policy</Text>
-              <Text style={[text.labelS, { color: colors.walleye2 }]}>↗</Text>
+              <Text style={[text.labelS, { color: colors.walleye2 }]} accessibilityElementsHidden>↗</Text>
             </Pressable>
             <Pressable
-              onPress={() => Linking.openURL('https://lakeloreapp.com/terms')}
+              onPress={() => Linking.openURL('https://www.lakeloreapp.com/terms')}
+              accessibilityRole="link"
+              accessibilityLabel="Terms of use"
+              accessibilityHint="Opens in browser"
               style={styles.linkRow}
             >
               <Text style={[text.bodyM, { color: colors.ink }]}>Terms of use</Text>
-              <Text style={[text.labelS, { color: colors.walleye2 }]}>↗</Text>
+              <Text style={[text.labelS, { color: colors.walleye2 }]} accessibilityElementsHidden>↗</Text>
             </Pressable>
             <Pressable
               onPress={openManageSubscription}
+              accessibilityRole="button"
+              accessibilityLabel="Manage subscription"
+              accessibilityHint="Opens subscription management"
               style={styles.linkRow}
             >
               <Text style={[text.bodyM, { color: colors.ink }]}>Manage subscription</Text>
-              <Text style={[text.labelS, { color: colors.walleye2 }]}>↗</Text>
+              <Text style={[text.labelS, { color: colors.walleye2 }]} accessibilityElementsHidden>↗</Text>
             </Pressable>
-            <Pressable onPress={handleRestore} style={styles.linkRow}>
+            <Pressable
+              onPress={handleRestore}
+              accessibilityRole="button"
+              accessibilityLabel={restoring ? 'Restoring' : 'Restore purchases'}
+              style={styles.linkRow}>
               <Text style={[text.bodyM, { color: colors.ink }]}>
                 {restoring ? 'Restoring…' : 'Restore purchases'}
               </Text>
-              <Text style={[text.labelS, { color: colors.walleye2 }]}>›</Text>
+              <Text style={[text.labelS, { color: colors.walleye2 }]} accessibilityElementsHidden>›</Text>
             </Pressable>
             <Pressable
               onPress={() => Linking.openURL('mailto:support@lakeloreapp.com')}
+              accessibilityRole="link"
+              accessibilityLabel="Email support"
+              accessibilityHint="Opens email client"
               style={styles.linkRow}
             >
               <Text style={[text.bodyM, { color: colors.ink }]}>support@lakeloreapp.com</Text>
-              <Text style={[text.labelS, { color: colors.walleye2 }]}>↗</Text>
+              <Text style={[text.labelS, { color: colors.walleye2 }]} accessibilityElementsHidden>↗</Text>
             </Pressable>
           </View>
 

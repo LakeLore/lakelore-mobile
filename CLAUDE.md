@@ -152,3 +152,6 @@ The full trigger table lives in `~/CLAUDE.md` "Documentation discipline". Mobile
 - [ ] If I changed the price, name, or behavior of the subscription — `STORE_LISTING.md` description + `PaywallScreen.tsx` value props match Apple+Google+RC.
 - [ ] If I introduced a new dependency that's a native module — noted the implication (Expo Go can't load it; dev client required) somewhere relevant.
 - [ ] If I changed brand tokens, fonts, or paywall layout — design notes in this file are still right.
+- [ ] If I'm about to ship a production build — Sentry source-map upload tested in the last 7 days, OR `SENTRY_ALLOW_FAILURE` is documented as still expected to fail. (Long-standing issue; see `~/APP_OPS.md` "Open items deferred" #1 for diagnostic + fix recipe.)
+- [ ] If I changed the lake-count value-props in `PaywallScreen.tsx` or the data-covered list in `STORE_LISTING.md` — re-fetched from `/api/{state}/status` and updated `lakesFallback` to match live counts. (Paywall counts auto-refresh at runtime; STORE_LISTING.md is one-shot paste.)
+- [ ] If I added a Pressable with an icon-only visible label — `accessibilityLabel` and `accessibilityRole` set so VoiceOver can read it.

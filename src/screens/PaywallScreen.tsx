@@ -6,10 +6,10 @@
 // *before* the user taps subscribe. Missing any of these is a common
 // rejection reason. Everything below is built to be correct by construction.
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Modal, View, Text, ScrollView, Pressable, StyleSheet,
-  ActivityIndicator, Linking,
+  ActivityIndicator, Linking, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -20,13 +20,14 @@ import {
   purchasePackage,
   restorePurchases,
 } from '../iap';
+import { fetchMyEntitlement } from '../api';
 import { StateKey } from '../types';
 import { ACTIVE_STATES } from '../activeStates';
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
 import { PaperHeader, PrimaryButton } from '../lakelore-rn/components';
 
-const TERMS_URL   = 'https://lakeloreapp.com/terms';
-const PRIVACY_URL = 'https://lakeloreapp.com/privacy';
+const TERMS_URL   = 'https://www.lakeloreapp.com/terms';
+const PRIVACY_URL = 'https://www.lakeloreapp.com/privacy';
 
 interface Props {
   visible: boolean;
@@ -43,17 +44,19 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!visible) return;
+  const loadOffering = useCallback(async () => {
     setError(null);
     setLoadingPkg(true);
-    (async () => {
-      const offering = await getOffering();
-      const annual = offering?.annual ?? offering?.availablePackages?.[0] ?? null;
-      setPkg(annual);
-      setLoadingPkg(false);
-    })();
-  }, [visible]);
+    const offering = await getOffering();
+    const annual = offering?.annual ?? offering?.availablePackages?.[0] ?? null;
+    setPkg(annual);
+    setLoadingPkg(false);
+  }, []);
+
+  useEffect(() => {
+    if (!visible) return;
+    loadOffering();
+  }, [visible, loadOffering]);
 
   const handleSubscribe = async () => {
     if (!pkg) return;
@@ -61,14 +64,23 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
     setPurchasing(true);
     setError(null);
     const result = await purchasePackage(pkg);
-    setPurchasing(false);
     if ('ok' in result) {
+      // Prime the server's per-user entitlement cache *before* handing back to
+      // the caller. The server caches per-user for 5 min and the cache may
+      // hold a stale "false" from before this purchase (e.g. from the request
+      // that triggered the paywall). Without this, the immediate post-purchase
+      // data fetch returns 402 and bounces the user right back to the paywall.
+      // Worst case ~1 s added to the "Subscribing…" state.
+      await fetchMyEntitlement().catch(() => {});
+      setPurchasing(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       onPurchased();
       onClose();
     } else if ('cancelled' in result) {
+      setPurchasing(false);
       // User dismissed the system sheet — no error, just stay on paywall.
     } else {
+      setPurchasing(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
       setError(result.error || 'Purchase failed. Please try again.');
     }
@@ -78,11 +90,15 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
     setRestoring(true);
     setError(null);
     const ok = await restorePurchases();
-    setRestoring(false);
     if (ok) {
+      // Same priming rationale as handleSubscribe — restored entitlement
+      // needs to land in the server cache before the caller refetches data.
+      await fetchMyEntitlement().catch(() => {});
+      setRestoring(false);
       onPurchased();
       onClose();
     } else {
+      setRestoring(false);
       setError('No active subscription found on this account.');
     }
   };
@@ -119,8 +135,7 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
           </Text>
 
           <Text style={[text.bodyL, { color: colors.ink2, marginTop: 16 }]}>
-            Minnesota stays free, with all 9,000+ surveyed lakes. Add an annual
-            All-States Pass for the {paidStatesPhrase} listed below.
+            Minnesota stays free. Add an annual All-States Pass for the {paidStatesPhrase} listed below.
           </Text>
 
           {/* Value props */}
@@ -130,11 +145,9 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
                 <Text style={[text.dataM, { color: colors.walleye2, width: 26 }]}>›</Text>
                 <View style={{ flex: 1 }}>
                   <Text style={[text.bodyM, { color: colors.ink }]}>{line.label}</Text>
-                  {line.detail && (
-                    <Text style={[text.bodyS, { color: colors.inkSoft, marginTop: 2 }]}>
-                      {line.detail}
-                    </Text>
-                  )}
+                  <Text style={[text.bodyS, { color: colors.inkSoft, marginTop: 2 }]}>
+                    {line.detail}
+                  </Text>
                 </View>
               </View>
             ))}
@@ -185,22 +198,31 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
             </View>
           ) : (
             <View style={styles.unavailable}>
-              <Text style={[text.bodyS, { color: colors.inkSoft, textAlign: 'center' }]}>
-                Couldn&rsquo;t load the subscription. Please try again.
+              <Text style={[text.bodyS, { color: colors.inkSoft, textAlign: 'center', marginBottom: 12 }]}>
+                Couldn&rsquo;t load the subscription.
               </Text>
+              <PrimaryButton onPress={loadOffering}>Try again</PrimaryButton>
             </View>
           )}
 
           {/* Continue with the free tier — explicit dismissal alternative to the
               header Cancel button. Apple reviewers reward clear opt-out paths. */}
-          <Pressable onPress={onClose} style={styles.freeTier}>
+          <Pressable
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel="Continue with Minnesota, free"
+            style={styles.freeTier}>
             <Text style={[text.labelM, { color: colors.inkSoft }]}>
               Continue with Minnesota — free
             </Text>
           </Pressable>
 
           {/* Restore */}
-          <Pressable onPress={restoring ? undefined : handleRestore} style={styles.restore}>
+          <Pressable
+            onPress={restoring ? undefined : handleRestore}
+            accessibilityRole="button"
+            accessibilityLabel={restoring ? 'Restoring' : 'Restore purchases'}
+            style={styles.restore}>
             <Text style={[text.labelM, { color: colors.walleye2 }]}>
               {restoring ? 'Restoring…' : 'Restore purchases'}
             </Text>
@@ -213,15 +235,25 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
               cancelled at least 24 hours before the end of the current period. You
               can manage or cancel in your device&rsquo;s subscription settings any
               time. Payment is charged to your{' '}
-              <Text style={{ color: colors.ink2 }}>App Store</Text> or{' '}
-              <Text style={{ color: colors.ink2 }}>Google Play</Text> account.
+              <Text style={{ color: colors.ink2 }}>
+                {Platform.OS === 'ios' ? 'App Store' : 'Google Play'}
+              </Text>{' '}
+              account.
             </Text>
             <View style={styles.legalRow}>
-              <Pressable onPress={() => Linking.openURL(TERMS_URL)}>
+              <Pressable
+                onPress={() => Linking.openURL(TERMS_URL)}
+                accessibilityRole="link"
+                accessibilityLabel="Terms of use"
+                accessibilityHint="Opens in browser">
                 <Text style={[text.labelS, { color: colors.walleye2 }]}>TERMS OF USE</Text>
               </Pressable>
-              <Text style={[text.labelS, { color: colors.paper3 }]}>·</Text>
-              <Pressable onPress={() => Linking.openURL(PRIVACY_URL)}>
+              <Text style={[text.labelS, { color: colors.paper3 }]} accessibilityElementsHidden>·</Text>
+              <Pressable
+                onPress={() => Linking.openURL(PRIVACY_URL)}
+                accessibilityRole="link"
+                accessibilityLabel="Privacy policy"
+                accessibilityHint="Opens in browser">
                 <Text style={[text.labelS, { color: colors.walleye2 }]}>PRIVACY POLICY</Text>
               </Pressable>
             </View>
@@ -239,12 +271,12 @@ function numWord(n: number): string {
 }
 
 const VALUE_PROPS: { state: StateKey; label: string; detail: string }[] = [
-  { state: 'wi', label: 'Wisconsin DNR',           detail: '2,329 lakes — DNR netting, electrofishing, length data' },
-  { state: 'mi', label: 'Michigan DNR',            detail: '367 lakes — survey reports + stocking' },
-  { state: 'nd', label: 'North Dakota Game & Fish', detail: '452 lakes — Catch / Net + average length' },
-  { state: 'sd', label: 'South Dakota GFP',         detail: '327 lakes — PSD, Wr, gill-net + electrofishing' },
-  { state: 'ne', label: 'Nebraska Game & Parks',    detail: '487 lakes — survey PDFs linked inline' },
-  { state: 'ia', label: 'Iowa DNR',                 detail: '1,258 lakes — fyke, hoop, electrofishing comprehensives' },
+  { state: 'wi', label: 'Wisconsin DNR',            detail: 'DNR netting, electrofishing, length data' },
+  { state: 'mi', label: 'Michigan DNR',             detail: 'Survey reports + stocking' },
+  { state: 'nd', label: 'North Dakota Game & Fish', detail: 'Catch / Net + average length' },
+  { state: 'sd', label: 'South Dakota GFP',         detail: 'PSD, Wr, gill-net + electrofishing' },
+  { state: 'ne', label: 'Nebraska Game & Parks',    detail: 'Survey PDFs linked inline' },
+  { state: 'ia', label: 'Iowa DNR',                 detail: 'Fyke, hoop, electrofishing comprehensives' },
 ];
 const ACTIVE_VALUE_PROPS = VALUE_PROPS.filter(v => ACTIVE_STATES.includes(v.state));
 

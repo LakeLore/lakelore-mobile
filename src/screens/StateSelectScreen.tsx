@@ -70,6 +70,8 @@ export default function StateSelectScreen({ onSelect }: Props) {
       <Pressable
         onPress={() => setShowAbout(true)}
         hitSlop={12}
+        accessibilityRole="button"
+        accessibilityLabel="About and sources"
         style={({ pressed }) => [
           styles.aboutBadge,
           // SafeAreaView applies the safe-area inset as padding on its outer
@@ -96,8 +98,15 @@ export default function StateSelectScreen({ onSelect }: Props) {
           // for users who turn out to be subscribed.
           const locked = !entitlementLoading && s.key !== FREE_STATE && !hasAllStates;
           const showFreeChip = !entitlementLoading && s.key === FREE_STATE;
+          const a11yState = locked
+            ? `${s.name}, ${s.agency}, locked, requires LakeLore All-States subscription`
+            : showFreeChip
+              ? `${s.name}, ${s.agency}, free`
+              : `${s.name}, ${s.agency}`;
           return (
             <Pressable key={s.key} onPress={() => pick(s.key)}
+              accessibilityRole="button"
+              accessibilityLabel={a11yState}
               style={({ pressed }) => [
                 styles.row,
                 { backgroundColor: pressed ? colors.paper2 : colors.paper },

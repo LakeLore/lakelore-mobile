@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, Pressable, FlatList,
   ActivityIndicator, StyleSheet,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
@@ -34,6 +35,20 @@ import { SortPickerModal } from './search/SortPickerModal';
 import { StatePickerModal } from './search/StatePickerModal';
 
 const PAGE_SIZE = 50;
+
+// Per-state "we've introduced the county picker to this user" flag set.
+// Persisted as a JSON array of StateKey in AsyncStorage so the picker only
+// auto-opens on the very first entry into each state. New states unlocked
+// later (e.g. via subscription, or future v1.x re-enables of WI/MI) get the
+// introduction once each. Returning users aren't nagged.
+const COUNTY_PICKER_SEEN_KEY = 'countyPickerSeen.v1';
+
+// Per-state county selection persisted across app launches. Stored as a
+// JSON object mapping StateKey → string[] of county names. Seeded into
+// filters.counties on mount and on state change so the user's last filter
+// scope survives a cold launch. Updated when the user confirms a selection
+// in the County map picker.
+const COUNTY_SELECTION_KEY = 'countySelection.v1';
 
 const STATE_STRIPES: Record<StateKey, string> = {
   sd: colors.lakeInk,
@@ -86,7 +101,74 @@ export default function SearchScreen() {
   const prevStateRef = useRef(state);
   const sessionCache = useRef<Partial<Record<StateKey, SearchSession>>>({});
 
-  useEffect(() => { setShowCountyPicker(true); }, []);
+  // Tracks which states have had the county picker auto-opened at least
+  // once. `null` while loading from AsyncStorage; the auto-open effect bails
+  // until the load resolves so we don't pop the modal twice on the first
+  // launch (once before load resolves, once after).
+  const [countyPickerSeen, setCountyPickerSeen] = useState<Set<StateKey> | null>(null);
+
+  // Per-state persisted county selection (last user choice for each state).
+  // `null` until the AsyncStorage load resolves. Used both to seed initial
+  // filters.counties on mount and to restore counties when switching back to
+  // a state that has no in-session cache (e.g. on cold launch).
+  const [persistedCounties, setPersistedCounties] = useState<Partial<Record<StateKey, string[]>> | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(COUNTY_PICKER_SEEN_KEY)
+      .then(raw => {
+        const parsed = raw ? (JSON.parse(raw) as StateKey[]) : [];
+        setCountyPickerSeen(new Set(parsed));
+      })
+      .catch(() => setCountyPickerSeen(new Set()));
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.getItem(COUNTY_SELECTION_KEY)
+      .then(raw => {
+        const parsed = raw ? (JSON.parse(raw) as Partial<Record<StateKey, string[]>>) : {};
+        setPersistedCounties(parsed);
+        // Seed counties for the state SearchScreen mounted with. Only apply
+        // the seed if filters.counties is still at its default (empty); if
+        // the user has somehow made a manual selection between mount and
+        // this load resolving, don't clobber it.
+        const saved = parsed[state];
+        if (saved && saved.length > 0) {
+          setFilters(prev => prev.counties.length === 0 ? { ...prev, counties: saved } : prev);
+        }
+      })
+      .catch(() => setPersistedCounties({}));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-open the picker the first time the user enters each state. Fires
+  // for the initial mount once `countyPickerSeen` resolves AND for every
+  // subsequent state change (because the state-change effect below leaves
+  // showCountyPicker alone now).
+  useEffect(() => {
+    if (countyPickerSeen === null) return;
+    if (countyPickerSeen.has(state)) return;
+    setShowCountyPicker(true);
+  }, [state, countyPickerSeen]);
+
+  const markCountyPickerSeen = useCallback(async (s: StateKey) => {
+    setCountyPickerSeen(prev => {
+      if (prev?.has(s)) return prev;
+      const next = new Set(prev ?? []);
+      next.add(s);
+      AsyncStorage.setItem(COUNTY_PICKER_SEEN_KEY, JSON.stringify([...next]))
+        .catch(() => { /* best-effort persistence */ });
+      return next;
+    });
+  }, []);
+
+  const persistCountySelection = useCallback((s: StateKey, counties: string[]) => {
+    setPersistedCounties(prev => {
+      const next = { ...(prev ?? {}), [s]: counties };
+      AsyncStorage.setItem(COUNTY_SELECTION_KEY, JSON.stringify(next))
+        .catch(() => { /* best-effort persistence */ });
+      return next;
+    });
+  }, []);
 
   const loadStateOptions = useCallback(async (stateKey: StateKey) => {
     setLoadingOptions(true);
@@ -139,14 +221,20 @@ export default function SearchScreen() {
         setSearched(cached.searched);
         setViewMode(cached.viewMode);
       } else {
-        setFilters(defaultFilters(state));
+        // Restore saved counties for this state if we have them. Falls back
+        // to defaultFilters' empty array if persistedCounties hasn't loaded
+        // yet or this state has no saved selection.
+        const savedCounties = persistedCounties?.[state] ?? [];
+        setFilters({ ...defaultFilters(state), counties: savedCounties });
         setResults([]);
         setScatterResults([]);
         setTotal(0);
         setPage(0);
         setSearched(false);
         setViewMode('list');
-        setShowCountyPicker(true);
+        // Auto-opening the county picker for new states is handled by the
+        // [state, countyPickerSeen] effect above, gated on per-state seen
+        // flags so it only fires the first time the user enters each state.
       }
       setOptions(null);
     }
@@ -269,7 +357,11 @@ export default function SearchScreen() {
       {/* Ink header w/ state name. Raw lake totals intentionally omitted
           here — species/county-scoped counts surface elsewhere when they're
           actually informative. */}
-      <Pressable onPress={() => setShowStatePicker(true)}>
+      <Pressable
+        onPress={() => setShowStatePicker(true)}
+        accessibilityRole="button"
+        accessibilityLabel={`Current state: ${stateCfg.label}`}
+        accessibilityHint="Opens state picker">
         <PaperHeader
           title={`${stateCfg.label} ▾`}
           eyebrow={`ATLAS · ${state.toUpperCase()}`}
@@ -283,6 +375,9 @@ export default function SearchScreen() {
       <Pressable
         onPress={() => options && setShowSpeciesPicker(true)}
         disabled={!options}
+        accessibilityRole="button"
+        accessibilityLabel={`Species: ${speciesLabel}`}
+        accessibilityHint="Opens species picker"
         style={[styles.speciesBtn, !options && { opacity: 0.55 }]}
       >
         <Text style={[
@@ -336,11 +431,17 @@ export default function SearchScreen() {
         </Chip>
         <View style={styles.toggleWrap}>
           <Text style={[text.labelM, { color: colors.inkSoft, marginRight: 6 }]}>Latest Only</Text>
-          <Pressable onPress={() => setShowAbout(true)} hitSlop={8} style={styles.toggleInfo}>
+          <Pressable
+            onPress={() => setShowAbout(true)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="About Latest Only filter"
+            style={styles.toggleInfo}>
             <Text style={[text.labelM, { color: colors.inkSoft }]}>ⓘ</Text>
           </Pressable>
           <Toggle
             value={filters.mostRecentOnly}
+            accessibilityLabel="Latest survey only"
             onValueChange={v => {
               const updated = { ...filters, mostRecentOnly: v };
               setFilters(updated);
@@ -422,7 +523,12 @@ export default function SearchScreen() {
               onChange={i => setViewMode(i === 0 ? 'list' : 'scatter')}
             />
             {viewMode === 'list' && (
-              <Pressable onPress={() => setShowSort(true)} style={styles.sortBtn}>
+              <Pressable
+                onPress={() => setShowSort(true)}
+                accessibilityRole="button"
+                accessibilityLabel={`Sort by ${sortLabel}, ${filters.sortDir === 'desc' ? 'descending' : 'ascending'}`}
+                accessibilityHint="Opens sort picker"
+                style={styles.sortBtn}>
                 <Text style={[text.labelM, { color: colors.ink }]} numberOfLines={1}>
                   {sortLabel} {filters.sortDir === 'desc' ? '↓' : '↑'}
                 </Text>
@@ -507,6 +613,10 @@ export default function SearchScreen() {
         onConfirm={counties => {
           const updated = { ...filters, counties };
           setFilters(updated);
+          // Persist this state's selection so it survives cold launches.
+          // Empty array is a meaningful preference ("all counties"); persist
+          // it too rather than treating empty as "no preference."
+          persistCountySelection(state, counties);
           // Refresh species lake_counts to reflect the new county scope so
           // SpeciesPicker shows e.g. "Walleye · 12" not the state-wide total.
           // Fire-and-forget: a stale options.species during the transition
@@ -516,7 +626,13 @@ export default function SearchScreen() {
             .catch(() => {});
           if (updated.species) handleSearch(0, updated);
         }}
-        onClose={() => setShowCountyPicker(false)}
+        onClose={() => {
+          setShowCountyPicker(false);
+          // Mark this state as "introduced" so the picker doesn't auto-open
+          // again on subsequent entries. Cancel and Done both reach here —
+          // either way the user has been shown the filter.
+          markCountyPickerSeen(state);
+        }}
       />
 
       {/* Advanced filters */}

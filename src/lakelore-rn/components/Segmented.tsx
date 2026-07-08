@@ -21,6 +21,9 @@ export function Segmented({ options, active, onChange }: Props) {
           <Pressable
             key={o}
             onPress={() => onChange?.(i)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: on }}
+            accessibilityLabel={o}
             style={[
               styles.cell,
               {

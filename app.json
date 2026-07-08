@@ -17,7 +17,11 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.lakeloreapp.lakelore",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": false,
+          "NSAllowsLocalNetworking": true
+        }
       },
       "privacyManifests": {
         "NSPrivacyTracking": false,
@@ -33,6 +37,22 @@
           },
           {
             "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePurchaseHistory",
+            "NSPrivacyCollectedDataTypeLinked": false,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeCrashData",
+            "NSPrivacyCollectedDataTypeLinked": false,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePerformanceData",
             "NSPrivacyCollectedDataTypeLinked": false,
             "NSPrivacyCollectedDataTypeTracking": false,
             "NSPrivacyCollectedDataTypePurposes": [
@@ -63,7 +83,7 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "privacyPolicyUrl": "https://lakeloreapp.com/privacy",
+      "privacyPolicyUrl": "https://www.lakeloreapp.com/privacy",
       "eas": {
         "projectId": "8d4acf25-f8aa-4f97-a2f0-d0b41d95af01"
       }
@@ -82,8 +102,8 @@
       [
         "@sentry/react-native/expo",
         {
-          "organization": "lakelore",
-          "project": "lakelore-mobile",
+          "organization": "lakelore-app-llc",
+          "project": "react-native",
           "url": "https://sentry.io/"
         }
       ]

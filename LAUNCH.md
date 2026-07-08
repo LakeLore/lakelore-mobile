@@ -271,7 +271,7 @@ All six items below ship together. Apple won't approve a binary that references 
 
 **Owner.** Me.
 
-**Notes.** I'll wire the code with `process.env.REVENUECAT_SECRET_KEY` and `REVENUECAT_WEBHOOK_SECRET` so the user just sets the Fly secrets when they have keys. Server can be merged before the keys exist (will refuse to gate without them, fail-closed).
+**Notes.** Code reads `process.env.REVENUECAT_SECRET_KEY` and `process.env.REVENUECAT_WEBHOOK_AUTH`. Both set as Fly secrets. Server can run with either unset (REST API gate fails open, webhook accepts unsigned events with warning log) — production has both set.
 
 ---
 

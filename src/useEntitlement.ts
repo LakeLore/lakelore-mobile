@@ -89,6 +89,13 @@ export function useEntitlement(): EntitlementState {
         setHasAllStates(next);
         setLoading(false);
         AsyncStorage.setItem(ENTITLEMENT_CACHE_KEY, next ? '1' : '0').catch(() => {});
+        // Fire-and-forget prime of the server's per-user entitlement cache.
+        // Server caches per-user for 5 min; without this prime, the user can
+        // buy a subscription, return to a paid-state search, and get bounced
+        // back to the paywall on a stale "false" until the TTL expires.
+        // PaywallScreen also awaits this synchronously around the purchase
+        // flow — this is the belt-and-suspenders path for background syncs.
+        fetchMyEntitlement().catch(() => {});
       };
       Purchases.addCustomerInfoUpdateListener(listener);
       unsubscribe = () => Purchases.removeCustomerInfoUpdateListener(listener);

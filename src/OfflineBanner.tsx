@@ -6,6 +6,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Animated, StyleSheet, Text, View, Easing } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import NetInfo, { type NetInfoState } from '@react-native-community/netinfo';
 import { colors, text, space, hairline } from './lakelore-rn/theme';
 
@@ -18,6 +19,7 @@ function isOnline(state: NetInfoState): boolean {
 }
 
 export function OfflineBanner() {
+  const insets = useSafeAreaInsets();
   const [offline, setOffline] = useState(false);
   const opacity = React.useRef(new Animated.Value(0)).current;
 
@@ -39,9 +41,12 @@ export function OfflineBanner() {
   if (!offline) return null;
 
   return (
-    <Animated.View pointerEvents="none" style={[styles.bar, { opacity }]}>
+    <Animated.View
+      pointerEvents="none"
+      style={[styles.bar, { opacity, paddingTop: insets.top + 8 }]}
+    >
       <View style={styles.dot} />
-      <Text style={[text.labelM, { color: colors.paper }]}>OFFLINE — SHOWING CACHED RESULTS</Text>
+      <Text style={[text.labelM, { color: colors.paper }]}>OFFLINE — RECONNECT TO LOAD MORE</Text>
     </Animated.View>
   );
 }
@@ -52,7 +57,9 @@ const styles = StyleSheet.create({
     top: 0, left: 0, right: 0,
     backgroundColor: colors.ink,
     paddingHorizontal: space.lg,
-    paddingTop: 48, // clears the status bar inset on most iPhones
+    // paddingTop applied inline using insets.top so the banner clears the
+    // status bar / Dynamic Island on iPhone and the transparent status bar
+    // on Android edge-to-edge builds.
     paddingBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',

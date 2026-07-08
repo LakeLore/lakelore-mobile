@@ -24,7 +24,14 @@ export function PaperHeader({ title, eyebrow, right, onBack, backLabel, modal }:
     <View style={[styles.bar, { backgroundColor: bg }]}>
       <View style={styles.left}>
         {onBack && (
-          <Pressable onPress={onBack} hitSlop={8}>
+          <Pressable
+            onPress={onBack}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={
+              !backLabel || backLabel === '←' ? 'Back' : backLabel
+            }
+          >
             <View style={[styles.backBtn, { borderColor: modal ? colors.ink : colors.paper3 }]}>
               <Text style={[text.labelL, { color: fg }]}>
                 {backLabel ?? '←'}

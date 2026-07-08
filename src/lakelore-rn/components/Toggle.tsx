@@ -8,11 +8,18 @@ import { colors, hairline } from '../theme';
 type Props = {
   value: boolean;
   onValueChange?: (v: boolean) => void;
+  accessibilityLabel?: string;
 };
 
-export function Toggle({ value, onValueChange }: Props) {
+export function Toggle({ value, onValueChange, accessibilityLabel }: Props) {
   return (
-    <Pressable onPress={() => onValueChange?.(!value)} hitSlop={6}>
+    <Pressable
+      onPress={() => onValueChange?.(!value)}
+      hitSlop={6}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value }}
+      accessibilityLabel={accessibilityLabel}
+    >
       <View
         style={[
           styles.track,

@@ -586,27 +586,47 @@ export default function LakeDetailScreen() {
           </Text>
           <View style={styles.linkRow}>
             {state === 'sd' && tab === 'cpue' && latestReportId ? (
-              <Pressable onPress={() => Linking.openURL(SD_REPORT_URL(latestReportId))}>
+              <Pressable
+                onPress={() => Linking.openURL(SD_REPORT_URL(latestReportId))}
+                accessibilityRole="link"
+                accessibilityLabel="Open SD GFP report"
+                accessibilityHint="Opens in browser">
                 <Text style={[text.labelM, { color: colors.walleye2 }]}>SD GFP Report ↗</Text>
               </Pressable>
             ) : null}
             {state === 'sd' && tab === 'stocking' && (data?.latest_stocking_report_id ?? latestReportId) ? (
-              <Pressable onPress={() => Linking.openURL(SD_REPORT_URL((data?.latest_stocking_report_id ?? latestReportId) as number))}>
+              <Pressable
+                onPress={() => Linking.openURL(SD_REPORT_URL((data?.latest_stocking_report_id ?? latestReportId) as number))}
+                accessibilityRole="link"
+                accessibilityLabel="Open SD GFP stocking report"
+                accessibilityHint="Opens in browser">
                 <Text style={[text.labelM, { color: colors.walleye2 }]}>SD GFP Stocking Report ↗</Text>
               </Pressable>
             ) : null}
             {state === 'mn' ? (
-              <Pressable onPress={() => Linking.openURL(MN_LAKEFINDER_URL(lake.id))}>
+              <Pressable
+                onPress={() => Linking.openURL(MN_LAKEFINDER_URL(lake.id))}
+                accessibilityRole="link"
+                accessibilityLabel="Open MN DNR LakeFinder"
+                accessibilityHint="Opens in browser">
                 <Text style={[text.labelM, { color: colors.walleye2 }]}>MN DNR LakeFinder ↗</Text>
               </Pressable>
             ) : null}
             {state === 'ia' && tab === 'cpue' && (
-              <Pressable onPress={() => Linking.openURL(IA_PBI_SURVEY_URL)}>
+              <Pressable
+                onPress={() => Linking.openURL(IA_PBI_SURVEY_URL)}
+                accessibilityRole="link"
+                accessibilityLabel="Open Iowa DNR Survey Visit Summary"
+                accessibilityHint="Opens in browser">
                 <Text style={[text.labelM, { color: colors.walleye2 }]}>Iowa DNR Survey Visit Summary ↗</Text>
               </Pressable>
             )}
             {state === 'ia' && tab === 'stocking' && (
-              <Pressable onPress={() => Linking.openURL(IA_LAKE_DETAILS_URL(lake.id))}>
+              <Pressable
+                onPress={() => Linking.openURL(IA_LAKE_DETAILS_URL(lake.id))}
+                accessibilityRole="link"
+                accessibilityLabel="Open Iowa DNR lake stocking record"
+                accessibilityHint="Opens in browser">
                 <Text style={[text.labelM, { color: colors.walleye2 }]}>Iowa DNR Lake Stocking Record ↗</Text>
               </Pressable>
             )}
@@ -629,32 +649,55 @@ export default function LakeDetailScreen() {
               if (!url) return null;
               const label = filename.replace(/^Reports_/i, '').replace(/[-_]/g, ' ').replace(/\.pdf$/i, '').replace(/\b(20\d\d)\b/, '($1)').trim();
               return (
-                <Pressable onPress={() => Linking.openURL(url!)}>
+                <Pressable
+                  onPress={() => Linking.openURL(url!)}
+                  accessibilityRole="link"
+                  accessibilityLabel={`Open ${label}`}
+                  accessibilityHint="Opens in browser">
                   <Text style={[text.labelM, { color: colors.walleye2 }]}>{label} ↗</Text>
                 </Pressable>
               );
             })()}
             {state === 'ne' && tab === 'stocking' && (
-              <Pressable onPress={() => Linking.openURL(NE_STOCKING_URL)}>
+              <Pressable
+                onPress={() => Linking.openURL(NE_STOCKING_URL)}
+                accessibilityRole="link"
+                accessibilityLabel="Open NE Fish Stocking Database"
+                accessibilityHint="Opens in browser">
                 <Text style={[text.labelM, { color: colors.walleye2 }]}>NE Fish Stocking Database ↗</Text>
               </Pressable>
             )}
             {state === 'wi' && tab === 'stocking' && (
-              <Pressable onPress={() => Linking.openURL(WI_STOCKING_URL)}>
+              <Pressable
+                onPress={() => Linking.openURL(WI_STOCKING_URL)}
+                accessibilityRole="link"
+                accessibilityLabel="Open WI Stocking Records Search"
+                accessibilityHint="Opens in browser">
                 <Text style={[text.labelM, { color: colors.walleye2 }]}>WI Stocking Records Search ↗</Text>
               </Pressable>
             )}
             {state === 'nd' && tab === 'cpue' && (
-              <Pressable onPress={() => Linking.openURL(ND_SURVEY_URL(lake.id))}>
+              <Pressable
+                onPress={() => Linking.openURL(ND_SURVEY_URL(lake.id))}
+                accessibilityRole="link"
+                accessibilityLabel="Open ND survey report"
+                accessibilityHint="Opens in browser">
                 <Text style={[text.labelM, { color: colors.walleye2 }]}>ND Survey Report ↗</Text>
               </Pressable>
             )}
             {state === 'nd' && tab === 'stocking' && (
-              <Pressable onPress={() => Linking.openURL(ND_STOCKING_URL(lake.id))}>
+              <Pressable
+                onPress={() => Linking.openURL(ND_STOCKING_URL(lake.id))}
+                accessibilityRole="link"
+                accessibilityLabel="Open ND stocking report"
+                accessibilityHint="Opens in browser">
                 <Text style={[text.labelM, { color: colors.walleye2 }]}>ND Stocking Report ↗</Text>
               </Pressable>
             )}
-            <Pressable onPress={() => { setFeedbackText(''); setFeedbackOpen(true); }}>
+            <Pressable
+              onPress={() => { setFeedbackText(''); setFeedbackOpen(true); }}
+              accessibilityRole="button"
+              accessibilityLabel="Report data issue">
               <Text style={[text.labelM, { color: colors.inkSoft }]}>Report data issue</Text>
             </Pressable>
           </View>
@@ -713,7 +756,11 @@ export default function LakeDetailScreen() {
                 <View style={styles.yearPopup}>
                   <View style={styles.yearPopupHeader}>
                     <Text style={[text.dataL, { color: colors.ink }]}>{selectedCpueYear.year}</Text>
-                    <Pressable onPress={() => setSelectedCpueYear(null)} hitSlop={8}>
+                    <Pressable
+                      onPress={() => setSelectedCpueYear(null)}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel="Close year detail">
                       <Text style={[text.labelL, { color: colors.inkSoft }]}>✕</Text>
                     </Pressable>
                   </View>
@@ -769,7 +816,11 @@ export default function LakeDetailScreen() {
                 <View style={styles.yearPopup}>
                   <View style={styles.yearPopupHeader}>
                     <Text style={[text.dataL, { color: colors.ink }]}>{selectedStockYear.year}</Text>
-                    <Pressable onPress={() => setSelectedStockYear(null)} hitSlop={8}>
+                    <Pressable
+                      onPress={() => setSelectedStockYear(null)}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel="Close year detail">
                       <Text style={[text.labelL, { color: colors.inkSoft }]}>✕</Text>
                     </Pressable>
                   </View>
