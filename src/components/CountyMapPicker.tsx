@@ -1,12 +1,14 @@
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import {
   View, Text, Pressable, StyleSheet,
   Modal, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import Svg, { Path, Text as SvgText } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
+import { useSvgPanZoom, useCommittedMirror, assertWorklet } from '../hooks/useSvgPanZoom';
 import { useWindowDimensions } from 'react-native';
 import { SD_COUNTIES, SD_VIEWBOX } from '../data/sdCountyPaths';
 import { MN_COUNTIES, MN_VIEWBOX } from '../data/mnCountyPaths';
@@ -57,27 +59,36 @@ function MapCountyPicker({ visible, state, selected, onConfirm, onClose }: Props
   const mapVBRef = useRef<VB>(defaultVB);
   const isZoomed = mapVB.w < vbW * 0.99;
 
-  useEffect(() => {
+  // Pan/pinch run as UI-thread worklets mutating `live`; React re-renders the
+  // SVG once per gesture, at finger-up (commitVB). Between updates the
+  // rendered (committed) SVG is repositioned by a plain View transform.
+  const commitVB = useCallback((vb: VB) => {
+    mapVBRef.current = vb;   // synchronously, so a fast follow-up tap hit-tests fresh bounds
+    setMapVB(vb);
+  }, []);
+  const { live, committed, panActive, pinchActive, dirty, maybeCommit, syncTo } =
+    useSvgPanZoom<VB>(defaultVB, commitVB);
+  useCommittedMirror(committed, mapVB);
+
+  const resetView = useCallback(() => {
+    syncTo(defaultVB);
     mapVBRef.current = defaultVB;
     setMapVB(defaultVB);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultVB]);
 
+  useEffect(() => {
+    resetView();
+  }, [resetView]);
+
+  // Refs feeding the (JS-thread) tap handler.
   const mapWRef = useRef(mapW);
   const mapHRef = useRef(mapH);
-  const vbWRef = useRef(vbW);
-  const vbHRef = useRef(vbH);
   mapWRef.current = mapW;
   mapHRef.current = mapH;
-  vbWRef.current = vbW;
-  vbHRef.current = vbH;
 
   const countiesRef = useRef(counties);
   countiesRef.current = counties;
-
-  const pinchActiveRef = useRef(false);
-  const prevTransXRef = useRef(0);
-  const prevTransYRef = useRef(0);
-  const prevScaleRef = useRef(1);
 
   const tapGesture = useMemo(() => Gesture.Tap()
     .runOnJS(true)
@@ -105,64 +116,90 @@ function MapCountyPicker({ visible, state, selected, onConfirm, onClose }: Props
   []);
 
   const panGesture = useMemo(() => Gesture.Pan()
-    .runOnJS(true)
     .minDistance(0)
-    .onBegin(() => {
-      prevTransXRef.current = 0;
-      prevTransYRef.current = 0;
+    .onStart(() => {
+      'worklet';
+      assertWorklet('CountyMapPicker pan');
+      panActive.value = true;
     })
-    .onUpdate((e) => {
-      if (pinchActiveRef.current) return;
-      const pdx = e.translationX - prevTransXRef.current;
-      const pdy = e.translationY - prevTransYRef.current;
-      prevTransXRef.current = e.translationX;
-      prevTransYRef.current = e.translationY;
-      const vb = mapVBRef.current;
-      const mW = mapWRef.current;
-      const mH = mapHRef.current;
-      const vW = vbWRef.current;
-      const vH = vbHRef.current;
-      let newX = vb.x - (pdx / mW) * vb.w;
-      let newY = vb.y - (pdy / mH) * vb.h;
-      newX = Math.max(-(vb.w * 0.1), Math.min(vW - vb.w * 0.9, newX));
-      newY = Math.max(-(vb.h * 0.1), Math.min(vH - vb.h * 0.9, newY));
-      const newVB = { ...vb, x: newX, y: newY };
-      mapVBRef.current = newVB;
-      setMapVB(newVB);
+    .onEnd(() => {
+      'worklet';
+      panActive.value = false;
+      maybeCommit();
+    })
+    .onChange((e) => {
+      'worklet';
+      // Two or more fingers down = the pinch owns the motion. Decided from the
+      // event itself, NOT the pinchActive flag: on Android a pinch's end event
+      // can be dropped in Race/Simultaneous configs, and a stuck flag would
+      // silently kill panning for the rest of the session.
+      if (e.numberOfPointers > 1) return;
+      const vb = live.value;
+      let newX = vb.x - (e.changeX / mapW) * vb.w;
+      let newY = vb.y - (e.changeY / mapH) * vb.h;
+      newX = Math.max(-(vb.w * 0.1), Math.min(vbW - vb.w * 0.9, newX));
+      newY = Math.max(-(vb.h * 0.1), Math.min(vbH - vb.h * 0.9, newY));
+      live.value = { x: newX, y: newY, w: vb.w, h: vb.h };
+      dirty.value = true;
+    })
+    .onFinalize(() => {
+      'worklet';
+      panActive.value = false;
+      maybeCommit();
     }),
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  []);
+  [mapW, mapH, vbW, vbH]);
 
   const pinchGesture = useMemo(() => Gesture.Pinch()
-    .runOnJS(true)
-    .onBegin(() => {
-      pinchActiveRef.current = true;
-      prevScaleRef.current = 1;
+    .onStart(() => {
+      'worklet';
+      pinchActive.value = true;
     })
-    .onUpdate((e) => {
-      const incrementalScale = prevScaleRef.current / e.scale;
-      prevScaleRef.current = e.scale;
-      const vb = mapVBRef.current;
-      const mW = mapWRef.current;
-      const mH = mapHRef.current;
-      const vW = vbWRef.current;
-      const vH = vbHRef.current;
-      const newW = Math.max(vW / 10, Math.min(vW, vb.w * incrementalScale));
-      const newH = Math.max(vH / 10, Math.min(vH, vb.h * incrementalScale));
-      const pivotVBx = vb.x + (e.focalX / mW) * vb.w;
-      const pivotVBy = vb.y + (e.focalY / mH) * vb.h;
-      let newX = pivotVBx - (e.focalX / mW) * newW;
-      let newY = pivotVBy - (e.focalY / mH) * newH;
-      newX = Math.max(-(newW * 0.1), Math.min(vW - newW * 0.9, newX));
-      newY = Math.max(-(newH * 0.1), Math.min(vH - newH * 0.9, newY));
-      const newVB = { x: newX, y: newY, w: newW, h: newH };
-      mapVBRef.current = newVB;
-      setMapVB(newVB);
+    // Reset in BOTH onEnd and onFinalize (the legacy code did too) — Android
+    // has been seen dropping one of them; pinchActive now only coordinates
+    // the end-of-gesture commit, so a duplicate reset is harmless.
+    .onEnd(() => {
+      'worklet';
+      pinchActive.value = false;
+      maybeCommit();
     })
-    .onEnd(() => { pinchActiveRef.current = false; })
-    .onFinalize(() => { pinchActiveRef.current = false; }),
+    .onChange((e) => {
+      'worklet';
+      const incrementalScale = 1 / e.scaleChange;
+      const vb = live.value;
+      const newW = Math.max(vbW / 10, Math.min(vbW, vb.w * incrementalScale));
+      const newH = Math.max(vbH / 10, Math.min(vbH, vb.h * incrementalScale));
+      const pivotVBx = vb.x + (e.focalX / mapW) * vb.w;
+      const pivotVBy = vb.y + (e.focalY / mapH) * vb.h;
+      let newX = pivotVBx - (e.focalX / mapW) * newW;
+      let newY = pivotVBy - (e.focalY / mapH) * newH;
+      newX = Math.max(-(newW * 0.1), Math.min(vbW - newW * 0.9, newX));
+      newY = Math.max(-(newH * 0.1), Math.min(vbH - newH * 0.9, newY));
+      live.value = { x: newX, y: newY, w: newW, h: newH };
+      dirty.value = true;
+    })
+    .onFinalize(() => {
+      'worklet';
+      pinchActive.value = false;
+      maybeCommit();
+    }),
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  []);
+  [mapW, mapH, vbW, vbH]);
+
+  // Repositions the committed render to match `live` between commits.
+  // Identity when live === committed. Uniform scale — the clamps above
+  // preserve the viewBox aspect ratio.
+  const animatedStyle = useAnimatedStyle(() => {
+    const c = committed.value;
+    const l = live.value;
+    return {
+      transform: [
+        { translateX: ((c.x - l.x) / l.w) * mapW },
+        { translateY: ((c.y - l.y) / l.h) * mapH },
+        { scale: c.w / l.w },
+      ],
+    };
+  });
 
   const gesture = useMemo(
     () => Gesture.Race(tapGesture, Gesture.Simultaneous(panGesture, pinchGesture)),
@@ -171,8 +208,7 @@ function MapCountyPicker({ visible, state, selected, onConfirm, onClose }: Props
 
   const handleShow = () => {
     setDraft(selected);
-    mapVBRef.current = defaultVB;
-    setMapVB(defaultVB);
+    resetView();
   };
 
   const countyNames = Object.keys(counties).sort();
@@ -207,14 +243,18 @@ function MapCountyPicker({ visible, state, selected, onConfirm, onClose }: Props
               Tap to select · drag to pan · pinch to zoom
             </Text>
             {isZoomed && (
-              <Pressable onPress={() => { mapVBRef.current = defaultVB; setMapVB(defaultVB); }}>
+              <Pressable onPress={resetView}>
                 <Text style={[text.labelM, { color: colors.walleye2 }]}>Reset zoom</Text>
               </Pressable>
             )}
           </View>
 
+          {/* GestureDetector must stay on this static container — tap and
+              pinch-focal coordinates are relative to the attached view, and
+              the inner Animated.View moves mid-gesture. */}
           <GestureDetector gesture={gesture}>
             <View style={[styles.mapContainer, { width: mapW, height: mapH }]}>
+              <Animated.View style={[styles.mapTransform, animatedStyle]}>
               <Svg width={mapW} height={mapH} viewBox={dynamicViewBox}>
                 {countyNames.map(name => {
                   const { d } = counties[name];
@@ -244,6 +284,7 @@ function MapCountyPicker({ visible, state, selected, onConfirm, onClose }: Props
                   );
                 })}
               </Svg>
+              </Animated.View>
             </View>
           </GestureDetector>
 
@@ -317,6 +358,11 @@ const styles = StyleSheet.create({
     marginVertical: space.md,
     borderWidth: hairline,
     borderColor: colors.ink,
+    overflow: 'hidden',
+  },
+  // top-left origin: the live-vs-committed transform math assumes it.
+  mapTransform: {
+    transformOrigin: 'top left',
   },
   chips: {
     flexDirection: 'row',

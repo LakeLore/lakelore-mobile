@@ -1,7 +1,9 @@
-import React, { useMemo, useState, useRef, useCallback } from 'react';
+import React, { useMemo, useState, useRef, useCallback, useEffect } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import Svg, { Circle, Line, Text as SvgText, Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
+import { useSvgPanZoom, useCommittedMirror, assertWorklet } from '../hooks/useSvgPanZoom';
 import { Result, StateKey, STATE_CONFIGS, SD_SPECIES_NAMES, MN_SPECIES_NAMES, ND_SPECIES_NAMES } from '../types';
 import { colors, text, space, hairline, fonts } from '../lakelore-rn/theme';
 
@@ -85,13 +87,10 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
   const [selectedDot, setSelectedDot] = useState<DotData|null>(null);
   const [view, setView] = useState<ViewBounds|null>(null);
 
-  // Refs for gesture state (avoids closure stale-value issues)
+  // Refs feeding the (JS-thread) tap handler — pan/pinch state lives in
+  // shared values via useSvgPanZoom instead.
   const viewRef = useRef<ViewBounds|null>(null);
   const dataBoundsRef = useRef<ViewBounds>({ xMin: 0, xMax: 1, yMin: 0, yMax: 1 });
-  const pinchActiveRef = useRef(false);
-  const prevTransXRef = useRef(0);
-  const prevTransYRef = useRef(0);
-  const prevScaleRef = useRef(1);
   const plotWRef = useRef(plotW);
   const plotHRef = useRef(plotH);
   plotWRef.current = plotW;
@@ -229,15 +228,27 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
   selectedDotRef.current = selectedDot;
   dataBoundsRef.current = dataBounds;
 
-  // Reset zoom on new results
-  const prevResults = useRef(results);
-  if (prevResults.current !== results) {
-    prevResults.current = results;
-    viewRef.current = null;
-    // Don't call setView here — just update the ref, the render will use dataBounds
-  }
-
   const activeView = view ?? dataBounds;
+
+  // Pan/pinch run as UI-thread worklets mutating `live`; React re-renders the
+  // dots once per gesture, at finger-up (commitView). Between updates the
+  // rendered (committed) dots layer is repositioned by a plain View transform.
+  const commitView = useCallback((v: ViewBounds) => {
+    viewRef.current = v;   // synchronously, so a fast follow-up tap hit-tests fresh bounds
+    setView(v);
+  }, []);
+  const { live, committed, panActive, pinchActive, dirty, maybeCommit, syncTo } =
+    useSvgPanZoom<ViewBounds>(dataBounds, commitView);
+  useCommittedMirror(committed, activeView);
+
+  // Reset zoom on new results or state switch (after the mirror effect
+  // above, so the committed shared value ends the effect pass at dataBounds).
+  useEffect(() => {
+    viewRef.current = null;
+    setView(null);
+    syncTo(dataBoundsRef.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [results, state]);
 
   const toPixel = useCallback((dx: number, dy: number) => ({
     px: PAD_L + ((dx - activeView.xMin) / (activeView.xMax - activeView.xMin)) * plotW,
@@ -286,55 +297,89 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
   // touch moves more than 2px in any direction — wins the race against the
   // outer ScrollView's vertical-scroll recognizer.
   const panGesture = useMemo(() => Gesture.Pan()
-    .runOnJS(true)
     .minDistance(0)
     .activeOffsetX([-2, 2])
     .activeOffsetY([-2, 2])
-    .onBegin(() => {
-      prevTransXRef.current = 0;
-      prevTransYRef.current = 0;
+    .onStart(() => {
+      'worklet';
+      assertWorklet('ScatterPlot pan');
+      panActive.value = true;
     })
-    .onUpdate((e) => {
-      if (pinchActiveRef.current) return;
-      const pdx = e.translationX - prevTransXRef.current;
-      const pdy = e.translationY - prevTransYRef.current;
-      prevTransXRef.current = e.translationX;
-      prevTransYRef.current = e.translationY;
-      const cur = viewRef.current ?? dataBoundsRef.current;
-      const dDataX = -(pdx / plotWRef.current) * (cur.xMax - cur.xMin);
-      const dDataY = (pdy / plotHRef.current) * (cur.yMax - cur.yMin);
-      const newView = {
+    .onEnd(() => {
+      'worklet';
+      panActive.value = false;
+      maybeCommit();
+    })
+    .onChange((e) => {
+      'worklet';
+      // Two or more fingers down = the pinch owns the motion. Decided from the
+      // event itself, NOT the pinchActive flag — a dropped pinch end-event on
+      // Android would latch the flag and silently kill panning (see
+      // CountyMapPicker for the same fix).
+      if (e.numberOfPointers > 1) return;
+      const cur = live.value;
+      const dDataX = -(e.changeX / plotW) * (cur.xMax - cur.xMin);
+      const dDataY = (e.changeY / plotH) * (cur.yMax - cur.yMin);
+      live.value = {
         xMin: cur.xMin + dDataX, xMax: cur.xMax + dDataX,
         yMin: Math.max(0, cur.yMin + dDataY), yMax: cur.yMax + dDataY,
       };
-      viewRef.current = newView;
-      setView(newView);
+      dirty.value = true;
+    })
+    .onFinalize(() => {
+      'worklet';
+      panActive.value = false;
+      maybeCommit();
     }),
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  []);
+  [plotW, plotH]);
 
   const pinchGesture = useMemo(() => Gesture.Pinch()
-    .runOnJS(true)
-    .onBegin(() => {
-      pinchActiveRef.current = true;
-      prevScaleRef.current = 1;
+    .onStart(() => {
+      'worklet';
+      pinchActive.value = true;
     })
-    .onUpdate((e) => {
-      const incrementalScale = prevScaleRef.current / e.scale;
-      prevScaleRef.current = e.scale;
-      const cur = viewRef.current ?? dataBoundsRef.current;
+    .onEnd(() => {
+      'worklet';
+      pinchActive.value = false;
+      maybeCommit();
+    })
+    .onChange((e) => {
+      'worklet';
+      const incrementalScale = 1 / e.scaleChange;
+      const cur = live.value;
       const cx = (cur.xMin + cur.xMax) / 2;
       const cy = (cur.yMin + cur.yMax) / 2;
       const hw = (cur.xMax - cur.xMin) / 2 * incrementalScale;
       const hh = (cur.yMax - cur.yMin) / 2 * incrementalScale;
-      const newView = { xMin: cx-hw, xMax: cx+hw, yMin: Math.max(0, cy-hh), yMax: cy+hh };
-      viewRef.current = newView;
-      setView(newView);
+      live.value = { xMin: cx-hw, xMax: cx+hw, yMin: Math.max(0, cy-hh), yMax: cy+hh };
+      dirty.value = true;
     })
-    .onEnd(() => { pinchActiveRef.current = false; })
-    .onFinalize(() => { pinchActiveRef.current = false; }),
+    .onFinalize(() => {
+      'worklet';
+      pinchActive.value = false;
+      maybeCommit();
+    }),
   // eslint-disable-next-line react-hooks/exhaustive-deps
   []);
+
+  // Repositions the committed dots layer to match `live` between commits.
+  // Identity when live === committed. scaleX/scaleY are separate because the
+  // yMin >= 0 clamp lets the y-range change independently of x.
+  const dotsStyle = useAnimatedStyle(() => {
+    const c = committed.value;
+    const l = live.value;
+    const lW = l.xMax - l.xMin, lH = l.yMax - l.yMin;
+    const cW = c.xMax - c.xMin, cH = c.yMax - c.yMin;
+    return {
+      transform: [
+        { translateX: ((c.xMin - l.xMin) / lW) * plotW },
+        { translateY: plotH * (1 - (c.yMin - l.yMin) / lH - cH / lH) },
+        { scaleX: cW / lW },
+        { scaleY: cH / lH },
+      ],
+    };
+  });
 
   const gesture = useMemo(
     () => Gesture.Race(tapGesture, Gesture.Simultaneous(panGesture, pinchGesture)),
@@ -349,9 +394,22 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
     );
   }
 
-  const inView = (p: DotData) =>
-    p.x >= activeView.xMin && p.x <= activeView.xMax &&
-    p.y >= activeView.yMin && p.y <= activeView.yMax;
+  // Dot positions in plot-local pixels (origin at the plot area's top-left)
+  // so the dots layer can be transformed as a unit during gestures. The dots
+  // canvas is oversized by one full window on each side (an Svg clips at its
+  // own bounds, so an exactly-fitting canvas would slide blank edges into
+  // view mid-pan) — dots up to a window away are pre-rendered and slide in;
+  // anything further pops in at the gesture-end commit. The window filter
+  // also caps the native node count when zoomed into a dense result set.
+  const xRange = activeView.xMax - activeView.xMin;
+  const yRange = activeView.yMax - activeView.yMin;
+  const inDrawWindow = (p: DotData) =>
+    p.x >= activeView.xMin - xRange && p.x <= activeView.xMax + xRange &&
+    p.y >= activeView.yMin - yRange && p.y <= activeView.yMax + yRange;
+  const toPlotPixel = (dx: number, dy: number) => ({
+    px: ((dx - activeView.xMin) / xRange) * plotW,
+    py: (1 - (dy - activeView.yMin) / yRange) * plotH,
+  });
 
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: space.xxl }}>
@@ -403,27 +461,40 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
             textAnchor="middle" fill={colors.inkSoft}
             rotation="-90" originX={10} originY={PAD_T+plotH/2}>{yLabel}</SvgText>
 
-          {points.filter(inView).map((p, i) => {
-            const { px, py } = toPixel(p.x, p.y);
-            const isSel = selectedDot?.lake_id===p.lake_id && selectedDot?.year===p.year;
-            // No-stocking dots get rendered hollow with a dark outline so they
-            // pop against the paper2 chart fill — the previous paper3 fill on
-            // a paper2 background was nearly invisible.
-            const noData = p.stocked == null;
-            return (
-              <Circle key={i} cx={px} cy={py} r={isSel?7:5}
-                fill={noData ? 'none' : stockedColor(p.stocked, sortedStocked)}
-                fillOpacity={noData ? 1 : 0.85}
-                stroke={isSel ? colors.ink : noData ? colors.inkSoft : colors.paper}
-                strokeWidth={isSel ? 1.5 : noData ? 1.2 : 0.5} />
-            );
-          })}
           </Svg>
+
+          {/* Dots layer: clipped to the plot area, repositioned by dotsStyle
+              during gestures while the frame/ticks above stay frozen. */}
+          <View style={[styles.plotClip, { left: PAD_L, top: PAD_T, width: plotW, height: plotH }]}>
+            <Animated.View style={[styles.plotTransform, { width: plotW, height: plotH }, dotsStyle]}>
+              <Svg width={plotW * 3} height={plotH * 3}
+                style={{ position: 'absolute', left: -plotW, top: -plotH }}>
+                {points.map((p, i) => {
+                  if (!inDrawWindow(p)) return null;
+                  // +plotW/+plotH shifts plot-local coords into the oversized
+                  // canvas, whose origin sits one window up-and-left.
+                  const { px, py } = toPlotPixel(p.x, p.y);
+                  const isSel = selectedDot?.lake_id===p.lake_id && selectedDot?.year===p.year;
+                  // No-stocking dots get rendered hollow with a dark outline so they
+                  // pop against the paper2 chart fill — the previous paper3 fill on
+                  // a paper2 background was nearly invisible.
+                  const noData = p.stocked == null;
+                  return (
+                    <Circle key={i} cx={px + plotW} cy={py + plotH} r={isSel?7:5}
+                      fill={noData ? 'none' : stockedColor(p.stocked, sortedStocked)}
+                      fillOpacity={noData ? 1 : 0.85}
+                      stroke={isSel ? colors.ink : noData ? colors.inkSoft : colors.paper}
+                      strokeWidth={isSel ? 1.5 : noData ? 1.2 : 0.5} />
+                  );
+                })}
+              </Svg>
+            </Animated.View>
+          </View>
         </View>
       </GestureDetector>
 
       {view && (
-        <Pressable style={styles.resetZoom} onPress={() => { viewRef.current=null; setView(null); }}>
+        <Pressable style={styles.resetZoom} onPress={() => { viewRef.current=null; setView(null); syncTo(dataBounds); }}>
           <Text style={[text.labelM, { color: colors.ink }]}>Reset zoom</Text>
         </Pressable>
       )}
@@ -502,6 +573,9 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   chartWrap: { alignSelf: 'center' },
+  plotClip: { position: 'absolute', overflow: 'hidden' },
+  // top-left origin: the live-vs-committed transform math assumes it.
+  plotTransform: { transformOrigin: 'top left' },
   empty: { height: 200, alignItems: 'center', justifyContent: 'center' },
   resetZoom: {
     alignSelf: 'flex-end',
