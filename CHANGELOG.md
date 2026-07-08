@@ -9,7 +9,20 @@ The version numbers below match `app.json` `version`, which is also the App Stor
 
 ---
 
-## [1.0.0] — Unreleased
+## [1.0.1] — Unreleased
+
+Performance release: pinch-zoom and drag-to-pan on the county selector and the
+scatterplot now run on the UI thread (Reanimated worklets) — smooth on Android,
+where the old per-frame JS re-render dropped frames badly enough to block the
+Play launch. Also fixes a pan-after-zoom deadlock on Android (latched pinch
+flag), verified on-device.
+
+Store release notes:
+
+> Smoother maps and charts: pinch-zoom and drag are now buttery on every
+> device, and fixed a bug where panning could stop working after zooming.
+
+## [1.0.0] — Released (App Store)
 
 First public release. Five-state lake-fish atlas (MN free, plus ND / SD / NE / IA via LakeLore All-States annual subscription). iPhone-only for v1; Android phone supported.
 
