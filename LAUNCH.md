@@ -47,6 +47,13 @@ Last reviewed: 2026-05-08.
 
 ## Remaining blockers, in order
 
+> **2026-07-08 status:** the undocumented Android blocker (county-map + scatterplot
+> zoom/drag jank) is FIXED (UI-thread worklet gestures, device-verified) and
+> **v1.0.1 is uploaded to both stores**: TestFlight (processing; regression pass
+> pending) and the Play **internal testing track** (draft). Apple closed the 1.0.0
+> train, hence the version bump — runtimeVersion is now 1.0.1 (fresh OTA pipeline).
+> Remaining below: sandbox purchase test, screenshots, then promote/submit.
+
 1. **Sandbox-test a purchase** end-to-end on at least one platform before submission:
    - **iOS**: App Store Connect → Users and Access → Sandbox Testers → create a sandbox Apple ID. TestFlight build, sign out of real Apple ID on simulator/device, sign in with sandbox account, tap a non-MN state → paywall → Subscribe.
    - **Android**: Play Console → Setup → License testing → add yourself as a tester. Internal Testing track build, install on a real device, tap a non-MN state → paywall → Subscribe.
@@ -60,7 +67,7 @@ Items 1 and 2 can be done in any order. Item 3 is the final step; the iOS subscr
 - **Sentry source-map upload — still failing** with "Project not found" against `lakelore/lakelore-mobile`, even though the `SENTRY_AUTH_TOKEN` is set as an EAS project secret. Working around it with `SENTRY_ALLOW_FAILURE=true` in `eas.json` production profile so source-map upload is attempted but doesn't tank the build; symbolicated stack traces remain absent until the Sentry org/project/token access is sorted out. (Revisit when launch dust settles.)
 - **`expo-updates` (OTA) wired** as of 2026-05-13 — `production` channel, `runtimeVersion.policy: appVersion`. First production OTA published the same day (update group `bfed3391`). See `~/lake-fish-mobile/CLAUDE.md` "OTA updates" section for usage and `~/RUNBOOK.md §12` for rollback.
 - **RC dashboard "Credentials need attention" warning** on the Play Store credential block. Cosmetic — verified directly against Google's API that all permissions are correct and Google accepts the credentials. Worth filing as an RC support ticket.
-- **Offsite DB backups** (the only remaining ⚠️ item) — needs a Cloudflare R2 / Backblaze B2 account first.
+- ~~**Offsite DB backups**~~ ✅ DONE 2026-07-07 — Backblaze B2 (`lakelore-backups`) + git (`LakeLore/lakelore-data`), automated via weekly launchd + every `refresh.sh`. See `~/APP_OPS.md` + `~/RUNBOOK.md §9`.
 
 ---
 
