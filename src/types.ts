@@ -184,7 +184,9 @@ export interface FilterOptions {
 
 export interface Result {
   lake_id: number | string;
-  lake_name: string;
+  // null when the server redacted the name (paid-state preview for
+  // non-subscribers) — render a blurred placeholder, never a real name.
+  lake_name: string | null;
   county: string;
   area_acres: number | null;
   survey_id: number | string;
@@ -228,6 +230,8 @@ export interface Result {
 
 export interface ResultsResponse {
   total: number;
+  // true when the server served a paid-state preview (lake names redacted).
+  preview?: boolean;
   results: Result[];
 }
 

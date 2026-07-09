@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StateKey, STATE_CONFIGS } from '../../types';
-import { ACTIVE_STATES } from '../../activeStates';
+import { ACTIVE_STATES, isFreeState } from '../../activeStates';
 import { colors, text, space, hairline } from '../../lakelore-rn/theme';
 import { PaperHeader, LockIcon } from '../../lakelore-rn/components';
 
@@ -15,12 +15,11 @@ type Props = {
   hasAllStates: boolean;
   stripes: Record<StateKey, string>;
   onSelect: (s: StateKey) => void;
-  onLocked: (s: StateKey) => void;
   onClose: () => void;
 };
 
 export function StatePickerModal({
-  visible, hasAllStates, stripes, onSelect, onLocked, onClose,
+  visible, hasAllStates, stripes, onSelect, onClose,
 }: Props) {
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
@@ -37,11 +36,14 @@ export function StatePickerModal({
         <ScrollView>
           {ACTIVE_STATES.map(s => {
             const cfg = STATE_CONFIGS[s];
-            const locked = s !== 'mn' && !hasAllStates;
+            // Paid states without entitlement still open — in preview mode
+            // (blurred lake names, paywall on lake taps). The chip below just
+            // marks them as subscription states.
+            const locked = !isFreeState(s) && !hasAllStates;
             return (
               <Pressable
                 key={s}
-                onPress={() => (locked ? onLocked(s) : onSelect(s))}
+                onPress={() => onSelect(s)}
                 style={({ pressed }) => [
                   styles.stateOption,
                   { backgroundColor: pressed ? colors.paper2 : colors.paper },
@@ -54,7 +56,7 @@ export function StatePickerModal({
                     {locked && (
                       <View style={styles.lockRow}>
                         <LockIcon size={10} />
-                        <Text style={[text.labelS, { color: colors.walleye2 }]}>ALL-STATES</Text>
+                        <Text style={[text.labelS, { color: colors.walleye2 }]}>PREVIEW · ALL-STATES</Text>
                       </View>
                     )}
                   </View>

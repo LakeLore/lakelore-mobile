@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Result, StateKey, STATE_CONFIGS } from '../types';
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
 import { StatPill } from '../lakelore-rn/components';
+import BlurredLakeName from './BlurredLakeName';
 
 interface Props {
   result: Result;
@@ -162,9 +163,13 @@ export default function ResultRow({ result: r, state, sortBy, onPress }: Props) 
       { backgroundColor: pressed ? colors.paper2 : colors.paper },
     ]}>
       <View style={{ flex: 1 }}>
-        <Text style={[text.displayM, { color: colors.ink }]} numberOfLines={1}>
-          {r.lake_name}
-        </Text>
+        {r.lake_name != null ? (
+          <Text style={[text.displayM, { color: colors.ink }]} numberOfLines={1}>
+            {r.lake_name}
+          </Text>
+        ) : (
+          <BlurredLakeName seed={r.lake_id} style={text.displayM} />
+        )}
         <Text style={[text.dataS, { color: colors.inkSoft, marginTop: 3 }]} numberOfLines={1}>
           {location}
         </Text>

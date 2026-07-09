@@ -13,7 +13,7 @@ import {
   FilterState, FilterOptions, Result, ResultsResponse, StateKey,
   defaultFilters, STATE_CONFIGS, SD_SPECIES_NAMES, MN_SPECIES_NAMES, ND_SPECIES_NAMES, WI_SPECIES_NAMES,
 } from '../types';
-import { ACTIVE_STATES } from '../activeStates';
+import { isFreeState } from '../activeStates';
 import { fetchFilters, fetchResults, fetchAllResults, DbStatus, fetchStatus, SubscriptionRequiredError } from '../api';
 import PaywallScreen from './PaywallScreen';
 import AboutScreen from './AboutScreen';
@@ -28,7 +28,7 @@ import {
   colors, text, space, hairline,
 } from '../lakelore-rn/theme';
 import {
-  PaperHeader, Chip, Toggle, Segmented, PrimaryButton,
+  PaperHeader, Chip, Toggle, Segmented, PrimaryButton, LockIcon,
 } from '../lakelore-rn/components';
 import { AdvancedFiltersModal } from './search/AdvancedFiltersModal';
 import { SortPickerModal } from './search/SortPickerModal';
@@ -95,8 +95,19 @@ export default function SearchScreen() {
   const [showSort, setShowSort] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [paywallFor, setPaywallFor] = useState<StateKey | null>(null);
-  const { hasAllStates } = useEntitlement();
+  const { hasAllStates, loading: entitlementLoading } = useEntitlement();
   const { toast } = useToast();
+
+  // Paid-state PREVIEW mode: non-subscribers can search, filter, and see
+  // every metric, but the server redacts lake names from /results (rows
+  // render a blurred placeholder) and any lake-detail tap opens the paywall
+  // instead of navigating. /lake/:id stays 402-gated server-side.
+  //
+  // Gated on entitlementLoading so a subscriber cold-launching doesn't get a
+  // banner flash / paywall tap while the RC round-trip resolves. If the
+  // client guesses wrong the server still decides: names come back redacted
+  // (rows blur via lake_name === null) and /lake/:id 402s into the paywall.
+  const preview = !entitlementLoading && !isFreeState(state) && !hasAllStates;
 
   const prevStateRef = useRef(state);
   const sessionCache = useRef<Partial<Record<StateKey, SearchSession>>>({});
@@ -463,6 +474,24 @@ export default function SearchScreen() {
         </Pressable>
       </View>
 
+      {/* Preview banner — paid state, no subscription. Explains the blurred
+          names and offers the unlock path. */}
+      {preview && (
+        <View style={styles.previewBanner}>
+          <LockIcon size={10} color={colors.paper} />
+          <Text style={[text.labelM, { color: colors.paper, flex: 1 }]} numberOfLines={2}>
+            Preview — lake names hidden
+          </Text>
+          <Pressable
+            onPress={() => setPaywallFor(state)}
+            accessibilityRole="button"
+            accessibilityLabel="Unlock lake names with the All-States subscription"
+            style={styles.unlockBtn}>
+            <Text style={[text.labelM, { color: colors.ink }]}>Unlock</Text>
+          </Pressable>
+        </View>
+      )}
+
       <AboutScreen visible={showAbout} state={state} onClose={() => setShowAbout(false)} />
 
       {/* Subscription gate: shown when a paid-state API call returns 402. */}
@@ -548,12 +577,18 @@ export default function SearchScreen() {
               result={item}
               state={state}
               sortBy={filters.sortBy}
-              onPress={() => navigation.navigate('LakeDetail', {
-                lakeId: item.lake_id,
-                lakeName: item.lake_name,
-                species: filters.species,
-                state,
-              })}
+              onPress={() => {
+                if (preview) {
+                  setPaywallFor(state);
+                  return;
+                }
+                navigation.navigate('LakeDetail', {
+                  lakeId: item.lake_id,
+                  lakeName: item.lake_name ?? '',
+                  species: filters.species,
+                  state,
+                });
+              }}
             />
           )}
           onEndReached={handleLoadMore}
@@ -572,9 +607,15 @@ export default function SearchScreen() {
         <ScatterPlot
           results={scatterResults}
           state={state}
-          onLakePress={(lakeId, lakeName) => navigation.navigate('LakeDetail', {
-            lakeId, lakeName, species: filters.species, state,
-          })}
+          onLakePress={(lakeId, lakeName) => {
+            if (preview) {
+              setPaywallFor(state);
+              return;
+            }
+            navigation.navigate('LakeDetail', {
+              lakeId, lakeName, species: filters.species, state,
+            });
+          }}
         />
       )}
 
@@ -652,20 +693,31 @@ export default function SearchScreen() {
         hasAllStates={hasAllStates}
         stripes={STATE_STRIPES}
         onSelect={s => { setState(s); setShowStatePicker(false); }}
-        onLocked={s => { setShowStatePicker(false); setPaywallFor(s); }}
         onClose={() => setShowStatePicker(false)}
       />
 
-      {/* Paywall — opens when a free user taps a locked state in the picker */}
+      {/* Paywall — opens from the preview banner or a lake-detail tap while
+          previewing a paid state. */}
       <PaywallScreen
         visible={paywallFor != null}
         triggeredFrom={paywallFor ?? undefined}
         onClose={() => setPaywallFor(null)}
         onPurchased={() => {
-          if (paywallFor) {
-            setState(paywallFor);
-            setPaywallFor(null);
+          const target = paywallFor;
+          setPaywallFor(null);
+          // Every cached session was fetched in preview mode (redacted
+          // names) — drop them all so each state re-fetches unredacted.
+          sessionCache.current = {};
+          if (target && target !== state) {
+            setState(target);
+            return;
           }
+          // Same state: re-run the current search so blurred rows are
+          // replaced with real names. PaywallScreen primes the server's
+          // entitlement cache before onPurchased fires, so this fetch
+          // already sees the subscription.
+          loadStateOptions(state);
+          if (searched) handleSearch(0);
         }}
       />
     </SafeAreaView>
@@ -735,6 +787,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: space.xl,
     paddingVertical: space.md,
+  },
+
+  previewBanner: {
+    backgroundColor: colors.ink,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.sm,
+    marginHorizontal: space.xl,
+    marginTop: space.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+  },
+  unlockBtn: {
+    backgroundColor: colors.walleye,
+    paddingHorizontal: space.lg,
+    paddingVertical: 5,
   },
 
   errorBanner: {

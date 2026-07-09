@@ -7,11 +7,10 @@ import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
 import { useAppState } from '../StateContext';
 import { StateKey } from '../types';
-import { ACTIVE_STATES } from '../activeStates';
+import { ACTIVE_STATES, isFreeState } from '../activeStates';
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
 import { LockIcon } from '../lakelore-rn/components';
 import { useEntitlement } from '../useEntitlement';
-import PaywallScreen from './PaywallScreen';
 import AboutScreen from './AboutScreen';
 
 interface Props {
@@ -33,35 +32,19 @@ const ALL_STATE_ROWS: { key: StateKey; name: string; agency: string; stripe: str
 ];
 const STATE_ROWS = ALL_STATE_ROWS.filter(s => ACTIVE_STATES.includes(s.key));
 
-// MN is the free tier. Tapping any other state without entitlement opens
-// the paywall instead of entering the state.
-const FREE_STATE: StateKey = 'mn';
-
 export default function StateSelectScreen({ onSelect }: Props) {
   const insets = useSafeAreaInsets();
   const { setState } = useAppState();
   const { hasAllStates, loading: entitlementLoading } = useEntitlement();
-  const [paywallFor, setPaywallFor] = useState<StateKey | null>(null);
   const [showAbout, setShowAbout] = useState(false);
 
+  // Every state is enterable. Paid states without entitlement open in
+  // PREVIEW mode: SearchScreen shows all metrics with lake names blurred
+  // (server-redacted) and routes lake-detail taps to the paywall.
   const pick = (s: StateKey) => {
-    if (s !== FREE_STATE && !hasAllStates) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-      setPaywallFor(s);
-      return;
-    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setState(s);
     onSelect();
-  };
-
-  const handlePurchased = () => {
-    // useEntitlement will pick up the new state via RC listener; just enter
-    // the state the user originally tried to open.
-    if (paywallFor) {
-      setState(paywallFor);
-      onSelect();
-    }
   };
 
   return (
@@ -96,10 +79,10 @@ export default function StateSelectScreen({ onSelect }: Props) {
           // While entitlement is still loading (no cached value on first
           // launch), don't render either chip — avoids the flash of "locked"
           // for users who turn out to be subscribed.
-          const locked = !entitlementLoading && s.key !== FREE_STATE && !hasAllStates;
-          const showFreeChip = !entitlementLoading && s.key === FREE_STATE;
+          const locked = !entitlementLoading && !isFreeState(s.key) && !hasAllStates;
+          const showFreeChip = !entitlementLoading && isFreeState(s.key);
           const a11yState = locked
-            ? `${s.name}, ${s.agency}, locked, requires LakeLore All-States subscription`
+            ? `${s.name}, ${s.agency}, preview — lake names require the LakeLore All-States subscription`
             : showFreeChip
               ? `${s.name}, ${s.agency}, free`
               : `${s.name}, ${s.agency}`;
@@ -122,7 +105,7 @@ export default function StateSelectScreen({ onSelect }: Props) {
                     <View style={styles.lockChip}>
                       <LockIcon size={10} />
                       <Text style={[text.labelS, { color: colors.walleye2 }]}>
-                        ALL-STATES
+                        PREVIEW · ALL-STATES
                       </Text>
                     </View>
                   ) : showFreeChip ? (
@@ -138,13 +121,6 @@ export default function StateSelectScreen({ onSelect }: Props) {
           );
         })}
       </ScrollView>
-
-      <PaywallScreen
-        visible={paywallFor != null}
-        triggeredFrom={paywallFor ?? undefined}
-        onClose={() => setPaywallFor(null)}
-        onPurchased={handlePurchased}
-      />
 
       <AboutScreen visible={showAbout} onClose={() => setShowAbout(false)} />
     </SafeAreaView>

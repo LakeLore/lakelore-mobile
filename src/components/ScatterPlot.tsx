@@ -4,6 +4,7 @@ import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import Svg, { Circle, Line, Text as SvgText, Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { useSvgPanZoom, useCommittedMirror, assertWorklet } from '../hooks/useSvgPanZoom';
+import BlurredLakeName from './BlurredLakeName';
 import { Result, StateKey, STATE_CONFIGS, SD_SPECIES_NAMES, MN_SPECIES_NAMES, ND_SPECIES_NAMES } from '../types';
 import { colors, text, space, hairline, fonts } from '../lakelore-rn/theme';
 
@@ -56,7 +57,9 @@ function niceTicks(min: number, max: number, count = 5): number[] {
 interface DotData {
   x: number; y: number;
   stocked: number|null|undefined;
-  name: string; county: string; species: string; year: number;
+  // name is null when the server redacted it (paid-state preview) — the
+  // popup card renders a blurred placeholder instead.
+  name: string|null; county: string; species: string; year: number;
   lake_id: number|string;
   survey_date?: string;
   area_acres?: number|null;
@@ -510,9 +513,13 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
 
       {selectedDot && (
         <Pressable style={styles.dotCard}
-          onPress={() => { onLakePress(selectedDot.lake_id, selectedDot.name); setSelectedDot(null); }}
+          onPress={() => { onLakePress(selectedDot.lake_id, selectedDot.name ?? ''); setSelectedDot(null); }}
         >
-          <Text style={[text.displayM, { color: colors.ink }]}>{selectedDot.name}</Text>
+          {selectedDot.name != null ? (
+            <Text style={[text.displayM, { color: colors.ink }]}>{selectedDot.name}</Text>
+          ) : (
+            <BlurredLakeName seed={selectedDot.lake_id} style={text.displayM} />
+          )}
           {/* Single-line meta row — County, State, acres, depth, year all
               together. Mirrors the list-row info; wraps only if the screen
               can't fit it on one line. Species stays on its own line below. */}
@@ -538,7 +545,9 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
             {selectedDot.total_catch!=null && <Stat label="Total catch" value={String(selectedDot.total_catch)} />}
             {selectedDot.stocked!=null && <Stat label="Stck Adults / 100AC" value={selectedDot.stocked.toFixed(1)} />}
           </View>
-          <Text style={[text.labelM, { color: colors.walleye2, marginTop: 4 }]}>Tap for lake history →</Text>
+          <Text style={[text.labelM, { color: colors.walleye2, marginTop: 4 }]}>
+            {selectedDot.name != null ? 'Tap for lake history →' : 'Unlock All-States to see this lake →'}
+          </Text>
         </Pressable>
       )}
     </ScrollView>

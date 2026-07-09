@@ -17,10 +17,19 @@ where the old per-frame JS re-render dropped frames badly enough to block the
 Play launch. Also fixes a pan-after-zoom deadlock on Android (latched pinch
 flag), verified on-device.
 
+Build 19 adds **paid-state preview mode**: non-subscribers can now enter ND /
+SD / NE / IA and use everything — county selection, species filters, lake-name
+search, list + scatter views, every metric visible — but lake names render as
+a blurred placeholder (redacted server-side; names never reach the device) and
+any lake-detail tap opens the paywall. Replaces the old hard block at state
+selection. Requires the matching API deploy (2026-07-08, live).
+
 Store release notes:
 
 > Smoother maps and charts: pinch-zoom and drag are now buttery on every
 > device, and fixed a bug where panning could stop working after zooming.
+> New: preview any state before subscribing — browse real survey numbers
+> everywhere; unlock All-States to see which lakes they belong to.
 
 ## [1.0.0] — Released (App Store)
 

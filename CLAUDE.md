@@ -12,7 +12,7 @@ React Native + Expo app shipped to App Store + Google Play. iPhone-only for v1 (
 ## Architecture in 30 seconds
 
 **Three screens** (`src/screens/`):
-1. `StateSelectScreen` — picks one of 5 active states (MN, SD, ND, IA, NE). MN is free; tapping any other opens the paywall for non-subscribers. WI and MI are wired (data, county maps, survival modules, conditionals) but hidden via `src/activeStates.ts` `ACTIVE_STATES`.
+1. `StateSelectScreen` — picks one of 5 active states (MN, SD, ND, IA, NE). MN is free; every other state is enterable by non-subscribers in **preview mode** (see paywall section below). WI and MI are wired (data, county maps, survival modules, conditionals) but hidden via `src/activeStates.ts` `ACTIVE_STATES`.
 2. `SearchScreen` — species + lake-name search, advanced filters, list or scatter view.
 3. `LakeDetailScreen` — CPUE-over-time chart, stocking history with adults/100ac overlay.
 
@@ -24,11 +24,12 @@ Plus three modals: `PaywallScreen`, `AboutScreen` (sources + agency credits, acc
 
 **Data flow**: every screen fetches over HTTP from `lake-fish-api.fly.dev`. No bundled database. The API client (`src/api.ts`) sends an anonymous user UUID (`src/userId.ts`) as `X-User-Id` on every request.
 
-## Paywall plumbing (locked 2026-05-11)
+## Paywall plumbing (locked 2026-05-11; preview mode added 2026-07-08)
 
 - **Free**: MN. **Paid**: ND, SD, NE, IA via `LakeLore All-States` subscription at **$5.99/yr** auto-renewing. (WI + MI inactive for v1 — see `src/activeStates.ts`; reactivate by adding their keys back to `ACTIVE_STATES` here, in `lake-fish-mobile-server/server.js`, and in `web/app/page.tsx`.)
+- **Preview mode (2026-07-08)**: non-subscribers can ENTER paid states and do everything — pick counties, filter species, search lakes, browse list + scatter, see every metric. But the server redacts `lake_name` (null) from paid-state `/results`, rows/dot-cards render a blurred decoy placeholder (`src/components/BlurredLakeName.tsx`), and any lake-detail tap (list row or scatter dot card) opens the paywall instead of `LakeDetailScreen`. A slim banner in `SearchScreen` ("Preview — lake names hidden" + Unlock) explains it. `preview` flag: `!entitlementLoading && !isFreeState(state) && !hasAllStates` (`src/activeStates.ts` `FREE_STATES`).
 - **Provider**: RevenueCat. SDK key wired in `src/iap.ts`. Configured 2026-05-12.
-- **Server gate**: paid-state `/results`, `/lake/:id`, `/pdf` endpoints return 402 without entitlement. `/status` and `/filters` stay public (for marketing site stats).
+- **Server gate**: paid-state `/lake/:id` and `/pdf` return 402 without entitlement. Paid-state `/results` serves non-subscribers in preview (`{ preview: true }`, `lake_name: null`, all metrics intact) — redaction is server-side, so names never reach an unentitled device. `/status` and `/filters` stay public (for marketing site stats).
 - **No accounts**: anonymous device UUID identity. Reinstall = new UUID; user taps "Restore Purchases" to reattach Apple/Google account-level receipt.
 
 See `~/APP_OPS.md` for full identifier inventory, subscription IDs, RC project ID, and the RC "credentials need attention" false-positive note.
