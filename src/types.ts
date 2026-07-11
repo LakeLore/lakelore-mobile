@@ -286,6 +286,22 @@ export const MN_SPECIES_NAMES: Record<string, string> = {
   CRP: 'Crappie', CIS: 'Cisco', GIS: 'Gizzard Shad',
   RBS: 'Rainbow Smelt', LNG: 'Longnose Gar', SNG: 'Shortnose Gar',
   SAB: 'Smallmouth Buffalo',
+  // Decoded from the MN DNR LakeFinder species dictionary (2026-07-11). Codes
+  // the raw DNR feed emits that were previously shown to users as bare codes.
+  LAT: 'Lake Trout', SIP: 'Northern Pike', WAS: 'Walleye/Sauger',
+  HCR: 'Hybrid Crappie', SLS: 'Shovelnose Sturgeon', SMS: 'Slimy Sculpin',
+  BHM: 'Bullhead Minnow', HFS: 'Highfin Carpsucker', NST: 'Ninespine Stickleback',
+  RBD: 'Rainbow Darter', SPS: 'Spotted Sucker', RRH: 'River Redhorse',
+  BRH: 'Black Redhorse', BHC: 'Bighead Carp', MCP: 'Mirror Carp',
+  BDD: 'Banded Darter', MDD: 'Mud Darter', SHD: 'Slenderhead Darter',
+  WSD: 'Western Sand Darter', DAR: 'Darter', CSR: 'Central Stoneroller',
+  CMS: 'Carmine Shiner', WDS: 'Weed Shiner', PGM: 'Pugnose Minnow',
+  SLM: 'Mississippi Silvery Minnow', SRD: 'Southern Redbelly Dace',
+  SIL: 'Silver Lamprey', SJC: 'Shortjaw Cisco', SKJ: 'Skipjack Herring',
+  SMT: 'Speckled Madtom', DWS: 'Deepwater Sculpin', SCU: 'Sculpin',
+  RIR: 'Ruffe', CPS: 'Carpsucker',
+  BLH: 'Bullhead', OTM: 'Minnow', OTS: 'Sucker', SHI: 'Shiner',
+  UK1: 'Unidentified Fish', UK2: 'Unidentified Fish',
 };
 
 export const WI_SPECIES_NAMES: Record<string, string> = {
