@@ -7,7 +7,9 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { colors, text, space, hairline } from '../theme';
 
 type Props = {
-  title: string;
+  // ReactNode titles let callers stand in a non-string placeholder (e.g. the
+  // blurred decoy lake name in paid-state preview) — style it yourself.
+  title: string | ReactNode;
   eyebrow?: string;
   right?: ReactNode | string;
   onBack?: () => void;
@@ -41,9 +43,11 @@ export function PaperHeader({ title, eyebrow, right, onBack, backLabel, modal }:
         )}
         <View style={{ flexShrink: 1 }}>
           {eyebrow && <Text style={[text.labelS, { color: eyebrowColor }]}>{eyebrow}</Text>}
-          <Text style={[text.displayL, { color: fg, marginTop: 2 }]} numberOfLines={1}>
-            {title}
-          </Text>
+          {typeof title === 'string' ? (
+            <Text style={[text.displayL, { color: fg, marginTop: 2 }]} numberOfLines={1}>
+              {title}
+            </Text>
+          ) : title}
         </View>
       </View>
       {typeof right === 'string'

@@ -36,12 +36,14 @@ interface Props {
   seed: number | string;
   /** Typography of the name it stands in for (e.g. text.displayM + color). */
   style?: StyleProp<TextStyle>;
+  /** Render on a dark (ink) background — e.g. the PaperHeader title slot. */
+  onDark?: boolean;
 }
 
-export default function BlurredLakeName({ seed, style }: Props) {
+export default function BlurredLakeName({ seed, style, onDark }: Props) {
   return (
     <Text
-      style={[style, styles.blurred]}
+      style={[style, styles.blurred, onDark && styles.blurredOnDark]}
       numberOfLines={1}
       accessibilityLabel="Lake name hidden — requires All-States subscription"
     >
@@ -56,5 +58,8 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(26, 31, 42, 0.45)', // ink at partial opacity
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 12,
+  },
+  blurredOnDark: {
+    textShadowColor: 'rgba(244, 239, 228, 0.5)', // paper at partial opacity
   },
 });

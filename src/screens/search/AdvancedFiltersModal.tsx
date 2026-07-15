@@ -6,7 +6,7 @@ import {
   Modal, View, Pressable, Text, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FilterState, FilterOptions, WI_GEAR_LABELS } from '../../types';
+import { FilterState, FilterOptions, WI_GEAR_LABELS, GENERATED_STATES, StateKey } from '../../types';
 import { colors, text, space } from '../../lakelore-rn/theme';
 import { PaperHeader } from '../../lakelore-rn/components';
 import { MultiChipSelect } from './MultiChipSelect';
@@ -39,6 +39,10 @@ export function AdvancedFiltersModal({
     onChange({ surveyTypes: next });
   };
 
+  // Data-shape flags from the generated registry export — gate each numeric
+  // range on whether this state's data actually carries the metric.
+  const cfg = GENERATED_STATES[state as StateKey];
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.paper }}>
@@ -58,7 +62,7 @@ export function AdvancedFiltersModal({
               user can see which gear is in play for the current species
               (e.g. NE Largemouth Bass is sampled by Electrofishing only —
               surfacing that here is more informative than hiding it). */}
-          {(state === 'sd' || state === 'nd' || state === 'ia' || state === 'ne' || state === 'wi' || state === 'mi') && options?.gearTypes?.length ? (
+          {state !== 'mn' && options?.gearTypes?.length ? (
             <MultiChipSelect
               label="Gear Type"
               options={options.gearTypes}
@@ -87,26 +91,30 @@ export function AdvancedFiltersModal({
               showMoreThreshold={100}
             />
           ) : null}
-          <RangeField label="Catch Rate" minVal={filters.minCpue} maxVal={filters.maxCpue}
-            onMinChange={v => onChange({ minCpue: v })} onMaxChange={v => onChange({ maxCpue: v })} />
+          {(cfg?.hasCpue ?? true) && (
+            <RangeField label="Catch Rate" minVal={filters.minCpue} maxVal={filters.maxCpue}
+              onMinChange={v => onChange({ minCpue: v })} onMaxChange={v => onChange({ maxCpue: v })} />
+          )}
           <RangeField label="Survey Year" minVal={filters.minYear} maxVal={filters.maxYear}
             onMinChange={v => onChange({ minYear: v })} onMaxChange={v => onChange({ maxYear: v })}
             keyboardType="number-pad"
             placeholder={options ? `${options.yearRange.min}–${options.yearRange.max}` : ''} />
           <RangeField label="Lake Size (acres)" minVal={filters.minAcres} maxVal={filters.maxAcres}
             onMinChange={v => onChange({ minAcres: v })} onMaxChange={v => onChange({ maxAcres: v })} />
-          <RangeField label="Stck Adults / 100AC" minVal={filters.minStocked} maxVal={filters.maxStocked}
-            onMinChange={v => onChange({ minStocked: v })} onMaxChange={v => onChange({ maxStocked: v })} />
-          {/* Avg Length range: shown for every state except MN (MN reports
-              weight, not length — see the MN-specific Avg Weight field below). */}
-          {state !== 'mn' && (
+          {(cfg?.hasStocking ?? true) && (
+            <RangeField label="Stck Adults / 100AC" minVal={filters.minStocked} maxVal={filters.maxStocked}
+              onMinChange={v => onChange({ minStocked: v })} onMaxChange={v => onChange({ maxStocked: v })} />
+          )}
+          {/* Avg Length range: shown wherever the state's data carries
+              average_length (MN reports weight instead — see below). */}
+          {state !== 'mn' && (cfg?.hasLength ?? true) && (
             <RangeField label="Avg Length (in)" minVal={filters.minLength} maxVal={filters.maxLength}
               onMinChange={v => onChange({ minLength: v })} onMaxChange={v => onChange({ maxLength: v })} />
           )}
-          {/* Total Catch range: shown wherever fc.total_catch is populated
-              (MN/ND/IA/WI/MI). SD uses sample_n (a different metric) and NE
-              doesn't have a total_catch column at all. */}
-          {(state === 'mn' || state === 'nd' || state === 'ia' || state === 'wi' || state === 'mi') && (
+          {/* Total Catch range: shown wherever fc.total_catch is populated.
+              SD uses sample_n (a different metric) and NE doesn't have a
+              total_catch column at all. */}
+          {(state === 'mn' || (cfg?.hasCatch ?? false)) && (
             <RangeField label="Total Catch" minVal={filters.minCatch} maxVal={filters.maxCatch}
               onMinChange={v => onChange({ minCatch: v })} onMaxChange={v => onChange({ maxCatch: v })}
               keyboardType="number-pad" />

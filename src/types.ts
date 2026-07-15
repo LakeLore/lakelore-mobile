@@ -1,4 +1,11 @@
-export type StateKey = 'sd' | 'mn' | 'nd' | 'ia' | 'ne' | 'wi' | 'mi';
+import { GENERATED_STATES, STATE_KEYS } from './generated/states';
+import type { StateKey } from './generated/states';
+import { SPECIES_NAMES_BY_STATE } from './generated/species';
+
+// StateKey is generated from the lakelore-data registry (all 50 US states +
+// Canadian provinces). Re-exported here so existing imports keep working.
+export type { StateKey } from './generated/states';
+export { GENERATED_STATES, STATE_KEYS } from './generated/states';
 
 export interface StateConfig {
   key: StateKey;
@@ -10,7 +17,10 @@ export interface StateConfig {
   sortOptions: { value: string; label: string }[];
 }
 
-export const STATE_CONFIGS: Record<StateKey, StateConfig> = {
+// Hand-tuned configs for the original launch states — exact legacy labels and
+// defaults. Every other state gets a config derived from the generated
+// registry export (see STATE_CONFIGS below).
+const LEGACY_STATE_CONFIGS: Partial<Record<StateKey, StateConfig>> = {
   nd: {
     key: 'nd',
     label: 'North Dakota',
@@ -108,6 +118,23 @@ export const STATE_CONFIGS: Record<StateKey, StateConfig> = {
     ],
   },
 };
+
+// Full fleet: derived from the generated registry export, overlaid with the
+// hand-tuned legacy configs above.
+export const STATE_CONFIGS: Record<StateKey, StateConfig> = Object.fromEntries(
+  STATE_KEYS.map(k => {
+    const g = GENERATED_STATES[k];
+    return [k, LEGACY_STATE_CONFIGS[k] ?? {
+      key: k,
+      label: g.name,
+      agency: g.agency,
+      color: g.stripe,
+      defaultGear: '',
+      defaultSurveyTypes: [],
+      sortOptions: g.sortOptions,
+    }];
+  }),
+) as Record<StateKey, StateConfig>;
 
 export interface FilterState {
   species: string;
@@ -371,11 +398,19 @@ export const SD_SPECIES_FROM_NAME: Record<string, string> = {
 };
 
 export function speciesDisplayName(speciesOrCode: string, state: StateKey): string {
+  // Primary: the generated registry maps (all 56 states; keys are every raw
+  // alias that state's data carries plus the canonical code).
+  const generated = SPECIES_NAMES_BY_STATE[state]?.[speciesOrCode];
+  if (generated) return generated;
+  // Fallback: the hand-maintained legacy maps for the original launch states —
+  // they carry a few decoded codes the registry aliases don't (yet).
   if (state === 'mn') return MN_SPECIES_NAMES[speciesOrCode] ?? speciesOrCode;
   if (state === 'nd') return ND_SPECIES_NAMES[speciesOrCode] ?? speciesOrCode;
   if (state === 'wi') return WI_SPECIES_NAMES[speciesOrCode] ?? speciesOrCode;
-  if (state === 'ia' || state === 'ne' || state === 'mi') return speciesOrCode; // full English names stored directly
-  // SD: input may be full name or code
-  const asCode = SD_SPECIES_FROM_NAME[speciesOrCode] ?? speciesOrCode;
-  return SD_SPECIES_NAMES[asCode] ?? speciesOrCode;
+  if (state === 'sd') {
+    // SD: input may be full name or code
+    const asCode = SD_SPECIES_FROM_NAME[speciesOrCode] ?? speciesOrCode;
+    return SD_SPECIES_NAMES[asCode] ?? speciesOrCode;
+  }
+  return speciesOrCode; // full English names stored directly
 }

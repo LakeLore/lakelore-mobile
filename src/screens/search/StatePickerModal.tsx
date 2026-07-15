@@ -1,25 +1,26 @@
-// In-Search state switcher — same paper-and-ink card layout as
-// StateSelectScreen, scoped to active states.
+// In-Search state switcher — the same US + Canada map picker as
+// StateSelectScreen, inside a sheet modal.
 import React from 'react';
 import {
-  Modal, View, Pressable, Text, ScrollView, StyleSheet,
+  Modal, Pressable, Text,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StateKey, STATE_CONFIGS } from '../../types';
-import { ACTIVE_STATES, isFreeState } from '../../activeStates';
-import { colors, text, space, hairline } from '../../lakelore-rn/theme';
-import { PaperHeader, LockIcon } from '../../lakelore-rn/components';
+import { StateKey } from '../../types';
+import { colors, text } from '../../lakelore-rn/theme';
+import { PaperHeader } from '../../lakelore-rn/components';
+import StateMapPicker from '../../components/StateMapPicker';
 
 type Props = {
   visible: boolean;
   hasAllStates: boolean;
-  stripes: Record<StateKey, string>;
+  /** Currently-selected state — highlighted on the map. */
+  selected?: StateKey;
   onSelect: (s: StateKey) => void;
   onClose: () => void;
 };
 
 export function StatePickerModal({
-  visible, hasAllStates, stripes, onSelect, onClose,
+  visible, hasAllStates, selected, onSelect, onClose,
 }: Props) {
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
@@ -33,63 +34,12 @@ export function StatePickerModal({
             </Pressable>
           }
         />
-        <ScrollView>
-          {ACTIVE_STATES.map(s => {
-            const cfg = STATE_CONFIGS[s];
-            // Paid states without entitlement still open — in preview mode
-            // (blurred lake names, paywall on lake taps). The chip below just
-            // marks them as subscription states.
-            const locked = !isFreeState(s) && !hasAllStates;
-            return (
-              <Pressable
-                key={s}
-                onPress={() => onSelect(s)}
-                style={({ pressed }) => [
-                  styles.stateOption,
-                  { backgroundColor: pressed ? colors.paper2 : colors.paper },
-                ]}>
-                <View style={[styles.stripeNarrow, { backgroundColor: stripes[s] ?? colors.lake3 }]} />
-                <View style={styles.stateOptionBody}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[text.displayL, { color: colors.ink }]}>{cfg.label}</Text>
-                    <Text style={[text.labelM, { color: colors.inkSoft, marginTop: 4 }]}>{cfg.agency}</Text>
-                    {locked && (
-                      <View style={styles.lockRow}>
-                        <LockIcon size={10} />
-                        <Text style={[text.labelS, { color: colors.walleye2 }]}>PREVIEW · ALL-STATES</Text>
-                      </View>
-                    )}
-                  </View>
-                  {/* Raw lake totals intentionally not surfaced here. */}
-                </View>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+        <StateMapPicker
+          selected={selected}
+          hasAllStates={hasAllStates}
+          onSelect={onSelect}
+        />
       </SafeAreaView>
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  stateOption: {
-    flexDirection: 'row',
-    borderBottomWidth: hairline,
-    borderBottomColor: colors.paper3,
-  },
-  stripeNarrow: { width: 8 },
-  stateOptionBody: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: space.xl,
-    paddingVertical: space.xl,
-  },
-  lockRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 6,
-  },
-});

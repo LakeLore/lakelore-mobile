@@ -130,8 +130,22 @@ function iaStats(r: Result): Stat[] {
   ];
 }
 
+// Generic layout for the 2026-07 all-states fleet: every canonical metric a
+// new state can carry. Null values drop out of the pill row automatically, so
+// presence-only states just show fewer pills.
+function genericStats(r: Result): Stat[] {
+  return [
+    { key: 'cpue',    label: 'Catch / Net',  value: fmtCpue(r.cpue) },
+    { key: 'length',  label: 'Avg length',   value: r.average_length != null ? `${r.average_length.toFixed(1)}"` : null },
+    { key: 'weight',  label: 'Avg wt',       value: r.average_weight != null ? `${r.average_weight.toFixed(2)} lb` : null },
+    { key: 'catch',   label: 'Total catch',  value: r.total_catch != null ? r.total_catch.toLocaleString() : null },
+    { key: 'stocked', label: 'Stck Adults / 100AC', value: r.stocked_per_100ac != null ? r.stocked_per_100ac.toFixed(0) : null },
+    ...metaStats(r),
+  ];
+}
+
 export default function ResultRow({ result: r, state, sortBy, onPress }: Props) {
-  const allStats = state === 'sd' ? sdStats(r) : state === 'nd' ? ndStats(r) : state === 'ne' ? neStats(r) : state === 'ia' ? iaStats(r) : state === 'wi' ? wiStats(r) : state === 'mi' ? miStats(r) : mnStats(r);
+  const allStats = state === 'sd' ? sdStats(r) : state === 'nd' ? ndStats(r) : state === 'ne' ? neStats(r) : state === 'ia' ? iaStats(r) : state === 'wi' ? wiStats(r) : state === 'mi' ? miStats(r) : state === 'mn' ? mnStats(r) : genericStats(r);
   const sortStat = allStats.find(s => s.key === sortBy);
   // Label always pulled from sortOptions so it stays readable ("Lake Name")
   // even when there's no measurable value to show on the right (sortBy 'lake').

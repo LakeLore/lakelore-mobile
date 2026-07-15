@@ -1,37 +1,26 @@
 import React, { useState } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, ScrollView,
+  View, Text, Pressable, StyleSheet,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
 import { useAppState } from '../StateContext';
 import { StateKey } from '../types';
-import { ACTIVE_STATES, isFreeState } from '../activeStates';
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
-import { LockIcon } from '../lakelore-rn/components';
 import { useEntitlement } from '../useEntitlement';
+import StateMapPicker from '../components/StateMapPicker';
 import AboutScreen from './AboutScreen';
 
 interface Props {
   onSelect: () => void;
 }
 
-// Display order: MN first (free tier, marquee state), then by current lake
-// count desc. Order is intentionally static — re-sorting as `fetchStatus`
-// counts trickle in shifted the list under the user. If counts shift enough
-// to change rankings, update this list manually.
-const ALL_STATE_ROWS: { key: StateKey; name: string; agency: string; stripe: string }[] = [
-  { key: 'mn', name: 'Minnesota',    agency: 'MN DNR',                stripe: '#2a4a3a' },
-  { key: 'ia', name: 'Iowa',         agency: 'Iowa DNR',              stripe: colors.moss },
-  { key: 'ne', name: 'Nebraska',     agency: 'Nebraska Game & Parks', stripe: '#a04030' },
-  { key: 'nd', name: 'North Dakota', agency: 'ND Game, Fish & Parks', stripe: colors.rust },
-  { key: 'sd', name: 'South Dakota', agency: 'SD Game, Fish & Parks', stripe: colors.lakeInk },
-  { key: 'wi', name: 'Wisconsin',    agency: 'WI DNR',                stripe: colors.lake3 },
-  { key: 'mi', name: 'Michigan',     agency: 'MI DNR',                stripe: colors.lakeInk },
-];
-const STATE_ROWS = ALL_STATE_ROWS.filter(s => ACTIVE_STATES.includes(s.key));
-
+// Map-first state/province selection (2026-07-15 all-states launch): a
+// pan/zoom atlas of the US + Canada replaces the old 5-row list, with a
+// grouped A-Z list below the map as the accessible path. Picking a state
+// proceeds straight into the county selector (SearchScreen auto-opens it on
+// every state change).
 export default function StateSelectScreen({ onSelect }: Props) {
   const insets = useSafeAreaInsets();
   const { setState } = useAppState();
@@ -39,8 +28,8 @@ export default function StateSelectScreen({ onSelect }: Props) {
   const [showAbout, setShowAbout] = useState(false);
 
   // Every state is enterable. Paid states without entitlement open in
-  // PREVIEW mode: SearchScreen shows all metrics with lake names blurred
-  // (server-redacted) and routes lake-detail taps to the paywall.
+  // PREVIEW mode: all metrics visible, lake identity (name/county/acres)
+  // redacted server-side, unlock path in the search + detail banners.
   const pick = (s: StateKey) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setState(s);
@@ -66,61 +55,22 @@ export default function StateSelectScreen({ onSelect }: Props) {
         ]}>
         <Text style={[text.labelM, { color: colors.walleye2 }]}>ⓘ ABOUT</Text>
       </Pressable>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.intro}>
-          <Text style={[text.labelL, { color: colors.walleye2 }]}>LAKELORE · ATLAS</Text>
-          <Text style={[text.displayXL, { color: colors.ink, marginTop: 6 }]}>Select a State</Text>
-          <Text style={[text.editorialS, { color: colors.inkSoft, marginTop: 6 }]}>
-            A field guide to fish populations in surveyed lakes across the upper Midwest.
-          </Text>
-        </View>
 
-        {STATE_ROWS.map(s => {
-          // While entitlement is still loading (no cached value on first
-          // launch), don't render either chip — avoids the flash of "locked"
-          // for users who turn out to be subscribed.
-          const locked = !entitlementLoading && !isFreeState(s.key) && !hasAllStates;
-          const showFreeChip = !entitlementLoading && isFreeState(s.key);
-          const a11yState = locked
-            ? `${s.name}, ${s.agency}, preview — lake names require the LakeLore All-States subscription`
-            : showFreeChip
-              ? `${s.name}, ${s.agency}, free`
-              : `${s.name}, ${s.agency}`;
-          return (
-            <Pressable key={s.key} onPress={() => pick(s.key)}
-              accessibilityRole="button"
-              accessibilityLabel={a11yState}
-              style={({ pressed }) => [
-                styles.row,
-                { backgroundColor: pressed ? colors.paper2 : colors.paper },
-              ]}>
-              <View style={[styles.stripe, { backgroundColor: s.stripe }]} />
-              <View style={styles.rowBody}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[text.displayL, { color: colors.ink }]}>{s.name}</Text>
-                  <Text style={[text.labelM, { color: colors.inkSoft, marginTop: 6 }]}>
-                    {s.agency}
-                  </Text>
-                  {locked ? (
-                    <View style={styles.lockChip}>
-                      <LockIcon size={10} />
-                      <Text style={[text.labelS, { color: colors.walleye2 }]}>
-                        PREVIEW · ALL-STATES
-                      </Text>
-                    </View>
-                  ) : showFreeChip ? (
-                    <View style={styles.freeChip}>
-                      <Text style={[text.labelS, { color: colors.moss }]}>FREE</Text>
-                    </View>
-                  ) : null}
-                </View>
-                {/* Lake-count column intentionally omitted — we no longer
-                    advertise raw totals at the state-select entry point. */}
-              </View>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+      <View style={styles.intro}>
+        <Text style={[text.labelL, { color: colors.walleye2 }]}>LAKELORE · ATLAS</Text>
+        <Text style={[text.displayXL, { color: colors.ink, marginTop: 6 }]}>
+          Select a State or Province
+        </Text>
+        <Text style={[text.editorialS, { color: colors.inkSoft, marginTop: 6 }]}>
+          A field guide to fish populations in surveyed lakes across all 50 states and Canada.
+        </Text>
+      </View>
+
+      <StateMapPicker
+        hasAllStates={hasAllStates}
+        entitlementLoading={entitlementLoading}
+        onSelect={pick}
+      />
 
       <AboutScreen visible={showAbout} onClose={() => setShowAbout(false)} />
     </SafeAreaView>
@@ -129,7 +79,6 @@ export default function StateSelectScreen({ onSelect }: Props) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
-  scroll: { paddingBottom: space.xxxl },
   aboutBadge: {
     position: 'absolute',
     // `top` is set inline using insets.top so the badge clears the status bar
@@ -144,41 +93,6 @@ const styles = StyleSheet.create({
   intro: {
     paddingHorizontal: space.xl,
     paddingTop: space.xxxl,
-    paddingBottom: space.xxl,
-  },
-  row: {
-    flexDirection: 'row',
-    borderBottomWidth: hairline,
-    borderBottomColor: colors.paper3,
-  },
-  stripe: { width: 8 },
-  rowBody: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: space.xl,
-    paddingVertical: space.xl,
-  },
-  lockChip: {
-    alignSelf: 'flex-start',
-    marginTop: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderWidth: hairline,
-    borderColor: colors.walleye2,
-    backgroundColor: colors.paper2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  freeChip: {
-    alignSelf: 'flex-start',
-    marginTop: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderWidth: hairline,
-    borderColor: colors.moss,
-    backgroundColor: colors.paper,
+    paddingBottom: space.md,
   },
 });

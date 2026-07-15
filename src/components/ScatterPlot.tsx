@@ -5,7 +5,8 @@ import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import Svg, { Circle, Line, Text as SvgText, Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { useSvgPanZoom, useCommittedMirror, assertWorklet } from '../hooks/useSvgPanZoom';
 import BlurredLakeName from './BlurredLakeName';
-import { Result, StateKey, STATE_CONFIGS, SD_SPECIES_NAMES, MN_SPECIES_NAMES, ND_SPECIES_NAMES } from '../types';
+import { Result, StateKey, STATE_CONFIGS } from '../types';
+import { SPECIES_NAMES_BY_STATE } from '../generated/species';
 import { colors, text, space, hairline, fonts } from '../lakelore-rn/theme';
 
 // Rank-based color mapping. Maps `stocked` to its quantile within `sorted`
@@ -103,7 +104,10 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
 
   const { points, sortedStocked, dataBounds, xLabel, yLabel } = useMemo(() => {
     const pts: DotData[] = [];
-    const namesMap = state==='mn' ? MN_SPECIES_NAMES : state==='nd' ? ND_SPECIES_NAMES : SD_SPECIES_NAMES;
+    const namesMap = SPECIES_NAMES_BY_STATE[state] ?? ({} as Record<string, string>);
+    // Set by the generic (new-fleet) branch: whether this result set carries
+    // measured lengths (drives the x-axis choice + label).
+    let genericHasLength = false;
 
     // Lake-level fields shared across every state branch. Kept separate from
     // the per-state population so the popup can render acres/depth/county
@@ -192,7 +196,7 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
           average_length: r.average_length,
         });
       }
-    } else {
+    } else if (state === 'sd') {
       // SD: server already returns the PSD-derived avg length as average_length.
       for (const r of results) {
         if (r.cpue==null || r.average_length==null) continue;
@@ -203,6 +207,26 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
           species: namesMap[r.species]??r.species,
           year: r.survey_year,
           estLength: r.average_length,
+        });
+      }
+    } else {
+      // Generic branch (2026-07 all-states fleet): length-vs-CPUE when the
+      // result set carries measured lengths; otherwise survey-year-vs-CPUE so
+      // CPUE-only states still get a usable scatter (year is also never
+      // redacted in paid-state preview, unlike acres).
+      genericHasLength = results.some(r => r.cpue != null && r.average_length != null);
+      for (const r of results) {
+        if (r.cpue == null) continue;
+        const x = genericHasLength ? r.average_length : r.survey_year;
+        if (x == null) continue;
+        pts.push({
+          x, y: r.cpue,
+          stocked: r.stocked_per_100ac,
+          ...lakeMeta(r),
+          species: namesMap[r.species]??r.species,
+          year: r.survey_year,
+          average_length: r.average_length ?? undefined,
+          total_catch: r.total_catch,
         });
       }
     }
@@ -220,7 +244,10 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
       yMin: 0,
       yMax: ys.length ? Math.max(...ys)*1.1 : 1,
     };
-    const xLabel = state==='mn' ? 'Avg Weight (lb)' : 'Avg Length (in)';
+    const LEGACY_STATES = new Set(['mn', 'sd', 'nd', 'ia', 'ne', 'wi', 'mi']);
+    const xLabel = state==='mn' ? 'Avg Weight (lb)'
+      : (LEGACY_STATES.has(state) || genericHasLength) ? 'Avg Length (in)'
+      : 'Survey Year';
     // desc shown in render — keep in sync with xLabel
     const yLabel = 'Catch Rate';
     return { points: pts, sortedStocked, dataBounds, xLabel, yLabel };
@@ -546,7 +573,8 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
             {selectedDot.stocked!=null && <Stat label="Stck Adults / 100AC" value={selectedDot.stocked.toFixed(1)} />}
           </View>
           <Text style={[text.labelM, { color: colors.walleye2, marginTop: 4 }]}>
-            {selectedDot.name != null ? 'Tap for lake history →' : 'Unlock All-States to see this lake →'}
+            {/* Preview users can open the (identity-redacted) history too. */}
+            {'Tap for lake history →'}
           </Text>
         </Pressable>
       )}

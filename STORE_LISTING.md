@@ -52,10 +52,10 @@ Alternates if you want to A/B:
 ## Promotional text (iOS only — updateable any time)
 
 ```
-Now in five states: MN, ND, SD, NE, IA. Free, no account, no ads — the netting and stocking atlas for northern game fish.
+Now covering all 50 states + Canada. Free in Minnesota, no account, no ads — the netting and stocking atlas for game fish.
 ```
 
-(125 chars. Use this for seasonal hooks: launch, ice-fishing, opener, fall walleye, etc.)
+(122 chars. Use this for seasonal hooks: launch, ice-fishing, opener, fall walleye, etc. Updated 2026-07-15 for the all-states 1.1.0 release.)
 
 ## Keywords (iOS, 100 chars max, comma-separated, no spaces between)
 
@@ -275,17 +275,17 @@ Adjust to taste. **Order matters** in the App Store — the first 1–2 are visi
 ### Apple Review notes (paste into App Store Connect → App Review Information)
 
 ```
-LakeLore is a free Minnesota fishing-lake reference. The optional LakeLore All-States annual subscription ($5.99/yr, auto-renewing) unlocks four additional states: North Dakota, South Dakota, Nebraska, Iowa. No account is required at any tier — identity is an anonymous device-generated UUID, no email, no sign-up.
+LakeLore is a free Minnesota fishing-lake reference. The optional LakeLore All-States annual subscription ($5.99/yr, auto-renewing) unlocks the remaining 49 US states and 6 Canadian provinces. No account is required at any tier — identity is an anonymous device-generated UUID, no email, no sign-up.
 
 To test core functionality without subscribing:
 1. Launch the app.
-2. Tap Minnesota on the State Select screen. (The "FREE" chip indicates free access.)
+2. Tap Minnesota on the state map (gold fill / "FREE" chip in the list below the map).
 3. The full Minnesota dataset (9,490 lakes, 23,618 surveys, 396,371 catch records, from MN DNR public records) is browsable: search by species, county, gear, year, etc., and tap any lake to see catch-rate-over-time and stocking-history charts.
 
 To test the subscription / paywall flow:
-1. Tap any non-Minnesota state (e.g. North Dakota). The paywall modal appears.
+1. Tap any non-Minnesota state (e.g. North Dakota). It opens in PREVIEW: every metric and chart is visible, but lake names, counties, acreage, and coordinates are withheld (server-side) until subscribed. Tapping "Unlock" in the preview banner opens the paywall modal.
 2. The paywall displays subscription title, length (1 year), price (auto-pulled from the store, currency-localized), auto-renewal terms, and links to Terms of Use + Privacy Policy as required by App Store Review guideline 3.1.2(a).
-3. Use a sandbox Apple ID (App Store Connect → Users and Access → Sandbox) to complete a test purchase. After purchase, all four paid states unlock.
+3. Use a sandbox Apple ID (App Store Connect → Users and Access → Sandbox) to complete a test purchase. After purchase, all paid states unlock.
 4. "Restore purchases" is available both inside the paywall and on the About & Sources screen.
 5. "Manage subscription" (visible on About & Sources after purchase) opens the native iOS subscription-management sheet via StoreKit.
 

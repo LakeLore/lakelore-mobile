@@ -11,7 +11,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppState } from '../StateContext';
 import {
   FilterState, FilterOptions, Result, ResultsResponse, StateKey,
-  defaultFilters, STATE_CONFIGS, SD_SPECIES_NAMES, MN_SPECIES_NAMES, ND_SPECIES_NAMES, WI_SPECIES_NAMES,
+  defaultFilters, STATE_CONFIGS, speciesDisplayName, GENERATED_STATES, STATE_KEYS,
 } from '../types';
 import { isFreeState } from '../activeStates';
 import { fetchFilters, fetchResults, fetchAllResults, DbStatus, fetchStatus, SubscriptionRequiredError } from '../api';
@@ -37,12 +37,6 @@ import { StatePickerModal } from './search/StatePickerModal';
 const PAGE_SIZE = 50;
 
 // Per-state "we've introduced the county picker to this user" flag set.
-// Persisted as a JSON array of StateKey in AsyncStorage so the picker only
-// auto-opens on the very first entry into each state. New states unlocked
-// later (e.g. via subscription, or future v1.x re-enables of WI/MI) get the
-// introduction once each. Returning users aren't nagged.
-const COUNTY_PICKER_SEEN_KEY = 'countyPickerSeen.v1';
-
 // Per-state county selection persisted across app launches. Stored as a
 // JSON object mapping StateKey → string[] of county names. Seeded into
 // filters.counties on mount and on state change so the user's last filter
@@ -50,7 +44,12 @@ const COUNTY_PICKER_SEEN_KEY = 'countyPickerSeen.v1';
 // in the County map picker.
 const COUNTY_SELECTION_KEY = 'countySelection.v1';
 
-const STATE_STRIPES: Record<StateKey, string> = {
+// Stripe colors: generated per-state palette, with the original launch
+// states keeping their hand-picked stripes.
+const STATE_STRIPES: Record<StateKey, string> = Object.fromEntries(
+  STATE_KEYS.map(k => [k, GENERATED_STATES[k].stripe]),
+) as Record<StateKey, string>;
+Object.assign(STATE_STRIPES, {
   sd: colors.lakeInk,
   mn: '#2a4a3a',
   nd: colors.rust,
@@ -58,7 +57,7 @@ const STATE_STRIPES: Record<StateKey, string> = {
   ne: '#a04030',
   wi: colors.lake3,
   mi: colors.lakeInk,
-};
+});
 
 interface SearchSession {
   filters: FilterState;
@@ -112,26 +111,11 @@ export default function SearchScreen() {
   const prevStateRef = useRef(state);
   const sessionCache = useRef<Partial<Record<StateKey, SearchSession>>>({});
 
-  // Tracks which states have had the county picker auto-opened at least
-  // once. `null` while loading from AsyncStorage; the auto-open effect bails
-  // until the load resolves so we don't pop the modal twice on the first
-  // launch (once before load resolves, once after).
-  const [countyPickerSeen, setCountyPickerSeen] = useState<Set<StateKey> | null>(null);
-
   // Per-state persisted county selection (last user choice for each state).
   // `null` until the AsyncStorage load resolves. Used both to seed initial
   // filters.counties on mount and to restore counties when switching back to
   // a state that has no in-session cache (e.g. on cold launch).
   const [persistedCounties, setPersistedCounties] = useState<Partial<Record<StateKey, string[]>> | null>(null);
-
-  useEffect(() => {
-    AsyncStorage.getItem(COUNTY_PICKER_SEEN_KEY)
-      .then(raw => {
-        const parsed = raw ? (JSON.parse(raw) as StateKey[]) : [];
-        setCountyPickerSeen(new Set(parsed));
-      })
-      .catch(() => setCountyPickerSeen(new Set()));
-  }, []);
 
   useEffect(() => {
     AsyncStorage.getItem(COUNTY_SELECTION_KEY)
@@ -151,26 +135,15 @@ export default function SearchScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-open the picker the first time the user enters each state. Fires
-  // for the initial mount once `countyPickerSeen` resolves AND for every
-  // subsequent state change (because the state-change effect below leaves
-  // showCountyPicker alone now).
+  // Picking a state ALWAYS leads into the county selector (2026-07-15 flow:
+  // state map → county map → results). SearchScreen only ever mounts after an
+  // explicit pick on the state map (App.tsx gates on it every launch), and
+  // in-session state switches come from the header's state picker — so every
+  // firing of this effect follows a deliberate selection. The user's previous
+  // county selection for the state is pre-loaded; "Done" sails through.
   useEffect(() => {
-    if (countyPickerSeen === null) return;
-    if (countyPickerSeen.has(state)) return;
     setShowCountyPicker(true);
-  }, [state, countyPickerSeen]);
-
-  const markCountyPickerSeen = useCallback(async (s: StateKey) => {
-    setCountyPickerSeen(prev => {
-      if (prev?.has(s)) return prev;
-      const next = new Set(prev ?? []);
-      next.add(s);
-      AsyncStorage.setItem(COUNTY_PICKER_SEEN_KEY, JSON.stringify([...next]))
-        .catch(() => { /* best-effort persistence */ });
-      return next;
-    });
-  }, []);
+  }, [state]);
 
   const persistCountySelection = useCallback((s: StateKey, counties: string[]) => {
     setPersistedCounties(prev => {
@@ -338,9 +311,8 @@ export default function SearchScreen() {
     handleSearch(page + 1);
   };
 
-  const namesMap = state === 'mn' ? MN_SPECIES_NAMES : state === 'nd' ? ND_SPECIES_NAMES : state === 'wi' ? WI_SPECIES_NAMES : SD_SPECIES_NAMES;
   const speciesLabel = filters.species
-    ? (state === 'ia' || state === 'ne' || state === 'mi' ? filters.species : (namesMap[filters.species] ?? filters.species))
+    ? speciesDisplayName(filters.species, state)
     : 'All Species';
 
   const hasFilters = filters.counties.length > 0
@@ -480,7 +452,7 @@ export default function SearchScreen() {
         <View style={styles.previewBanner}>
           <LockIcon size={10} color={colors.paper} />
           <Text style={[text.labelM, { color: colors.paper, flex: 1 }]} numberOfLines={2}>
-            Preview — lake names hidden
+            Preview — all data shown, lake names &amp; locations hidden
           </Text>
           <Pressable
             onPress={() => setPaywallFor(state)}
@@ -546,11 +518,15 @@ export default function SearchScreen() {
             {total.toLocaleString()} {total === 1 ? 'RESULT' : 'RESULTS'}
           </Text>
           <View style={styles.viewToggle}>
-            <Segmented
-              options={['List', 'Scatter']}
-              active={viewMode2}
-              onChange={i => setViewMode(i === 0 ? 'list' : 'scatter')}
-            />
+            {/* Scatter plots CPUE — presence-only states have nothing to
+                plot, so they stay list-only. */}
+            {GENERATED_STATES[state].hasCpue && (
+              <Segmented
+                options={['List', 'Scatter']}
+                active={viewMode2}
+                onChange={i => setViewMode(i === 0 ? 'list' : 'scatter')}
+              />
+            )}
             {viewMode === 'list' && (
               <Pressable
                 onPress={() => setShowSort(true)}
@@ -578,10 +554,8 @@ export default function SearchScreen() {
               state={state}
               sortBy={filters.sortBy}
               onPress={() => {
-                if (preview) {
-                  setPaywallFor(state);
-                  return;
-                }
+                // Preview users get the full detail screen too — the server
+                // serves /lake/:id with identity fields redacted (2026-07-15).
                 navigation.navigate('LakeDetail', {
                   lakeId: item.lake_id,
                   lakeName: item.lake_name ?? '',
@@ -608,10 +582,6 @@ export default function SearchScreen() {
           results={scatterResults}
           state={state}
           onLakePress={(lakeId, lakeName) => {
-            if (preview) {
-              setPaywallFor(state);
-              return;
-            }
             navigation.navigate('LakeDetail', {
               lakeId, lakeName, species: filters.species, state,
             });
@@ -651,6 +621,7 @@ export default function SearchScreen() {
         visible={showCountyPicker}
         state={state}
         selected={filters.counties}
+        countyOptions={options?.counties}
         onConfirm={counties => {
           const updated = { ...filters, counties };
           setFilters(updated);
@@ -667,13 +638,7 @@ export default function SearchScreen() {
             .catch(() => {});
           if (updated.species) handleSearch(0, updated);
         }}
-        onClose={() => {
-          setShowCountyPicker(false);
-          // Mark this state as "introduced" so the picker doesn't auto-open
-          // again on subsequent entries. Cancel and Done both reach here —
-          // either way the user has been shown the filter.
-          markCountyPickerSeen(state);
-        }}
+        onClose={() => setShowCountyPicker(false)}
       />
 
       {/* Advanced filters */}
@@ -691,7 +656,7 @@ export default function SearchScreen() {
       <StatePickerModal
         visible={showStatePicker}
         hasAllStates={hasAllStates}
-        stripes={STATE_STRIPES}
+        selected={state}
         onSelect={s => { setState(s); setShowStatePicker(false); }}
         onClose={() => setShowStatePicker(false)}
       />

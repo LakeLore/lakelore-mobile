@@ -4,7 +4,8 @@ import {
   Modal, StyleSheet, Keyboard, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SpeciesOption, StateKey, SD_SPECIES_NAMES, MN_SPECIES_NAMES, ND_SPECIES_NAMES } from '../types';
+import { SpeciesOption, StateKey } from '../types';
+import { SPECIES_NAMES_BY_STATE } from '../generated/species';
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
 import { PaperHeader } from '../lakelore-rn/components';
 
@@ -34,11 +35,10 @@ export default function SpeciesPicker({ visible, species, selected, state, onSel
     const hideSub = Keyboard.addListener(hideEvt, () => setKbHeight(0));
     return () => { showSub.remove(); hideSub.remove(); };
   }, [visible]);
-  const usesFullNames = state === 'ia' || state === 'ne';
-  const namesMap = state === 'mn' ? MN_SPECIES_NAMES
-    : state === 'nd' ? ND_SPECIES_NAMES
-    : usesFullNames ? {} as Record<string,string>
-    : SD_SPECIES_NAMES;
+  // Generated registry map: keys are every raw string/code the state's data
+  // carries; value is the canonical display name. Works for code states
+  // (MN/ND/WI) and full-name states (IA/NE/MI + the 2026-07 fleet) alike.
+  const namesMap = SPECIES_NAMES_BY_STATE[state] ?? ({} as Record<string, string>);
 
   const GAME_FISH_NAMES = new Set([
     'walleye','northern pike','largemouth bass','smallmouth bass','muskellunge',
@@ -53,15 +53,20 @@ export default function SpeciesPicker({ visible, species, selected, state, onSel
       const name = (namesMap[s.species] ?? s.species).toLowerCase();
       return name.includes(q) || s.species.toLowerCase().includes(q);
     });
+    // Game fish first. Check the raw value against the code set AND the
+    // resolved display name against the name set — covers code states and
+    // full-name states with one rule.
+    const isGame = (s: string) =>
+      GAME_FISH.has(s) || GAME_FISH_NAMES.has((namesMap[s] ?? s).toLowerCase());
     return base.sort((a, b) => {
-      const ag = usesFullNames ? GAME_FISH_NAMES.has(a.species.toLowerCase()) : GAME_FISH.has(a.species);
-      const bg = usesFullNames ? GAME_FISH_NAMES.has(b.species.toLowerCase()) : GAME_FISH.has(b.species);
+      const ag = isGame(a.species);
+      const bg = isGame(b.species);
       if (ag && !bg) return -1;
       if (!ag && bg) return 1;
       return 0;
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [species, query, namesMap, usesFullNames]);
+  }, [species, query, namesMap]);
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">

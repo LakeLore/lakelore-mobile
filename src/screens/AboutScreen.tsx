@@ -19,7 +19,7 @@ import { useEntitlement } from '../useEntitlement';
 import { restorePurchases } from '../iap';
 import { useToast } from '../Toast';
 import { ACTIVE_STATES } from '../activeStates';
-import { StateKey } from '../types';
+import { StateKey, GENERATED_STATES } from '../types';
 
 // Subscription product IDs — used to deep-link Play Store directly to the
 // LakeLore row rather than the user's full subscription list. iOS uses the
@@ -131,9 +131,22 @@ const ALL_AGENCIES: AgencySource[] = [
   },
 ];
 
-// Only credit agencies for states that ship in this build. Re-add WI/MI to
-// ACTIVE_STATES (src/activeStates.ts) and they appear here automatically.
-const AGENCIES = ALL_AGENCIES.filter(a => ACTIVE_STATES.includes(a.key));
+// One credit per active state. The original launch states keep their
+// hand-written entries above; everything else derives from the generated
+// registry export (agency name + homepage) with a generic blurb.
+const AGENCIES: AgencySource[] = ACTIVE_STATES.map(k => {
+  const hand = ALL_AGENCIES.find(a => a.key === k);
+  if (hand) return hand;
+  const g = GENERATED_STATES[k];
+  return {
+    key: k,
+    state: g.name,
+    agency: g.agency,
+    abbr: g.agency,
+    url: g.agencyUrl,
+    blurb: `Lake survey${g.hasStocking ? ' and stocking' : ''} data published by ${g.agency}.`,
+  };
+});
 
 // ── State-specific glossary blocks ────────────────────────────────────────
 // Previously lived in src/screens/search/InfoModal.tsx (the "Glossary &
@@ -146,7 +159,7 @@ function StateGlossarySection({ state }: { state: StateKey }) {
   const isND = state === 'nd';
   const isIA = state === 'ia';
   const isNE = state === 'ne';
-  const stateLabel = ALL_AGENCIES.find(a => a.key === state)?.state ?? state.toUpperCase();
+  const stateLabel = GENERATED_STATES[state]?.name ?? state.toUpperCase();
   return (
     <View>
       <View style={styles.sectionHeader}>

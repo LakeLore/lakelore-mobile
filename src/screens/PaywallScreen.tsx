@@ -21,7 +21,7 @@ import {
   restorePurchases,
 } from '../iap';
 import { fetchMyEntitlement } from '../api';
-import { StateKey } from '../types';
+import { GENERATED_STATES } from '../types';
 import { ACTIVE_STATES } from '../activeStates';
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
 import { PaperHeader, PrimaryButton } from '../lakelore-rn/components';
@@ -109,10 +109,9 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
   // disclosure never claims a currency/amount we can't honor at the store.
   const priceLabel = pkg?.product.priceString ?? null;
   const priceLabelOrFallback = priceLabel ?? 'the listed price';
-  const paidStatesCount = ACTIVE_VALUE_PROPS.length;
-  const paidStatesPhrase = paidStatesCount === 1
-    ? 'one more state'
-    : `${numWord(paidStatesCount)} more states`;
+  const paidStatesPhrase = PAID_CA > 0
+    ? `${PAID_US} more states + ${numWord(PAID_CA)} Canadian provinces`
+    : `${numWord(PAID_US)} more states`;
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -131,11 +130,11 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
           </View>
 
           <Text style={[text.displayL, styles.headline]}>
-            Unlock {paidStatesPhrase}.
+            Unlock every state &amp; province.
           </Text>
 
           <Text style={[text.bodyL, { color: colors.ink2, marginTop: 16 }]}>
-            Minnesota stays free. Add an annual All-States Pass for the {paidStatesPhrase} listed below.
+            Minnesota stays free. Add an annual All-States Pass for {paidStatesPhrase}.
           </Text>
 
           {/* Value props */}
@@ -270,15 +269,24 @@ function numWord(n: number): string {
   return ['zero','one','two','three','four','five','six','seven','eight','nine'][n] ?? String(n);
 }
 
-const VALUE_PROPS: { state: StateKey; label: string; detail: string }[] = [
-  { state: 'wi', label: 'Wisconsin DNR',            detail: 'DNR netting, electrofishing, length data' },
-  { state: 'mi', label: 'Michigan DNR',             detail: 'Survey reports + stocking' },
-  { state: 'nd', label: 'North Dakota Game & Fish', detail: 'Catch / Net + average length' },
-  { state: 'sd', label: 'South Dakota GFP',         detail: 'PSD, Wr, gill-net + electrofishing' },
-  { state: 'ne', label: 'Nebraska Game & Parks',    detail: 'Survey PDFs linked inline' },
-  { state: 'ia', label: 'Iowa DNR',                 detail: 'Fyke, hoop, electrofishing comprehensives' },
+// Coverage counts derived from the generated registry export — stay correct
+// as states are added without touching this copy.
+const PAID_STATES = ACTIVE_STATES.filter(s => !GENERATED_STATES[s].free);
+const PAID_US = PAID_STATES.filter(s => GENERATED_STATES[s].country === 'US').length;
+const PAID_CA = PAID_STATES.filter(s => GENERATED_STATES[s].country === 'CA').length;
+
+// With the whole continent covered, per-state rows no longer scale — the
+// value props aggregate instead.
+const ACTIVE_VALUE_PROPS: { label: string; detail: string }[] = [
+  { label: `${PAID_US} more US states + ${PAID_CA} Canadian provinces`,
+    detail: 'Every state and province LakeLore covers, in one pass' },
+  { label: 'Lake names & locations revealed',
+    detail: 'Preview mode shows the numbers — the pass shows you which lakes' },
+  { label: 'State & provincial agency survey data',
+    detail: 'Netting + electrofishing catch rates, lengths, and stocking records' },
+  { label: 'Every future state included',
+    detail: 'New coverage lands in the same subscription at no extra cost' },
 ];
-const ACTIVE_VALUE_PROPS = VALUE_PROPS.filter(v => ACTIVE_STATES.includes(v.state));
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },

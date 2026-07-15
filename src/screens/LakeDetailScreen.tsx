@@ -13,8 +13,9 @@ import { fetchLakeWithSpecies, SubscriptionRequiredError, submitFeedback } from 
 import { useToast } from '../Toast';
 import { StateKey, STATE_CONFIGS, speciesDisplayName, SD_SPECIES_FROM_NAME } from '../types';
 import PaywallScreen from './PaywallScreen';
+import BlurredLakeName from '../components/BlurredLakeName';
 import { colors, text, space, hairline, fonts } from '../lakelore-rn/theme';
-import { PaperHeader, Chip, PrimaryButton } from '../lakelore-rn/components';
+import { PaperHeader, Chip, PrimaryButton, LockIcon } from '../lakelore-rn/components';
 
 const GAME_FISH_CODES = new Set([
   'WAE','NOP','LMB','SMB','MUE','TME','BLC','WHC','BLG','YEP',
@@ -49,8 +50,10 @@ const ND_STOCKING_URL = (id: number | string) =>
 const NE_STOCKING_URL = 'https://outdoornebraska.gov/conservation/fisheries-management/fish-stocking-program/fish-stocking-database/';
 const WI_STOCKING_URL = 'https://apps.dnr.wi.gov/fisheriesmanagement/Public/Summary/Index';
 
+// name/county/area_acres are null in paid-state preview — the server redacts
+// lake identity for non-subscribers (metrics still ship in full).
 interface Lake {
-  id: number | string; name: string; county: string;
+  id: number | string; name: string | null; county: string | null;
   area_acres?: number | null; max_depth_feet?: number | null;
 }
 interface CatchRow {
@@ -64,7 +67,7 @@ interface CatchRow {
 interface StockRow { stock_year: number; species: string; life_stage: string; quantity: number }
 interface MetricRow { species: string; adults_per_100ac: number }
 interface MetricByYearRow { species: string; year: number; adults_per_100ac: number }
-interface LakeData { lake: Lake; surveys: { id: number|string; report_id?: number|null; source_pdf?: string|null; source_url?: string|null }[]; catches: CatchRow[]; stocking: StockRow[]; metrics: MetricRow[]; metrics_by_year?: MetricByYearRow[]; latest_stocking_report_id?: number|null }
+interface LakeData { lake: Lake; surveys: { id: number|string; report_id?: number|null; source_pdf?: string|null; source_url?: string|null }[]; catches: CatchRow[]; stocking: StockRow[]; metrics: MetricRow[]; metrics_by_year?: MetricByYearRow[]; latest_stocking_report_id?: number|null; preview?: boolean }
 
 // Palette — paper-and-ink chart palette
 const LINE_COLORS = [colors.rust, colors.walleye, colors.moss, colors.lake3, '#8a6aa8', colors.lakeInk];
@@ -390,6 +393,9 @@ export default function LakeDetailScreen() {
   const [selectedStockYear, setSelectedStockYear] = useState<{year: number; row: Record<string,number> | undefined} | null>(null);
   const [selectedCpueYear, setSelectedCpueYear] = useState<{year: number; row: Record<string,number|null>} | null>(null);
   const [paywallTriggered, setPaywallTriggered] = useState<StateKey | null>(null);
+  // True when the paywall came from the preview banner (screen still usable
+  // behind it) rather than a hard 402 (screen has nothing to show).
+  const [paywallFromBanner, setPaywallFromBanner] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackSending, setFeedbackSending] = useState(false);
@@ -560,12 +566,15 @@ export default function LakeDetailScreen() {
   );
 
   const { lake } = data;
+  const isPreview = data.preview === true;
 
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar style="light" />
       <PaperHeader
-        title={lake.name}
+        title={lake.name != null
+          ? lake.name
+          : <BlurredLakeName seed={lake.id} onDark style={[text.displayL, { marginTop: 2 }]} />}
         eyebrow={lake.county
           ? `${lake.county.toUpperCase()} CO · ${state.toUpperCase()}`
           : state.toUpperCase()}
@@ -573,6 +582,23 @@ export default function LakeDetailScreen() {
         backLabel="←"
         right={lake.max_depth_feet ? `${Math.round(lake.max_depth_feet)} FT` : undefined}
       />
+
+      {/* Preview banner — identity redacted, everything else live. */}
+      {isPreview && (
+        <View style={styles.previewBanner}>
+          <LockIcon size={10} color={colors.paper} />
+          <Text style={[text.labelM, { color: colors.paper, flex: 1 }]} numberOfLines={2}>
+            Preview — this lake’s name &amp; location are hidden
+          </Text>
+          <Pressable
+            onPress={() => { setPaywallFromBanner(true); setPaywallTriggered(state); }}
+            accessibilityRole="button"
+            accessibilityLabel="Unlock lake names with the All-States subscription"
+            style={styles.unlockBtn}>
+            <Text style={[text.labelM, { color: colors.ink }]}>Unlock</Text>
+          </Pressable>
+        </View>
+      )}
 
       <ScrollView style={{ backgroundColor: colors.paper }}>
         {/* Lake meta + source links */}
@@ -585,6 +611,10 @@ export default function LakeDetailScreen() {
             ].filter(Boolean).join(' · ')}
           </Text>
           <View style={styles.linkRow}>
+            {/* Source links are hidden in preview — they resolve to agency
+                pages/PDFs that name the lake (and preview ids are hashed, so
+                id-based URLs wouldn't work anyway). */}
+            {!isPreview && <>
             {state === 'sd' && tab === 'cpue' && latestReportId ? (
               <Pressable
                 onPress={() => Linking.openURL(SD_REPORT_URL(latestReportId))}
@@ -694,6 +724,7 @@ export default function LakeDetailScreen() {
                 <Text style={[text.labelM, { color: colors.walleye2 }]}>ND Stocking Report ↗</Text>
               </Pressable>
             )}
+            </>}
             <Pressable
               onPress={() => { setFeedbackText(''); setFeedbackOpen(true); }}
               accessibilityRole="button"
@@ -903,14 +934,14 @@ export default function LakeDetailScreen() {
             style={{ flex: 1 }}>
             <ScrollView contentContainerStyle={{ padding: space.xl }}>
               <Text style={[text.bodyM, { color: colors.ink2 }]}>
-                What looks wrong with {lake.name}? Be as specific as you can
+                What looks wrong with {lake.name ?? 'this lake'}? Be as specific as you can
                 (species, year, value you expected vs. what's shown).
               </Text>
               <Text style={[text.labelS, { color: colors.inkSoft, marginTop: space.lg }]}>
                 CONTEXT (auto-attached)
               </Text>
               <Text style={[text.dataS, { color: colors.inkSoft, marginTop: 4 }]}>
-                {`${STATE_CONFIGS[state]?.label ?? state.toUpperCase()} · ${lake.name} · ID ${lake.id} · `}
+                {`${STATE_CONFIGS[state]?.label ?? state.toUpperCase()} · ${lake.name ?? 'name hidden'} · ID ${lake.id} · `}
                 {`${localSpecies ? speciesDisplayName(localSpecies, state) : 'no species'} · `}
                 {`${tab === 'cpue' ? 'Catch tab' : 'Stocking tab'}`}
               </Text>
@@ -964,20 +995,26 @@ export default function LakeDetailScreen() {
         </SafeAreaView>
       </Modal>
 
-      {/* Subscription gate: shown when the lake fetch returns 402. */}
+      {/* Subscription gate: opened from the preview banner's Unlock button,
+          or by a hard 402 (older server / pdf-only paths). */}
       <PaywallScreen
         visible={paywallTriggered !== null}
         triggeredFrom={paywallTriggered ? STATE_CONFIGS[paywallTriggered].label : undefined}
         onClose={() => {
-          // Dismiss without subscribing — just back out of the lake detail.
-          // The user's chosen state stays as-is; if they came from the search
-          // screen for a paid state, that screen will show its own error and
-          // re-trigger the paywall on next action.
           setPaywallTriggered(null);
+          if (paywallFromBanner) {
+            // Dismissed from the preview banner — the redacted screen behind
+            // it is still perfectly usable; stay put.
+            setPaywallFromBanner(false);
+            return;
+          }
+          // Dismissed a hard 402 without subscribing — nothing to show here,
+          // back out of the lake detail.
           navigation.goBack();
         }}
         onPurchased={() => {
           setPaywallTriggered(null);
+          setPaywallFromBanner(false);
           loadLake();
         }}
       />
@@ -987,6 +1024,22 @@ export default function LakeDetailScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
+  // Mirrors SearchScreen's preview banner so the two read as one system.
+  previewBanner: {
+    backgroundColor: colors.ink,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.sm,
+    marginHorizontal: space.xl,
+    marginTop: space.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+  },
+  unlockBtn: {
+    backgroundColor: colors.walleye,
+    paddingHorizontal: space.lg,
+    paddingVertical: 5,
+  },
   errorBox: {
     flex: 1,
     alignItems: 'center',

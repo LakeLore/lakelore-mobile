@@ -10,14 +10,8 @@ import Svg, { Path, Text as SvgText } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { useSvgPanZoom, useCommittedMirror, assertWorklet } from '../hooks/useSvgPanZoom';
 import { useWindowDimensions } from 'react-native';
-import { SD_COUNTIES, SD_VIEWBOX } from '../data/sdCountyPaths';
-import { MN_COUNTIES, MN_VIEWBOX } from '../data/mnCountyPaths';
-import { ND_COUNTIES, ND_VIEWBOX } from '../data/ndCountyPaths';
-import { IA_COUNTIES, IA_VIEWBOX } from '../data/iaCountyPaths';
-import { NE_COUNTIES, NE_VIEWBOX } from '../data/neCountyPaths';
-import { WI_COUNTIES, WI_VIEWBOX } from '../data/wiCountyPaths';
-import { MI_COUNTIES, MI_VIEWBOX } from '../data/miCountyPaths';
-import { StateKey } from '../types';
+import { COUNTY_MAPS } from '../data/countyPaths';
+import { StateKey, GENERATED_STATES } from '../types';
 import { colors, text, space, hairline, fonts } from '../lakelore-rn/theme';
 import type { TextStyle } from 'react-native';
 import { PaperHeader, Chip, SectionLabel } from '../lakelore-rn/components';
@@ -26,30 +20,42 @@ interface Props {
   visible: boolean;
   state: StateKey;
   selected: string[];
+  /** County values from the server's /filters — the authoritative filter
+   *  vocabulary. Merged into the list; the sole source for states without
+   *  map geometry (RI towns, AK areas, Canadian FMZs/regions). */
+  countyOptions?: string[];
   onConfirm: (selected: string[]) => void;
   onClose: () => void;
 }
 
 interface VB { x: number; y: number; w: number; h: number }
 
-export default function CountyMapPicker({ visible, state, selected, onConfirm, onClose }: Props) {
+export default function CountyMapPicker({ visible, state, selected, countyOptions, onConfirm, onClose }: Props) {
   return (
     <MapCountyPicker
       visible={visible}
       state={state}
       selected={selected}
+      countyOptions={countyOptions}
       onConfirm={onConfirm}
       onClose={onClose}
     />
   );
 }
 
-function MapCountyPicker({ visible, state, selected, onConfirm, onClose }: Props) {
+function MapCountyPicker({ visible, state, selected, countyOptions, onConfirm, onClose }: Props) {
   const [draft, setDraft] = useState<string[]>(selected);
   const { width } = useWindowDimensions();
 
-  const counties = state === 'mn' ? MN_COUNTIES : state === 'nd' ? ND_COUNTIES : state === 'ia' ? IA_COUNTIES : state === 'ne' ? NE_COUNTIES : state === 'wi' ? WI_COUNTIES : state === 'mi' ? MI_COUNTIES : SD_COUNTIES;
-  const viewBox  = state === 'mn' ? MN_VIEWBOX  : state === 'nd' ? ND_VIEWBOX  : state === 'ia' ? IA_VIEWBOX  : state === 'ne' ? NE_VIEWBOX  : state === 'wi' ? WI_VIEWBOX  : state === 'mi' ? MI_VIEWBOX  : SD_VIEWBOX;
+  // Canadian provinces use FMZs/regions, not counties — adjust labels.
+  const regionLabel = GENERATED_STATES[state]?.country === 'CA' ? 'Regions' : 'Counties';
+
+  // Generated map geometry (48 US states). Absent (RI, AK, Canada) → the
+  // modal renders the list-only picker below the header.
+  const mapData = COUNTY_MAPS[state];
+  const hasMap = mapData != null;
+  const counties = mapData?.counties ?? {};
+  const viewBox = mapData?.viewBox ?? '0 0 500 300';
   const [, , vbW, vbH] = viewBox.split(' ').map(Number);
   const mapW = width - 32;
   const mapH = (mapW / vbW) * vbH;
@@ -211,11 +217,16 @@ function MapCountyPicker({ visible, state, selected, onConfirm, onClose }: Props
     resetView();
   };
 
-  const countyNames = Object.keys(counties).sort();
+  // Map shapes vs the full list: the list is the union of map shapes and the
+  // server's county vocabulary — DB values with no census shape (multi-county
+  // strings, typos, FMZs) stay selectable via the list even when they can't
+  // be tapped on the map.
+  const mapNames = Object.keys(counties).sort();
+  const countyNames = [...new Set([...mapNames, ...(countyOptions ?? [])])].sort();
   const dynamicViewBox = `${mapVB.x} ${mapVB.y} ${mapVB.w} ${mapVB.h}`;
   const zoomFactor = vbW / mapVB.w;
-  // Dense-county states (>70 counties) get a smaller label so labels don't overlap.
-  const baseFontSize = state === 'mn' || state === 'ia' || state === 'wi' || state === 'mi' ? 5.5 : 6.5;
+  // Dense states (>70 shapes) get a smaller label so labels don't overlap.
+  const baseFontSize = Object.keys(counties).length > 70 ? 5.5 : 6.5;
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onShow={handleShow}>
@@ -223,7 +234,7 @@ function MapCountyPicker({ visible, state, selected, onConfirm, onClose }: Props
         <SafeAreaView style={styles.safe}>
           <PaperHeader
             modal
-            title="Select Counties"
+            title={regionLabel === 'Regions' ? 'Select Regions' : 'Select Counties'}
             onBack={onClose}
             backLabel="Cancel"
             right={
@@ -238,25 +249,28 @@ function MapCountyPicker({ visible, state, selected, onConfirm, onClose }: Props
             }
           />
 
-          <View style={styles.hintRow}>
-            <Text style={[text.labelM, { color: colors.inkSoft }]}>
-              Tap to select · drag to pan · pinch to zoom
-            </Text>
-            {isZoomed && (
-              <Pressable onPress={resetView}>
-                <Text style={[text.labelM, { color: colors.walleye2 }]}>Reset zoom</Text>
-              </Pressable>
-            )}
-          </View>
+          {hasMap && (
+            <View style={styles.hintRow}>
+              <Text style={[text.labelM, { color: colors.inkSoft }]}>
+                Tap to select · drag to pan · pinch to zoom
+              </Text>
+              {isZoomed && (
+                <Pressable onPress={resetView}>
+                  <Text style={[text.labelM, { color: colors.walleye2 }]}>Reset zoom</Text>
+                </Pressable>
+              )}
+            </View>
+          )}
 
           {/* GestureDetector must stay on this static container — tap and
               pinch-focal coordinates are relative to the attached view, and
               the inner Animated.View moves mid-gesture. */}
+          {hasMap && (
           <GestureDetector gesture={gesture}>
             <View style={[styles.mapContainer, { width: mapW, height: mapH }]}>
               <Animated.View style={[styles.mapTransform, animatedStyle]}>
               <Svg width={mapW} height={mapH} viewBox={dynamicViewBox}>
-                {countyNames.map(name => {
+                {mapNames.map(name => {
                   const { d } = counties[name];
                   const isSelected = draft.includes(name);
                   return (
@@ -265,7 +279,7 @@ function MapCountyPicker({ visible, state, selected, onConfirm, onClose }: Props
                       stroke={colors.paper3} strokeWidth={0.6} />
                   );
                 })}
-                {countyNames.map(name => {
+                {mapNames.map(name => {
                   const { cx, cy } = counties[name];
                   const isSelected = draft.includes(name);
                   if (cx < 8 || cx > vbW - 8 || cy < 8 || cy > vbH - 8) return null;
@@ -287,6 +301,7 @@ function MapCountyPicker({ visible, state, selected, onConfirm, onClose }: Props
               </Animated.View>
             </View>
           </GestureDetector>
+          )}
 
           {draft.length > 0 && (
             <View style={styles.chips}>
@@ -304,7 +319,7 @@ function MapCountyPicker({ visible, state, selected, onConfirm, onClose }: Props
           )}
 
           <View style={{ paddingHorizontal: space.xl, paddingTop: space.xl, paddingBottom: 4 }}>
-            <SectionLabel>All Counties</SectionLabel>
+            <SectionLabel>{regionLabel === 'Regions' ? 'All Regions' : 'All Counties'}</SectionLabel>
           </View>
           <ScrollView style={{ flex: 1 }}>
             <View style={styles.list}>
