@@ -62,7 +62,7 @@ export default function StateSelectScreen({ onSelect }: Props) {
           Select a State or Province
         </Text>
         <Text style={[text.editorialS, { color: colors.inkSoft, marginTop: 6 }]}>
-          A field guide to fish populations in surveyed lakes across all 50 states and Canada.
+          A field guide to fish populations in surveyed lakes across the US and Canada.
         </Text>
       </View>
 

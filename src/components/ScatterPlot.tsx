@@ -58,6 +58,9 @@ function niceTicks(min: number, max: number, count = 5): number[] {
 interface DotData {
   x: number; y: number;
   stocked: number|null|undefined;
+  // Absolute estimated stocked adults — shown in the popup when the lake has
+  // no acreage (stocked density null there).
+  stockedEst?: number|null;
   // name is null when the server redacted it (paid-state preview) — the
   // popup card renders a blurred placeholder instead.
   name: string|null; county: string; species: string; year: number;
@@ -117,6 +120,7 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
       lake_id: r.lake_id,
       area_acres: r.area_acres ?? null,
       max_depth_feet: r.max_depth_feet ?? null,
+      stockedEst: r.stocked_adults_est ?? null,
     });
 
     if (state==='mn') {
@@ -571,6 +575,8 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
             {selectedDot.average_weight!=null && selectedDot.average_weight>0 && <Stat label="Avg weight" value={`${selectedDot.average_weight.toFixed(2)} lb`} />}
             {selectedDot.total_catch!=null && <Stat label="Total catch" value={String(selectedDot.total_catch)} />}
             {selectedDot.stocked!=null && <Stat label="Stck Adults / 100AC" value={selectedDot.stocked.toFixed(1)} />}
+            {selectedDot.stocked==null && selectedDot.stockedEst!=null &&
+              <Stat label="Stck Adults (est)" value={Math.round(selectedDot.stockedEst).toLocaleString()} />}
           </View>
           <Text style={[text.labelM, { color: colors.walleye2, marginTop: 4 }]}>
             {/* Preview users can open the (identity-redacted) history too. */}

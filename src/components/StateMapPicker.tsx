@@ -31,7 +31,11 @@ interface Props {
 
 interface VB { x: number; y: number; w: number; h: number }
 
-const SELECTABLE = STATE_PATHS.filter(p => p.key != null);
+// Selectable = in the registry AND active (states with no stocking and no
+// CPUE data are registry-inactive — drawn muted like the no-data provinces).
+const SELECTABLE = STATE_PATHS.filter(p => p.key != null && GENERATED_STATES[p.key].active);
+const isSelectableKey = (k: StateKey | null): k is StateKey =>
+  k != null && GENERATED_STATES[k].active;
 
 export default function StateMapPicker({ selected, hasAllStates, entitlementLoading, onSelect }: Props) {
   const { width } = useWindowDimensions();
@@ -237,11 +241,12 @@ export default function StateMapPicker({ selected, hasAllStates, entitlementLoad
             <Animated.View style={[styles.mapTransform, animatedStyle]}>
               <Svg width={mapW} height={mapH} viewBox={dynamicViewBox}>
                 {STATE_PATHS.map(p => {
-                  const isSelected = p.key != null && p.key === selected;
-                  const fill = p.key == null
+                  const selectable = isSelectableKey(p.key);
+                  const isSelected = selectable && p.key === selected;
+                  const fill = !selectable
                     ? colors.paper2                       // no data — muted
                     : isSelected ? colors.lake3
-                    : isFreeState(p.key) ? colors.walleye // MN — free tier
+                    : isFreeState(p.key as StateKey) ? colors.walleye // MN — free tier
                     : colors.paper;
                   return (
                     <Path key={`${p.country}-${p.postal}`} d={p.d}

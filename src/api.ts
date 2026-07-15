@@ -173,7 +173,10 @@ export async function fetchLakeWithSpecies(
   state: StateKey,
   species: string,
 ): Promise<unknown> {
-  return get(`${baseUrl(state)}/lake/${lakeId}?species=${encodeURIComponent(species)}`);
+  // metricsV2=1 opts into absolute adults_est metrics for lakes without
+  // acreage (adults_per_100ac null on those rows) — 1.0.x builds that can't
+  // render nulls don't send it and keep the legacy empty-metrics payload.
+  return get(`${baseUrl(state)}/lake/${lakeId}?species=${encodeURIComponent(species)}&metricsV2=1`);
 }
 
 // ── Query param builder ────────────────────────────────────────────────────────

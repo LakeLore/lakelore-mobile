@@ -221,6 +221,10 @@ export interface Result {
   species: string;
   gear: string | null;
   stocked_per_100ac: number | null;
+  // Absolute estimated surviving stocked adults — the stocked metric for
+  // lakes with no usable acreage (stocked_per_100ac is null there). Such
+  // rows rank below all density-ranked rows in the stocked sort.
+  stocked_adults_est?: number | null;
   // SD fields
   sample_n?: number | null;
   cpue?: number | null;

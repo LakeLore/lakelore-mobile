@@ -65,8 +65,10 @@ interface CatchRow {
   average_length?: number | null; species_name?: string | null;
 }
 interface StockRow { stock_year: number; species: string; life_stage: string; quantity: number }
-interface MetricRow { species: string; adults_per_100ac: number }
-interface MetricByYearRow { species: string; year: number; adults_per_100ac: number }
+// adults_per_100ac is null for lakes with no usable acreage (metricsV2) —
+// adults_est (absolute estimated survivors) carries the metric instead.
+interface MetricRow { species: string; adults_per_100ac: number | null; adults_est?: number | null }
+interface MetricByYearRow { species: string; year: number; adults_per_100ac: number | null; adults_est?: number | null }
 interface LakeData { lake: Lake; surveys: { id: number|string; report_id?: number|null; source_pdf?: string|null; source_url?: string|null }[]; catches: CatchRow[]; stocking: StockRow[]; metrics: MetricRow[]; metrics_by_year?: MetricByYearRow[]; latest_stocking_report_id?: number|null; preview?: boolean }
 
 // Palette — paper-and-ink chart palette
@@ -497,13 +499,24 @@ export default function LakeDetailScreen() {
   // Per-year adults/100ac comes from the server, computed by the same survival.js
   // that produces the headline metric — guarantees the chart's latest point
   // matches the headline reading.
+  //
+  // Lakes with no usable acreage (metricsV2): the server sends
+  // adults_per_100ac null + adults_est absolute — the chart plots the same
+  // line with the absolute values and the labels switch to "Est. Stocked
+  // Adults".
+  const stockingAdultsAbsolute = useMemo(() =>
+    !!data?.metrics_by_year?.length &&
+    data.metrics_by_year.every(m => m.adults_per_100ac == null),
+  [data]);
   const stockingAdultsPerYear = useMemo(() => {
     if (!data?.metrics_by_year?.length) return [];
     return data.metrics_by_year
       .filter(m => !localSpecies || m.species === localSpecies)
-      .map(m => ({ year: m.year, adults_per_100ac: m.adults_per_100ac }))
+      .map(m => ({ year: m.year, adults_per_100ac: (m.adults_per_100ac ?? m.adults_est ?? 0) }))
+      .filter(m => m.adults_per_100ac > 0)
       .sort((a, b) => a.year - b.year);
   }, [data, localSpecies]);
+  const stockedAdultsLabel = stockingAdultsAbsolute ? 'Est. Stocked Adults' : 'Stck Adults / 100AC';
 
   // When a species is selected, the source-document link should point at the
   // most-recent survey that actually contains that species — not the lake's
@@ -887,9 +900,11 @@ export default function LakeDetailScreen() {
                         <View style={styles.popupDivider} />
                         <View style={styles.popupRow}>
                           <View style={[styles.popupDot, { backgroundColor: ADULT_LINE }]} />
-                          <Text style={[text.bodyM, { flex: 1, color: colors.ink2 }]}>Stck Adults / 100AC</Text>
+                          <Text style={[text.bodyM, { flex: 1, color: colors.ink2 }]}>{stockedAdultsLabel}</Text>
                           <Text style={[text.dataM, { color: ADULT_LINE }]}>
-                            {entry.adults_per_100ac.toFixed(1)}
+                            {stockingAdultsAbsolute
+                              ? Math.round(entry.adults_per_100ac).toLocaleString()
+                              : entry.adults_per_100ac.toFixed(1)}
                           </Text>
                         </View>
                       </>
@@ -899,7 +914,7 @@ export default function LakeDetailScreen() {
               )}
               <Legend items={[
                 ...stageKeys.map(s => ({ label: s.charAt(0).toUpperCase()+s.slice(1), color: STAGE_COLORS[s] ?? DEFAULT_COLOR })),
-                ...(stockingAdultsPerYear.length > 0 ? [{ label: 'Stck Adults / 100AC', color: ADULT_LINE, dashed: true }] : []),
+                ...(stockingAdultsPerYear.length > 0 ? [{ label: stockedAdultsLabel, color: ADULT_LINE, dashed: true }] : []),
               ]} />
             </View>
           ) : (
