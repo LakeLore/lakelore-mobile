@@ -235,6 +235,10 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
       }
     }
 
+    // Dot-color gradient is DENSITY ONLY (adults per 100 acres) by design —
+    // absolute adults_est values aren't comparable to densities, so
+    // acreage-less stocked lakes render as "no data" dots; their estimate
+    // shows in the tap popup instead.
     const sortedStocked = results
       .map(r => r.stocked_per_100ac)
       .filter((v): v is number => v != null)
