@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Result, StateKey, STATE_CONFIGS, GENERATED_STATES } from '../types';
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
 import { StatPill } from '../lakelore-rn/components';
+import { useToast } from '../Toast';
 import BlurredLakeName from './BlurredLakeName';
 
 interface Props {
@@ -29,6 +30,30 @@ const metaStats = (r: Result): Stat[] => [
 ];
 
 const META_KEYS = new Set(['acres', 'depth', 'year', 'date', 'lake']);
+
+// Tap-to-define (IMPROVEMENT_PLAN 2.10): one-line plain-language definition
+// per metric, shown as a toast when a stat pill (or the sort label) is
+// tapped. cpue definitions switch on the label since the unit varies by
+// gear and cpue_kind.
+function metricDefinition(key: string, label: string): string | null {
+  if (key === 'cpue') {
+    if (label === 'Rel. Catch Index') return 'Agency relative-abundance index. Compare lakes for the same species only — not a true catch rate.';
+    if (label === 'Angler Catch Rate') return 'Catch rate derived from angler/tournament creel data rather than standardized survey nets.';
+    if (label === 'Catch / Hour') return 'Fish caught per hour of electrofishing in the agency survey. Higher = more abundant.';
+    return 'Fish caught per net set (gill, trap, or fyke net) in the agency survey. Higher = more abundant.';
+  }
+  switch (key) {
+    case 'stocked':
+      return label === 'Stck Adults (est)'
+        ? 'Estimated stocked fish surviving to adulthood — an absolute count, because this lake has no recorded acreage for a per-acre rate. Based on the last 10 years of stocking.'
+        : 'Estimated stocked fish surviving to adulthood per 100 acres, from the last 10 years of stocking run through a survival model.';
+    case 'rating': return 'The state agency’s own fishing-forecast rating for this species at this lake.';
+    case 'length': return 'Average length of fish sampled (or estimated) for this species in the survey.';
+    case 'weight': return 'Average weight of fish sampled for this species in the survey.';
+    case 'catch':  return 'Total fish of this species counted in the survey.';
+    default: return null;
+  }
+}
 
 // Stocked metric: density when the lake has acreage; absolute estimated
 // adults when it doesn't (no denominator — the server ranks those rows below
@@ -163,6 +188,7 @@ function genericStats(r: Result, state: StateKey): Stat[] {
 }
 
 export default function ResultRow({ result: r, state, sortBy, onPress }: Props) {
+  const { toast } = useToast();
   const allStats = state === 'sd' ? sdStats(r) : state === 'nd' ? ndStats(r) : state === 'ne' ? neStats(r) : state === 'ia' ? iaStats(r) : state === 'wi' ? wiStats(r) : state === 'mi' ? miStats(r) : state === 'mn' ? mnStats(r) : genericStats(r, state);
   const sortStat = allStats.find(s => s.key === sortBy);
   // Label always pulled from sortOptions so it stays readable ("Lake Name")
@@ -207,9 +233,13 @@ export default function ResultRow({ result: r, state, sortBy, onPress }: Props) 
         </Text>
         {otherStats.length > 0 && (
           <View style={styles.stats}>
-            {otherStats.slice(0, 6).map(s => (
-              <StatPill key={s.key} label={s.label} value={s.value as string} />
-            ))}
+            {otherStats.slice(0, 6).map(s => {
+              const def = metricDefinition(s.key, s.label);
+              return (
+                <StatPill key={s.key} label={s.label} value={s.value as string}
+                  onPress={def ? () => toast(`${s.label} — ${def}`) : undefined} />
+              );
+            })}
           </View>
         )}
       </View>
@@ -217,9 +247,19 @@ export default function ResultRow({ result: r, state, sortBy, onPress }: Props) 
         <Text style={[text.dataXL, { color: colors.ink }]}>
           {sortStat?.value ?? '—'}
         </Text>
-        <Text style={[text.labelS, { color: colors.walleye2, marginTop: 2 }]}>
-          {sortLabel}
-        </Text>
+        {/* Tap the sort label for its definition (same map as the pills). */}
+        <Pressable
+          onPress={() => {
+            const def = metricDefinition(sortBy, sortLabel);
+            if (def) toast(`${sortLabel} — ${def}`);
+          }}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={`${sortLabel} definition`}>
+          <Text style={[text.labelS, { color: colors.walleye2, marginTop: 2 }]}>
+            {sortLabel}
+          </Text>
+        </Pressable>
       </View>
     </Pressable>
   );
