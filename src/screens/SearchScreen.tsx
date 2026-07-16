@@ -59,6 +59,23 @@ Object.assign(STATE_STRIPES, {
   mi: colors.lakeInk,
 });
 
+// Default gear for the current area + species: the most common CPUE-BEARING
+// gear (server's gearCpueCounts), so a synthetic presence bucket at the top
+// of the raw counts never hides the real electrofishing/net survey rows
+// (NC's "no Largemouth records" bug). IA's server-computed station default
+// wins when present. No CPUE anywhere in scope → no gear filter at all
+// (restricting presence-tier results to one bucket adds nothing).
+function defaultGearFor(opts: FilterOptions | null): string[] {
+  if (!opts || opts.gearTypes.length === 0) return [];
+  if (opts.defaultGear) return [opts.defaultGear];
+  const cpue = opts.gearCpueCounts ?? {};
+  const withCpue = opts.gearTypes.filter(g => (cpue[g] ?? 0) > 0);
+  if (withCpue.length > 0) {
+    return [withCpue.slice().sort((a, b) => (cpue[b] ?? 0) - (cpue[a] ?? 0))[0]];
+  }
+  return [];
+}
+
 interface SearchSession {
   filters: FilterState;
   results: Result[];
@@ -172,23 +189,13 @@ export default function SearchScreen() {
       }
       const opts = await fetchFilters(stateKey);
       setOptions(opts);
-      // Auto-select a single default gear ONLY for the original launch
-      // states, where one standardized gear is the sensible comparison
-      // basis. For the 2026-07 fleet the first gear is often a synthetic
-      // presence bucket (e.g. NC "NCWRC Fishing Areas species list"), and
-      // defaulting to it HIDES the real electrofishing/net CPUE rows —
-      // those states start with no gear filter (all gears).
-      const LEGACY_GEAR_DEFAULT = new Set<StateKey>(['mn', 'sd', 'nd', 'ia', 'ne', 'wi', 'mi']);
-      if (opts.gearTypes.length > 0 && LEGACY_GEAR_DEFAULT.has(stateKey)) {
-        setFilters(prev => {
-          const valid = prev.gearTypes.filter(g => opts.gearTypes.includes(g));
-          if (valid.length > 0) return prev;
-          const gear = stateKey === 'ia'
-            ? (opts.defaultGear || opts.gearTypes.find(g => g === 'FN') || opts.gearTypes.find(g => g === 'HN') || opts.gearTypes[0])
-            : opts.gearTypes[0];
-          return { ...prev, gearTypes: [gear] };
-        });
-      }
+      // Seed the gear filter with the most common CPUE-bearing gear for this
+      // state (see defaultGearFor). Keeps any still-valid user selection.
+      setFilters(prev => {
+        const valid = prev.gearTypes.filter(g => opts.gearTypes.includes(g));
+        if (valid.length > 0) return prev;
+        return { ...prev, gearTypes: defaultGearFor(opts) };
+      });
     } catch (err) {
       if (err instanceof SubscriptionRequiredError) {
         setPaywallTriggered(err.state);
@@ -283,15 +290,9 @@ export default function SearchScreen() {
       setOptions(nextOpts);
     } catch { /* keep existing options if refetch fails */ }
 
-    // Prefer the server's species-aware `defaultGear` when it sets one (IA
-    // returns gearTypes in fixed EF/FN/HN order, so gearTypes[0] would be
-    // wrong). Other states order gearTypes by record count DESC, so
-    // gearTypes[0] is already the max-count gear.
-    const nextGearTypes = nextOpts && nextOpts.gearTypes.length > 0
-      ? [nextOpts.defaultGear || nextOpts.gearTypes[0]]
-      : filters.gearTypes;
-
-    const updated = { ...filters, species, gearTypes: nextGearTypes };
+    // Most common CPUE-bearing gear for the new species in the current area
+    // (defaultGearFor; IA's server default wins when present).
+    const updated = { ...filters, species, gearTypes: defaultGearFor(nextOpts) };
     setFilters(updated);
     if (species || filters.lakeName) {
       handleSearch(0, updated);
@@ -308,7 +309,7 @@ export default function SearchScreen() {
     } catch { /* keep existing options if refetch fails */ }
 
     const df = defaultFilters(state);
-    if (state === 'ia' && baseOpts?.defaultGear) df.gearTypes = [baseOpts.defaultGear];
+    df.gearTypes = defaultGearFor(baseOpts);
     setFilters(df);
     setResults([]);
     setScatterResults([]);
@@ -648,12 +649,19 @@ export default function SearchScreen() {
           // Empty array is a meaningful preference ("all counties"); persist
           // it too rather than treating empty as "no preference."
           persistCountySelection(state, counties);
-          // Refresh species lake_counts to reflect the new county scope so
-          // SpeciesPicker shows e.g. "Walleye · 12" not the state-wide total.
-          // Fire-and-forget: a stale options.species during the transition
-          // just means slightly-old counts for ~one tap.
+          // Refresh species lake_counts + gear counts for the new county
+          // scope, and re-default the gear to the most common CPUE-bearing
+          // gear for this area+species. If the default changed and a search
+          // is showing, re-run it so results match the new gear.
           fetchFilters(state, filters.species || undefined, counties)
-            .then(setOptions)
+            .then(opts => {
+              setOptions(opts);
+              const gear = defaultGearFor(opts);
+              if (JSON.stringify(gear) === JSON.stringify(updated.gearTypes)) return;
+              const withGear = { ...updated, gearTypes: gear };
+              setFilters(withGear);
+              if (withGear.species) handleSearch(0, withGear);
+            })
             .catch(() => {});
           if (updated.species) handleSearch(0, updated);
         }}

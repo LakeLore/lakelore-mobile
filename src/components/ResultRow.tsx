@@ -140,12 +140,16 @@ function iaStats(r: Result): Stat[] {
   ];
 }
 
+// Title-case an agency rating string ('excellent' -> 'Excellent').
+const fmtRating = (s: string) => s.replace(/\b\w/g, ch => ch.toUpperCase());
+
 // Generic layout for the 2026-07 all-states fleet: every canonical metric a
 // new state can carry. Null values drop out of the pill row automatically, so
 // presence-only states just show fewer pills.
 function genericStats(r: Result): Stat[] {
   return [
     { key: 'cpue',    label: 'Catch / Net',  value: fmtCpue(r.cpue) },
+    { key: 'rating',  label: 'Forecast',     value: r.rating != null ? fmtRating(r.rating) : null },
     { key: 'length',  label: 'Avg length',   value: r.average_length != null ? `${r.average_length.toFixed(1)}"` : null },
     { key: 'weight',  label: 'Avg wt',       value: r.average_weight != null ? `${r.average_weight.toFixed(2)} lb` : null },
     { key: 'catch',   label: 'Total catch',  value: r.total_catch != null ? r.total_catch.toLocaleString() : null },

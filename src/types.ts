@@ -203,6 +203,10 @@ export interface FilterOptions {
   species: SpeciesOption[];
   gearTypes: string[];
   gearTypeCounts?: Record<string, number>;
+  // Per-gear counts of CPUE-bearing rows under the same species/county scope
+  // — the app's gear default prefers these over raw counts so synthetic
+  // presence buckets never hide real survey rows.
+  gearCpueCounts?: Record<string, number>;
   counties: string[];
   surveyTypes?: string[];
   yearRange: { min: number; max: number };
@@ -225,6 +229,10 @@ export interface Result {
   // lakes with no usable acreage (stocked_per_100ac is null there). Such
   // rows rank below all density-ranked rows in the stocked sort.
   stocked_adults_est?: number | null;
+  // Agency fishing-forecast rating (ratings-tier states GA/MO/IL/FL/KY/OK):
+  // display string + that state's sortable ordinal.
+  rating?: string | null;
+  rating_ordinal?: number | null;
   // SD fields
   sample_n?: number | null;
   cpue?: number | null;
