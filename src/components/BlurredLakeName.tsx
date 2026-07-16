@@ -1,34 +1,32 @@
 // BlurredLakeName — placeholder rendered where a lake name would appear when
 // the server has redacted it (paid-state preview for non-subscribers).
 //
-// The real name never reaches the device in preview mode, so there is nothing
-// to actually blur. Instead we render a DECOY name (picked deterministically
-// from the seed, so a given row keeps the same shape across re-renders) with
-// transparent ink and a wide text shadow — reads as a smudged, unreadable
-// name of plausible length. Decoys are generic north-woods names that don't
-// exist verbatim in our data, and the blur keeps them illegible regardless.
+// The real name never reaches the device in preview mode. Renders NEUTRAL
+// REDACTION BARS (block glyphs) — length varies deterministically by seed so
+// rows keep distinct, stable shapes across re-renders. Deliberately NOT a
+// plausible fake name: decoys read as deception to users and App Review;
+// honest redaction sells the same curiosity without the trust cost
+// (IMPROVEMENT_PLAN 1.6, swapped 2026-07-16).
 
 import React from 'react';
 import { Text, StyleSheet, StyleProp, TextStyle } from 'react-native';
+import { colors } from '../lakelore-rn/theme';
 
-const DECOY_NAMES = [
-  'Whispering Pines Lake',
-  'Tamarack Hollow Lake',
-  'Long Portage Lake',
-  'Kingfisher Lake',
-  'Blue Heron Lake',
-  'Snowshoe Lake',
-  'Meadowlark Lake',
-  'Birch Narrows Lake',
-  'Cattail Slough',
-  'Loon Echo Lake',
-];
-
-function decoyFor(seed: number | string): string {
+// Deterministic small hash so a given lake keeps the same bar shape.
+function hash(seed: number | string): number {
   const s = String(seed);
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return DECOY_NAMES[Math.abs(h) % DECOY_NAMES.length];
+  return Math.abs(h);
+}
+
+// Two "words" of block glyphs, 4–7 + 3–5 blocks — reads as a redacted
+// two-word lake name of plausible length.
+function barsFor(seed: number | string): string {
+  const h = hash(seed);
+  const first = 4 + (h % 4);
+  const second = 3 + ((h >> 3) % 3);
+  return '▆'.repeat(first) + ' ' + '▆'.repeat(second);
 }
 
 interface Props {
@@ -43,23 +41,20 @@ interface Props {
 export default function BlurredLakeName({ seed, style, onDark }: Props) {
   return (
     <Text
-      style={[style, styles.blurred, onDark && styles.blurredOnDark]}
+      style={[style, styles.bars, onDark && styles.barsOnDark]}
       numberOfLines={1}
       accessibilityLabel="Lake name hidden — requires All-States subscription"
     >
-      {decoyFor(seed)}
+      {barsFor(seed)}
     </Text>
   );
 }
 
 const styles = StyleSheet.create({
-  blurred: {
-    color: 'transparent',
-    textShadowColor: 'rgba(26, 31, 42, 0.45)', // ink at partial opacity
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 12,
+  bars: {
+    color: colors.paper3,
   },
-  blurredOnDark: {
-    textShadowColor: 'rgba(244, 239, 228, 0.5)', // paper at partial opacity
+  barsOnDark: {
+    color: 'rgba(244, 239, 228, 0.35)', // paper at partial opacity
   },
 });

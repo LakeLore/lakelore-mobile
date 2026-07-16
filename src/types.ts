@@ -236,6 +236,9 @@ export interface Result {
   // SD fields
   sample_n?: number | null;
   cpue?: number | null;
+  // What the cpue number means ('gear' | 'derived' | 'relative' | 'creel') —
+  // relative indices must never be labeled as real catch rates.
+  cpue_kind?: string | null;
   psd?: number | null;
   psd_p?: number | null;
   wr?: number | null;

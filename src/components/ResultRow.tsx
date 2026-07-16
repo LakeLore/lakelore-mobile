@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { Result, StateKey, STATE_CONFIGS } from '../types';
+import { Result, StateKey, STATE_CONFIGS, GENERATED_STATES } from '../types';
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
 import { StatPill } from '../lakelore-rn/components';
 import BlurredLakeName from './BlurredLakeName';
@@ -122,6 +122,10 @@ function fmtCpue(v: number | null | undefined): string | null {
 // avoid false positives in other states' gear strings).
 export function cpueLabelForGear(state: StateKey, gear?: string | null): string {
   const fallback = STATE_CONFIGS[state].sortOptions.find(o => o.value === 'cpue')?.label ?? 'Catch / Net';
+  // Relative indices / creel-derived rates keep their disclaimer label — a
+  // per-gear "Catch / Hour" override would dress an index up as a real rate.
+  const kind = GENERATED_STATES[state]?.cpueKind;
+  if (kind === 'relative' || kind === 'creel') return fallback;
   if (!gear) return fallback;
   const g = gear.toLowerCase();
   if (/electrofish|shocker|(?:^|[\s-])ef(?:[-\s*]|$)/.test(g)) return 'Catch / Hour';
@@ -146,9 +150,9 @@ const fmtRating = (s: string) => s.replace(/\b\w/g, ch => ch.toUpperCase());
 // Generic layout for the 2026-07 all-states fleet: every canonical metric a
 // new state can carry. Null values drop out of the pill row automatically, so
 // presence-only states just show fewer pills.
-function genericStats(r: Result): Stat[] {
+function genericStats(r: Result, state: StateKey): Stat[] {
   return [
-    { key: 'cpue',    label: 'Catch / Net',  value: fmtCpue(r.cpue) },
+    { key: 'cpue',    label: cpueLabelForGear(state, r.gear),  value: fmtCpue(r.cpue) },
     { key: 'rating',  label: 'Forecast',     value: r.rating != null ? fmtRating(r.rating) : null },
     { key: 'length',  label: 'Avg length',   value: r.average_length != null ? `${r.average_length.toFixed(1)}"` : null },
     { key: 'weight',  label: 'Avg wt',       value: r.average_weight != null ? `${r.average_weight.toFixed(2)} lb` : null },
@@ -159,7 +163,7 @@ function genericStats(r: Result): Stat[] {
 }
 
 export default function ResultRow({ result: r, state, sortBy, onPress }: Props) {
-  const allStats = state === 'sd' ? sdStats(r) : state === 'nd' ? ndStats(r) : state === 'ne' ? neStats(r) : state === 'ia' ? iaStats(r) : state === 'wi' ? wiStats(r) : state === 'mi' ? miStats(r) : state === 'mn' ? mnStats(r) : genericStats(r);
+  const allStats = state === 'sd' ? sdStats(r) : state === 'nd' ? ndStats(r) : state === 'ne' ? neStats(r) : state === 'ia' ? iaStats(r) : state === 'wi' ? wiStats(r) : state === 'mi' ? miStats(r) : state === 'mn' ? mnStats(r) : genericStats(r, state);
   const sortStat = allStats.find(s => s.key === sortBy);
   // Label always pulled from sortOptions so it stays readable ("Lake Name")
   // even when there's no measurable value to show on the right (sortBy 'lake').
