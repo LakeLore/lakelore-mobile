@@ -538,9 +538,11 @@ export default function SearchScreen() {
             {total.toLocaleString()} {total === 1 ? 'RESULT' : 'RESULTS'}
           </Text>
           <View style={styles.viewToggle}>
-            {/* Scatter plots CPUE — presence-only states have nothing to
-                plot, so they stay list-only. */}
-            {GENERATED_STATES[state].hasCpue && (
+            {/* Scatter plots CPUE (or, for ratings states with size
+                estimates — GA/MO/IL — forecast rating vs average length).
+                Pure presence states have nothing to plot: list-only. */}
+            {(GENERATED_STATES[state].hasCpue ||
+              (GENERATED_STATES[state].hasRating && GENERATED_STATES[state].hasLength)) && (
               <Segmented
                 options={['List', 'Scatter']}
                 active={viewMode2}

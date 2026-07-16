@@ -72,6 +72,9 @@ interface DotData {
   average_weight?: number|null;
   total_catch?: number|null;
   estLength?: number;
+  // Rating mode (GA/MO/IL): y is the rating ordinal; this is the agency's
+  // display wording for the popup.
+  ratingText?: string|null;
 }
 
 type ViewBounds = { xMin:number; xMax:number; yMin:number; yMax:number };
@@ -105,12 +108,15 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
   const pointsRef = useRef<DotData[]>([]);
   const selectedDotRef = useRef<DotData|null>(null);
 
-  const { points, sortedStocked, dataBounds, xLabel, yLabel } = useMemo(() => {
+  const { points, sortedStocked, dataBounds, xLabel, yLabel, ratingMode } = useMemo(() => {
     const pts: DotData[] = [];
     const namesMap = SPECIES_NAMES_BY_STATE[state] ?? ({} as Record<string, string>);
     // Set by the generic (new-fleet) branch: whether this result set carries
     // measured lengths (drives the x-axis choice + label).
     let genericHasLength = false;
+    // Ratings-tier fallback (no CPUE anywhere): y becomes the agency forecast
+    // rating ordinal, x average size.
+    let ratingMode = false;
 
     // Lake-level fields shared across every state branch. Kept separate from
     // the per-state population so the popup can render acres/depth/county
@@ -213,7 +219,7 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
           estLength: r.average_length,
         });
       }
-    } else {
+    } else if (results.some(r => r.cpue != null)) {
       // Generic branch (2026-07 all-states fleet): length-vs-CPUE when the
       // result set carries measured lengths; otherwise survey-year-vs-CPUE so
       // CPUE-only states still get a usable scatter (year is also never
@@ -231,6 +237,23 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
           year: r.survey_year,
           average_length: r.average_length ?? undefined,
           total_catch: r.total_catch,
+        });
+      }
+    } else {
+      // Ratings-tier states with no CPUE at all (GA/MO/IL): pair the agency
+      // FORECAST RATING (y, state-local ordinal) with average size (x) on
+      // rows that carry both.
+      for (const r of results) {
+        if (r.rating_ordinal == null || r.average_length == null) continue;
+        ratingMode = true;
+        pts.push({
+          x: r.average_length, y: r.rating_ordinal,
+          stocked: r.stocked_per_100ac,
+          ...lakeMeta(r),
+          species: namesMap[r.species]??r.species,
+          year: r.survey_year,
+          average_length: r.average_length,
+          ratingText: r.rating ?? null,
         });
       }
     }
@@ -254,11 +277,11 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
     };
     const LEGACY_STATES = new Set(['mn', 'sd', 'nd', 'ia', 'ne', 'wi', 'mi']);
     const xLabel = state==='mn' ? 'Avg Weight (lb)'
-      : (LEGACY_STATES.has(state) || genericHasLength) ? 'Avg Length (in)'
+      : (LEGACY_STATES.has(state) || genericHasLength || ratingMode) ? 'Avg Length (in)'
       : 'Survey Year';
     // desc shown in render — keep in sync with xLabel
-    const yLabel = 'Catch Rate';
-    return { points: pts, sortedStocked, dataBounds, xLabel, yLabel };
+    const yLabel = ratingMode ? 'Forecast Rating' : 'Catch Rate';
+    return { points: pts, sortedStocked, dataBounds, xLabel, yLabel, ratingMode };
   }, [results, state]);
 
   // Keep refs in sync with latest render values
@@ -572,8 +595,13 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
           <View style={styles.dotStats}>
             {/* Field set mirrors STATE_CONFIGS[state].sortOptions so the popup
                 shows the same metrics the user can sort/filter on. */}
-            <Stat label={STATE_CONFIGS[state].sortOptions.find(o => o.value === 'cpue')?.label ?? 'Catch / Net'}
-                  value={selectedDot.y.toFixed(2)} />
+            {ratingMode ? (
+              <Stat label="Forecast"
+                    value={(selectedDot.ratingText ?? String(selectedDot.y)).replace(/\b\w/g, ch => ch.toUpperCase())} />
+            ) : (
+              <Stat label={STATE_CONFIGS[state].sortOptions.find(o => o.value === 'cpue')?.label ?? 'Catch / Net'}
+                    value={selectedDot.y.toFixed(2)} />
+            )}
             {selectedDot.average_length!=null && <Stat label="Avg length" value={`${selectedDot.average_length.toFixed(1)} in`} />}
             {selectedDot.estLength!=null && <Stat label="Est. length" value={`${selectedDot.estLength.toFixed(1)} in`} />}
             {selectedDot.average_weight!=null && selectedDot.average_weight>0 && <Stat label="Avg weight" value={`${selectedDot.average_weight.toFixed(2)} lb`} />}
