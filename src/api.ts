@@ -49,6 +49,7 @@ export class SubscriptionRequiredError extends Error {
 // logs mismatches today and will eventually require it, raising the bar on
 // spoofed X-User-Id headers. Must match LAKELORE_USER_SIG_KEY server-side.
 import { hmacSha256Hex } from './userSig';
+import { getSessionToken } from './session';
 
 // Transient failures (cell blips, brief 5xx) get two quiet retries with
 // backoff before surfacing an error banner (IMPROVEMENT_PLAN 1.15).
@@ -60,9 +61,17 @@ async function getOnce<T>(url: string, timeoutMs: number): Promise<T> {
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const userId = await getUserId();
+    const headers: Record<string, string> = {
+      'X-User-Id': userId,
+      'X-User-Sig': hmacSha256Hex(userId),
+    };
+    // Server-signed session token (see src/session.ts) — authoritative
+    // identity when present; legacy headers remain the fallback.
+    const token = getSessionToken(API_BASE_URL);
+    if (token) headers.Authorization = `Bearer ${token}`;
     const res = await fetch(url, {
       signal: controller.signal,
-      headers: { 'X-User-Id': userId, 'X-User-Sig': hmacSha256Hex(userId) },
+      headers,
     });
     if (res.status === 402) {
       // Subscription gate. Surface a typed error so callers can route to
