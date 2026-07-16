@@ -11,7 +11,7 @@ import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import Svg, { Line, Polyline, Circle, Rect, Text as SvgText, G } from 'react-native-svg';
 import { fetchLakeWithSpecies, SubscriptionRequiredError, submitFeedback } from '../api';
 import { useToast } from '../Toast';
-import { StateKey, STATE_CONFIGS, speciesDisplayName, SD_SPECIES_FROM_NAME } from '../types';
+import { StateKey, STATE_CONFIGS, GENERATED_STATES, speciesDisplayName, SD_SPECIES_FROM_NAME } from '../types';
 import PaywallScreen from './PaywallScreen';
 import BlurredLakeName from '../components/BlurredLakeName';
 import { colors, text, space, hairline, fonts } from '../lakelore-rn/theme';
@@ -49,6 +49,11 @@ const ND_STOCKING_URL = (id: number | string) =>
 // page — link to the state-wide stocking database/search interface instead.
 const NE_STOCKING_URL = 'https://outdoornebraska.gov/conservation/fisheries-management/fish-stocking-program/fish-stocking-database/';
 const WI_STOCKING_URL = 'https://apps.dnr.wi.gov/fisheriesmanagement/Public/Summary/Index';
+
+// States with hand-built per-lake source links above. Everyone else gets a
+// generic agency link (homepage from the generated registry export) so every
+// state's detail screen credits and links its data source, like MN does.
+const BESPOKE_SOURCE_LINK_STATES = new Set<StateKey>(['sd', 'mn', 'ia', 'nd', 'ne', 'wi', 'mi']);
 
 // name/county/area_acres are null in paid-state preview — the server redacts
 // lake identity for non-subscribers (metrics still ship in full).
@@ -735,6 +740,17 @@ export default function LakeDetailScreen() {
                 accessibilityLabel="Open ND stocking report"
                 accessibilityHint="Opens in browser">
                 <Text style={[text.labelM, { color: colors.walleye2 }]}>ND Stocking Report ↗</Text>
+              </Pressable>
+            )}
+            {!BESPOKE_SOURCE_LINK_STATES.has(state) && !!GENERATED_STATES[state].agencyUrl && (
+              <Pressable
+                onPress={() => Linking.openURL(GENERATED_STATES[state].agencyUrl)}
+                accessibilityRole="link"
+                accessibilityLabel={`Open ${GENERATED_STATES[state].agency} website`}
+                accessibilityHint="Opens in browser">
+                <Text style={[text.labelM, { color: colors.walleye2 }]}>
+                  {GENERATED_STATES[state].agency} ↗
+                </Text>
               </Pressable>
             )}
             </>}
