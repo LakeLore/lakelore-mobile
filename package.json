@@ -22,6 +22,7 @@
     "@expo-google-fonts/jetbrains-mono": "^0.4.1",
     "@expo-google-fonts/newsreader": "^0.4.1",
     "@expo-google-fonts/young-serif": "^0.4.0",
+    "@pagopa/io-react-native-integrity": "^0.3.2",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/netinfo": "11.4.1",
     "@react-navigation/native": "^7.2.2",

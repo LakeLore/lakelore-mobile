@@ -68,6 +68,9 @@
             ]
           }
         ]
+      },
+      "entitlements": {
+        "com.apple.developer.devicecheck.appattest-environment": "production"
       }
     },
     "android": {
@@ -86,7 +89,8 @@
       "privacyPolicyUrl": "https://www.lakeloreapp.com/privacy",
       "eas": {
         "projectId": "8d4acf25-f8aa-4f97-a2f0-d0b41d95af01"
-      }
+      },
+      "playCloudProjectNumber": "135351910296"
     },
     "updates": {
       "url": "https://u.expo.dev/8d4acf25-f8aa-4f97-a2f0-d0b41d95af01",
