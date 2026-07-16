@@ -96,6 +96,9 @@ export default function SearchScreen() {
   const [filters, setFilters] = useState<FilterState>(() => defaultFilters(state));
   const [options, setOptions] = useState<FilterOptions | null>(null);
   const [dbStatus, setDbStatus] = useState<DbStatus | null>(null);
+  // Non-null when the visible results came from the offline cache — value is
+  // the cache timestamp for the "showing saved results" banner.
+  const [offlineCacheDate, setOfflineCacheDate] = useState<number | null>(null);
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [results, setResults] = useState<Result[]>([]);
   const [scatterResults, setScatterResults] = useState<Result[]>([]);
@@ -268,10 +271,40 @@ export default function SearchScreen() {
       setTotal(data.total);
       setPage(nextPage);
       if (allData) setScatterResults(dropConsolidated(allData.results));
+      setOfflineCacheDate(null);
+      // Offline read cache (IMPROVEMENT_PLAN P3.6): persist the last
+      // successful first-page search per state so the app shows SOMETHING
+      // at the lake with no signal. Fire-and-forget.
+      if (nextPage === 0) {
+        AsyncStorage.setItem(`offlineCache.v1.${state}`, JSON.stringify({
+          ts: Date.now(),
+          results: dropConsolidated(data.results),
+          scatterResults: allData ? dropConsolidated(allData.results) : [],
+          total: data.total,
+        })).catch(() => {});
+      }
     } catch (err: unknown) {
       if (err instanceof SubscriptionRequiredError) {
         setPaywallTriggered(err.state);
       } else {
+        // Network failure: fall back to the last cached results for this
+        // state (stale beats blank at the lake), banner shows the age.
+        const isNetwork = err instanceof Error && /reach server|timed out/.test(err.message);
+        if (isNetwork && nextPage === 0) {
+          try {
+            const raw = await AsyncStorage.getItem(`offlineCache.v1.${state}`);
+            if (raw) {
+              const cached = JSON.parse(raw);
+              setResults(cached.results ?? []);
+              setScatterResults(cached.scatterResults ?? []);
+              setTotal(cached.total ?? 0);
+              setPage(0);
+              setOfflineCacheDate(cached.ts ?? null);
+              setLoading(false);
+              return;
+            }
+          } catch { /* fall through to the error banner */ }
+        }
         setError(err instanceof Error ? err.message : 'Search failed');
       }
     } finally {
@@ -465,6 +498,40 @@ export default function SearchScreen() {
           <Text style={[text.labelM, { color: colors.inkSoft }]}>ⓘ About &amp; Glossary</Text>
         </Pressable>
       </View>
+
+      {/* Offline-cache banner: results below are the last saved search. */}
+      {offlineCacheDate != null && (
+        <View style={styles.previewBanner}>
+          <Text style={[text.labelM, { color: colors.paper, flex: 1 }]} numberOfLines={2}>
+            Offline — showing results saved {new Date(offlineCacheDate).toLocaleDateString()}
+          </Text>
+          <Pressable
+            onPress={() => handleSearch(0)}
+            accessibilityRole="button"
+            accessibilityLabel="Retry search"
+            style={styles.unlockBtn}>
+            <Text style={[text.labelM, { color: colors.ink }]}>Retry</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {/* Data-not-ready banner (IMPROVEMENT_PLAN 1.14): previously fetched
+          and silently swallowed — a not-ready DB looked like a broken
+          species button with no explanation. */}
+      {dbStatus && !dbStatus.ready && (
+        <View style={styles.previewBanner}>
+          <Text style={[text.labelM, { color: colors.paper, flex: 1 }]} numberOfLines={2}>
+            {stateCfg.label}’s data is being refreshed — search is briefly unavailable.
+          </Text>
+          <Pressable
+            onPress={() => loadStateOptions(state)}
+            accessibilityRole="button"
+            accessibilityLabel="Retry loading state data"
+            style={styles.unlockBtn}>
+            <Text style={[text.labelM, { color: colors.ink }]}>Retry</Text>
+          </Pressable>
+        </View>
+      )}
 
       {/* Preview banner — paid state, no subscription. Explains the blurred
           names and offers the unlock path. */}

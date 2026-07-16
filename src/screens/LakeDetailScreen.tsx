@@ -434,6 +434,29 @@ export default function LakeDetailScreen() {
 
   useEffect(() => { loadLake(); }, [loadLake]);
 
+  // Shareable branded lake card (IMPROVEMENT_PLAN P3.3): captures the
+  // detail content (charts + the lakeloreapp.com footer line) as a PNG and
+  // opens the share sheet. Native modules (view-shot / expo-sharing) are
+  // REQUIRED LAZILY: OTA bundles run on older binaries that don't ship
+  // them — a top-level import would crash those at launch.
+  const shareRef = React.useRef<View>(null);
+  const shareLakeCard = async () => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { captureRef } = require('react-native-view-shot');
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const Sharing = require('expo-sharing');
+      if (!(await Sharing.isAvailableAsync())) {
+        toast('Sharing is not available on this device.');
+        return;
+      }
+      const uri = await captureRef(shareRef, { format: 'png', quality: 1 });
+      await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share lake card' });
+    } catch {
+      toast('Sharing needs the latest app version from the store.');
+    }
+  };
+
   const lakeSpecies = useMemo(() => {
     if (!data) return [];
     const set = new Set([
@@ -619,6 +642,9 @@ export default function LakeDetailScreen() {
       )}
 
       <ScrollView style={{ backgroundColor: colors.paper }}>
+       {/* collapsable=false: Android flattens plain Views, which breaks
+           view-shot's node lookup for the share card. */}
+       <View ref={shareRef} collapsable={false} style={{ backgroundColor: colors.paper }}>
         {/* Lake meta + source links */}
         <View style={styles.metaBar}>
           <Text style={[text.labelM, { color: colors.inkSoft }]}>
@@ -782,6 +808,14 @@ export default function LakeDetailScreen() {
               </Pressable>
             )}
             </>}
+            {!isPreview && (
+              <Pressable
+                onPress={shareLakeCard}
+                accessibilityRole="button"
+                accessibilityLabel="Share this lake as an image">
+                <Text style={[text.labelM, { color: colors.walleye2 }]}>Share Lake Card</Text>
+              </Pressable>
+            )}
             <Pressable
               onPress={() => { setFeedbackText(''); setFeedbackOpen(true); }}
               accessibilityRole="button"
@@ -968,6 +1002,11 @@ export default function LakeDetailScreen() {
           )
         )}
 
+        {/* Brand line — subtle in the app, the watermark on shared cards. */}
+        <Text style={[text.labelS, { color: colors.inkSoft, textAlign: 'center', marginTop: 18, letterSpacing: 1.5 }]}>
+          LAKELORE · lakeloreapp.com
+        </Text>
+       </View>
         <View style={{ height: 40 }} />
       </ScrollView>
 

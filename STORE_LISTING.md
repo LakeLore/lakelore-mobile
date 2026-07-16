@@ -11,7 +11,7 @@ This is the source of truth for every text field in App Store Connect and Google
 | App name | `LakeLore` | 30 |
 | Subtitle (iOS) / Short description (Android) | `Atlas of lakes worth fishing` | 30 / 80 |
 | Promotional text (iOS only) | See below — updateable without re-review | 170 |
-| Keywords (iOS) | `fishing,walleye,muskellunge,stocking,survey,dnr,perch,crappie,minnesota,wisconsin,michigan,iowa` | 100 |
+| Keywords (iOS) | `fishing,lake finder,fishing map,ice fishing,walleye,musky,bass,stocking,perch,crappie,dnr,lakes` | 100 |
 | Description | See "Long description" below | 4000 |
 | Support URL | `https://www.lakeloreapp.com/support` | — |
 | Marketing URL | `https://www.lakeloreapp.com` | — |
@@ -60,10 +60,15 @@ Now covering all 50 states + Canada. Free in Minnesota, no account, no ads — t
 ## Keywords (iOS, 100 chars max, comma-separated, no spaces between)
 
 ```
-fishing,walleye,muskellunge,stocking,survey,dnr,perch,crappie,minnesota,iowa,nebraska,dakota
+fishing,lake finder,fishing map,ice fishing,walleye,musky,bass,stocking,perch,crappie,dnr,lakes
 ```
 
-(91 chars. Apple already indexes the app name, subtitle, and category, so don't repeat words from those. WI + MI keywords removed for v1 — those states are inactive.)
+(96 chars. Updated 2026-07-16 per IMPROVEMENT_PLAN P3.4: swapped low-volume/
+low-intent terms — `muskellunge`→`musky`, dropped `survey` and single-state
+names (the app is 50-state now; per-state discovery comes from the site's
+programmatic SEO pages instead) — for the high-volume generics `lake finder`,
+`fishing map`, `ice fishing`, `bass`. Apple indexes name/subtitle/category, so
+don't repeat those words.)
 
 > **Stale-count audit.** Lake totals shown here are pasted into App Store / Play descriptions one time per submission. Re-fetch from `/api/{state}/status` immediately before paste so the description matches live data. The in-app paywall does NOT show per-state lake counts (deliberately removed 2026-05-27 — counts felt cluttered and drift-prone for a CTA screen), so only this file needs the manual refresh.
 

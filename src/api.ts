@@ -43,16 +43,26 @@ export class SubscriptionRequiredError extends Error {
   }
 }
 
-// ── Fetch wrapper with timeout and user-friendly errors ───────────────────────
+// ── Fetch wrapper with retry, timeout, and user-friendly errors ────────────────
 
-async function get<T>(url: string, timeoutMs = 10_000): Promise<T> {
+// Client identity signature (HMAC of the anonymous user id) — the server
+// logs mismatches today and will eventually require it, raising the bar on
+// spoofed X-User-Id headers. Must match LAKELORE_USER_SIG_KEY server-side.
+import { hmacSha256Hex } from './userSig';
+
+// Transient failures (cell blips, brief 5xx) get two quiet retries with
+// backoff before surfacing an error banner (IMPROVEMENT_PLAN 1.15).
+const RETRY_DELAYS_MS = [500, 1500];
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+async function getOnce<T>(url: string, timeoutMs: number): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const userId = await getUserId();
     const res = await fetch(url, {
       signal: controller.signal,
-      headers: { 'X-User-Id': userId },
+      headers: { 'X-User-Id': userId, 'X-User-Sig': hmacSha256Hex(userId) },
     });
     if (res.status === 402) {
       // Subscription gate. Surface a typed error so callers can route to
@@ -60,20 +70,42 @@ async function get<T>(url: string, timeoutMs = 10_000): Promise<T> {
       const body = await res.json().catch(() => null);
       throw new SubscriptionRequiredError((body?.state as StateKey) ?? extractStateFromUrl(url));
     }
+    if (res.status === 429) throw new Error('Slow down a moment — too many requests. Try again shortly.');
     if (!res.ok) throw new Error(`Server error (${res.status})`);
     return res.json() as Promise<T>;
-  } catch (err: unknown) {
-    if (err instanceof SubscriptionRequiredError) throw err;
-    if (err instanceof Error && err.name === 'AbortError') {
-      throw new Error('Request timed out — check your connection');
-    }
-    if (err instanceof TypeError && err.message.includes('Network request failed')) {
-      throw new Error('Could not reach server — check your network connection');
-    }
-    throw err;
   } finally {
     clearTimeout(timer);
   }
+}
+
+function isRetryable(err: unknown): boolean {
+  if (err instanceof SubscriptionRequiredError) return false;
+  if (err instanceof Error && err.name === 'AbortError') return true;
+  if (err instanceof TypeError && err.message.includes('Network request failed')) return true;
+  if (err instanceof Error && /Server error \(5\d\d\)/.test(err.message)) return true;
+  return false;
+}
+
+async function get<T>(url: string, timeoutMs = 10_000): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+    try {
+      return await getOnce<T>(url, timeoutMs);
+    } catch (err) {
+      lastErr = err;
+      if (!isRetryable(err) || attempt === RETRY_DELAYS_MS.length) break;
+      await sleep(RETRY_DELAYS_MS[attempt]);
+    }
+  }
+  const err = lastErr;
+  if (err instanceof SubscriptionRequiredError) throw err;
+  if (err instanceof Error && err.name === 'AbortError') {
+    throw new Error('Request timed out — check your connection');
+  }
+  if (err instanceof TypeError && err.message.includes('Network request failed')) {
+    throw new Error('Could not reach server — check your network connection');
+  }
+  throw err;
 }
 
 function extractStateFromUrl(url: string): StateKey {
