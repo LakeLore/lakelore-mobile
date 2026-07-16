@@ -7,6 +7,15 @@ interface StateContextValue {
   state: StateKey;
   stateConfig: StateConfig;
   setState: (s: StateKey) => void;
+  /** null while AsyncStorage is loading; then whether a persisted state was
+   *  restored. App.tsx skips the state-select screen on restored launches
+   *  (2026-07-15 feedback: open to the last selected state, like counties). */
+  hadPersistedState: boolean | null;
+  /** Set by every EXPLICIT setState (state map / in-search switcher) and
+   *  consumed by SearchScreen to auto-open the county picker. Restored
+   *  launches never set it, so cold launches land straight on results. */
+  pendingCountyPick: boolean;
+  consumeCountyPick: () => void;
 }
 
 const StateContext = createContext<StateContextValue | null>(null);
@@ -15,20 +24,35 @@ export function StateProvider({ children }: { children: React.ReactNode }) {
   // Default to MN (the free tier). Anything else risks a 402 on first render
   // if a code path ever bypasses StateSelectScreen before AsyncStorage resolves.
   const [state, setStateKey] = useState<StateKey>('mn');
+  const [hadPersistedState, setHadPersistedState] = useState<boolean | null>(null);
+  const [pendingCountyPick, setPendingCountyPick] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem('selectedState').then(saved => {
-      if (saved && isActiveState(saved as StateKey)) setStateKey(saved as StateKey);
-    });
+    AsyncStorage.getItem('selectedState')
+      .then(saved => {
+        if (saved && isActiveState(saved as StateKey)) {
+          setStateKey(saved as StateKey);
+          setHadPersistedState(true);
+        } else {
+          setHadPersistedState(false);
+        }
+      })
+      .catch(() => setHadPersistedState(false));
   }, []);
 
   const setState = useCallback((s: StateKey) => {
     AsyncStorage.setItem('selectedState', s);
     setStateKey(s);
+    setPendingCountyPick(true);
   }, []);
 
+  const consumeCountyPick = useCallback(() => setPendingCountyPick(false), []);
+
   return (
-    <StateContext.Provider value={{ state, stateConfig: STATE_CONFIGS[state], setState }}>
+    <StateContext.Provider value={{
+      state, stateConfig: STATE_CONFIGS[state], setState,
+      hadPersistedState, pendingCountyPick, consumeCountyPick,
+    }}>
       {children}
     </StateContext.Provider>
   );

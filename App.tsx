@@ -22,7 +22,7 @@ import {
   JetBrainsMono_600SemiBold,
   JetBrainsMono_700Bold,
 } from '@expo-google-fonts/jetbrains-mono';
-import { StateProvider } from './src/StateContext';
+import { StateProvider, useAppState } from './src/StateContext';
 import { initIAP } from './src/iap';
 import { getUserId } from './src/userId';
 import { ToastProvider } from './src/Toast';
@@ -50,10 +50,16 @@ const NavTheme = {
 };
 
 function AppInner() {
-  const [stateSelected, setStateSelected] = useState(false);
+  const [statePicked, setStatePicked] = useState(false);
+  const { hadPersistedState } = useAppState();
 
-  if (!stateSelected) {
-    return <StateSelectScreen onSelect={() => setStateSelected(true)} />;
+  // Wait for the persisted-state load so returning users skip the map and
+  // land directly in their last state (counties restore silently too).
+  if (hadPersistedState === null) {
+    return <View style={{ flex: 1, backgroundColor: colors.paper }} />;
+  }
+  if (!statePicked && !hadPersistedState) {
+    return <StateSelectScreen onSelect={() => setStatePicked(true)} />;
   }
 
   return (

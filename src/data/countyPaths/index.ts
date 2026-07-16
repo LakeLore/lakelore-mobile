@@ -51,6 +51,7 @@ import { VIEWBOX as WA_VB, COUNTIES as WA_C } from './wa';
 import { VIEWBOX as WV_VB, COUNTIES as WV_C } from './wv';
 import { VIEWBOX as WI_VB, COUNTIES as WI_C } from './wi';
 import { VIEWBOX as WY_VB, COUNTIES as WY_C } from './wy';
+import { VIEWBOX as ON_VB, COUNTIES as ON_C } from './on';
 
 export interface CountyMapData {
   viewBox: string;
@@ -106,4 +107,5 @@ export const COUNTY_MAPS: Partial<Record<StateKey, CountyMapData>> = {
   wv: { viewBox: WV_VB, counties: WV_C },
   wi: { viewBox: WI_VB, counties: WI_C },
   wy: { viewBox: WY_VB, counties: WY_C },
+  on: { viewBox: ON_VB, counties: ON_C },
 };

@@ -70,7 +70,10 @@ interface SearchSession {
 }
 
 export default function SearchScreen() {
-  const { state, stateConfig, setState } = useAppState();
+  const { state, stateConfig, setState, pendingCountyPick, consumeCountyPick } = useAppState();
+  // Canadian provinces filter by regions (FMZs / management divisions), not
+  // counties — label the chip and picker accordingly.
+  const regionWord = GENERATED_STATES[state].country === 'CA' ? 'Regions' : 'Counties';
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [filters, setFilters] = useState<FilterState>(() => defaultFilters(state));
@@ -135,15 +138,17 @@ export default function SearchScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Picking a state ALWAYS leads into the county selector (2026-07-15 flow:
-  // state map → county map → results). SearchScreen only ever mounts after an
-  // explicit pick on the state map (App.tsx gates on it every launch), and
-  // in-session state switches come from the header's state picker — so every
-  // firing of this effect follows a deliberate selection. The user's previous
-  // county selection for the state is pre-loaded; "Done" sails through.
+  // An EXPLICIT state pick (state map / in-search switcher) leads into the
+  // county selector (state map → county map → results). Restored cold
+  // launches skip it — the last state + county selection load silently
+  // (pendingCountyPick is only set by StateContext.setState). States with no
+  // county vocabulary (BC, AB) skip straight to results too.
   useEffect(() => {
+    if (!pendingCountyPick) return;
+    consumeCountyPick();
+    if (!GENERATED_STATES[state].hasCounties) return;
     setShowCountyPicker(true);
-  }, [state]);
+  }, [pendingCountyPick, consumeCountyPick, state]);
 
   const persistCountySelection = useCallback((s: StateKey, counties: string[]) => {
     setPersistedCounties(prev => {
@@ -167,7 +172,14 @@ export default function SearchScreen() {
       }
       const opts = await fetchFilters(stateKey);
       setOptions(opts);
-      if (opts.gearTypes.length > 0) {
+      // Auto-select a single default gear ONLY for the original launch
+      // states, where one standardized gear is the sensible comparison
+      // basis. For the 2026-07 fleet the first gear is often a synthetic
+      // presence bucket (e.g. NC "NCWRC Fishing Areas species list"), and
+      // defaulting to it HIDES the real electrofishing/net CPUE rows —
+      // those states start with no gear filter (all gears).
+      const LEGACY_GEAR_DEFAULT = new Set<StateKey>(['mn', 'sd', 'nd', 'ia', 'ne', 'wi', 'mi']);
+      if (opts.gearTypes.length > 0 && LEGACY_GEAR_DEFAULT.has(stateKey)) {
         setFilters(prev => {
           const valid = prev.gearTypes.filter(g => opts.gearTypes.includes(g));
           if (valid.length > 0) return prev;
@@ -313,7 +325,7 @@ export default function SearchScreen() {
 
   const speciesLabel = filters.species
     ? speciesDisplayName(filters.species, state)
-    : 'All Species';
+    : 'Select Species';
 
   const hasFilters = filters.counties.length > 0
     || filters.minCpue || filters.maxCpue
@@ -405,13 +417,20 @@ export default function SearchScreen() {
         >
           Filters
         </Chip>
-        <Chip
-          active={filters.counties.length > 0}
-          disabled={!options}
-          onPress={() => options && setShowCountyPicker(true)}
-        >
-          {filters.counties.length > 0 ? `${filters.counties.length} Counties` : 'Counties'}
-        </Chip>
+        {/* Hidden entirely for states with no county/region vocabulary
+            (BC, AB). Canadian provinces filter by REGIONS (FMZs/divisions),
+            so the chip says so. */}
+        {GENERATED_STATES[state].hasCounties && (
+          <Chip
+            active={filters.counties.length > 0}
+            disabled={!options}
+            onPress={() => options && setShowCountyPicker(true)}
+          >
+            {filters.counties.length > 0
+              ? `${filters.counties.length} ${regionWord}`
+              : regionWord}
+          </Chip>
+        )}
         <View style={styles.toggleWrap}>
           <Text style={[text.labelM, { color: colors.inkSoft, marginRight: 6 }]}>Latest Only</Text>
           <Pressable
