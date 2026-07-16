@@ -742,6 +742,34 @@ export default function LakeDetailScreen() {
                 <Text style={[text.labelM, { color: colors.walleye2 }]}>ND Stocking Report ↗</Text>
               </Pressable>
             )}
+            {/* Non-legacy states: deep link to THIS lake's source wherever the
+                pipeline captured one (per-lake agency pages, survey-summary /
+                management-plan PDFs, forecast documents) — most recent survey
+                with a source_url, narrowed by the selected species like the
+                NE/WI/MI block above. Falls back to the agency homepage. */}
+            {!BESPOKE_SOURCE_LINK_STATES.has(state) && (() => {
+              // Guard on http(s) — some states' source_url carries a
+              // provenance label (e.g. OR "myodfw stocked-waters KML"), not
+              // a link.
+              const linkable = (s: { source_url?: string | null }) =>
+                !!s.source_url && /^https?:/i.test(s.source_url);
+              const pick = (data?.surveys ?? []).find(s =>
+                linkable(s) && (!speciesSurveyIds || speciesSurveyIds.has(String(s.id))),
+              ) ?? (data?.surveys ?? []).find(linkable);
+              if (!pick?.source_url) return null;
+              const isPdf = /\.pdf(\?|$)/i.test(pick.source_url);
+              return (
+                <Pressable
+                  onPress={() => Linking.openURL(pick.source_url!)}
+                  accessibilityRole="link"
+                  accessibilityLabel={`Open ${GENERATED_STATES[state].agency} source for this lake`}
+                  accessibilityHint="Opens in browser">
+                  <Text style={[text.labelM, { color: colors.walleye2 }]}>
+                    {isPdf ? 'Survey Report ↗' : 'Agency Lake Page ↗'}
+                  </Text>
+                </Pressable>
+              );
+            })()}
             {!BESPOKE_SOURCE_LINK_STATES.has(state) && !!GENERATED_STATES[state].agencyUrl && (
               <Pressable
                 onPress={() => Linking.openURL(GENERATED_STATES[state].agencyUrl)}
