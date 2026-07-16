@@ -4,17 +4,18 @@ The single source of truth for what's left before LakeLore ships to the App Stor
 
 For listing copy, screenshot capture, and store-form answers, see [STORE_LISTING.md](./STORE_LISTING.md). This file tracks the *infrastructure and code* work that surrounds those.
 
-Last reviewed: 2026-05-08.
+Last reviewed: 2026-07-16 (all-states launch reconciliation).
 
-## Monetization model (locked in 2026-05-07)
+## Monetization model (locked in 2026-05-07 · preview model 2026-07-08 · all-states scope 2026-07-15)
 
-- **Free tier:** Minnesota only. Full access to all 9,490 MN lakes, all features.
-- **Paid tier — "LakeLore All-States":** Unlocks the other six states (WI, MI, ND, SD, NE, IA).
+- **Free tier:** Minnesota only. Full access, all features.
+- **Paid tier — "LakeLore All-States":** every other active state/province — **44 US states + 5 Canadian provinces (ON/BC/MB/SK/AB)**. 50 active total; SC/AZ/MA/DE/RI/QC are held back (registry `active:false` — no stocking AND no CPUE data).
 - **Price:** $5.99 / year, auto-renewing.
 - **Free trial:** None.
 - **Provider:** RevenueCat (cross-platform abstraction over Apple StoreKit + Google Play Billing).
 - **User identity:** Anonymous device UUID (no account, no email). Cross-device restore via per-platform store account ("Restore Purchases" button).
-- **State Select UX:** All 7 states visible with lake counts. MN is free to enter; the other six show a small lock indicator and tapping opens the paywall instead of entering the state.
+- **Paywall UX — preview model (replaced the original hard gate 2026-07-08; expanded 2026-07-15):** non-subscribers can ENTER every paid state and use everything — counties, filters, search, list + scatter, every metric, and full lake detail. What's withheld is lake IDENTITY: the server redacts `lake_name`, county, acres, coords, and report/PDF/source links on `/results` **and** `/lake/:id`, and replaces lake/survey ids with deterministic hashes. Only `/pdf` returns a hard 402. The app renders neutral block-bar redaction (no decoy names) + unlock banners that open the paywall.
+- **State Select UX:** pan/zoom SVG map of the US + Canada (`StateMapPicker`) with an A-Z list fallback; picking a state opens the county map picker. Inactive states draw muted and aren't selectable.
 
 ---
 
@@ -37,7 +38,10 @@ Last reviewed: 2026-05-08.
 | ✅ | Mobile RevenueCat SDK + paywall UX | me | All UX shipped; both platform keys real |
 | ✅ | Privacy + Terms updates for subscriptions | me | Live on lakeloreapp.com (effective 2026-05-07) |
 | ✅ | Sentry crash + error monitoring | shared | Live · mobile + server wired |
-| ⚠️ | [Offsite DB backups](#offsite-db-backups) | shared | 30 min |
+| ✅ | [Offsite DB backups](#offsite-db-backups) | shared | B2 + weekly launchd live 2026-07-07; backup.sh sweeps every state folder as of 2026-07-16 |
+| ✅ | Map state selector (US + Canada atlas → county picker) | me | Shipped 2026-07-15 (1.1.0) |
+| ✅ | Preview lake detail (identity-redacted `/lake/:id`) | shared | Shipped 2026-07-15 (server + app) |
+| ✅ | 1.1.0 (build 20) on TestFlight | shared | Submitted 2026-07-15; OTA rounds 4–15 followed on runtime 1.1.0 |
 | ✅ | Auto-discover dev API host | me | Shipped (commit `e250df4`) |
 | ✅ | In-app "Sources / About" page | me | Shipped (commit `f0f8362`) |
 | ✅ | Empty / error state polish | me | Shipped — see commit below |
@@ -47,20 +51,23 @@ Last reviewed: 2026-05-08.
 
 ## Remaining blockers, in order
 
-> **2026-07-08 status:** the undocumented Android blocker (county-map + scatterplot
-> zoom/drag jank) is FIXED (UI-thread worklet gestures, device-verified) and
-> **v1.0.1 is uploaded to both stores**: TestFlight (processing; regression pass
-> pending) and the Play **internal testing track** (draft). Apple closed the 1.0.0
-> train, hence the version bump — runtimeVersion is now 1.0.1 (fresh OTA pipeline).
-> Remaining below: sandbox purchase test, screenshots, then promote/submit.
+> **2026-07-16 status (all-states launch):** the app is now **v1.1.0 (build 20), on
+> TestFlight since 2026-07-15** — 50 active states/provinces (44 US paid + 5 CA paid +
+> free MN), map state selector → county picker, preview lake detail, forecast ratings
+> (schema v4/v5), offline read cache, retry/backoff, X-User-Sig. Fifteen OTA rounds
+> shipped on runtime 1.1.0 through 2026-07-16. Production server + all 56 v5 DBs are
+> live on Fly. The **share-lake-card** feature is committed but lazy-required — it
+> activates only with the NEXT native build. Below is the current release checklist.
 
-1. **Sandbox-test a purchase** end-to-end on at least one platform before submission:
-   - **iOS**: App Store Connect → Users and Access → Sandbox Testers → create a sandbox Apple ID. TestFlight build, sign out of real Apple ID on simulator/device, sign in with sandbox account, tap a non-MN state → paywall → Subscribe.
-   - **Android**: Play Console → Setup → License testing → add yourself as a tester. Internal Testing track build, install on a real device, tap a non-MN state → paywall → Subscribe.
-2. **Capture screenshots** — iPhone 6.9" / 6.5" required for App Store (1320×2868 / 1284×2778), Android phone (1080×1920 or larger 9:16) for Play. With `supportsTablet:false`, no iPad screenshots required. See STORE_LISTING.md for shot list.
-3. **Submit to App Store and Play Store.**
+> *(2026-07-08 status, for the record: Android zoom/drag jank fixed, v1.0.1 uploaded
+> to both stores — superseded by the 1.1.0 train above.)*
 
-Items 1 and 2 can be done in any order. Item 3 is the final step; the iOS subscription product gets submitted to App Review alongside the binary in a single submission.
+1. **Owner TestFlight pass on 1.1.0** — state map → county map, preview lake detail, an acreage-less stocked lake (e.g. AK), sandbox purchase if not already exercised.
+2. **Native build 21** — activates the Share Lake Card (view-shot + expo-sharing); batch in the optional in-app ratings prompt (`expo-store-review`) if authorized.
+3. **Fresh screenshots** — must include the new map state selector. iPhone 6.9" / 6.5" (1320×2868 / 1284×2778) for App Store, Android phone (1080×1920+ 9:16) for Play. Shot list in STORE_LISTING.md (verify its copy reflects all-states counts first).
+4. **Submit to App Store and Play Store** — iOS subscription product rides along with the binary; Android needs a 1.1.x production AAB built + submitted (`npm run build:prod:android`, none kicked yet).
+5. **Merge branches to main** — mobile repo is on `mn-species-display-names`, lakelore-data on `data-strength-and-acreage-backfill`; merge both at release.
+6. **THEN push the web repo** — all-states marketing copy + programmatic SEO are committed locally only; pushing auto-deploys, so it waits until the 1.1.0 app is live in stores.
 
 ## Known minor open items (not blocking)
 
@@ -441,6 +448,7 @@ For posterity / context:
 - Store listing copy in `STORE_LISTING.md`
 - CLAUDE.md updated for 7 states, repo locations, deploy/ symlink layout
 - **2026-05-13**: build 10 + 11 uploaded to TestFlight with hardened paywall copy, lock-icon SVG, AboutScreen Manage/Restore links, Sentry ErrorBoundary, expo-application for feedback metadata, SafeAreaProvider migration. `expo-updates` wired on the `production` channel; first OTA published (update group `bfed3391`, runtime `1.0.0`).
+- **2026-07-15/16 — all-states launch (v1.1.0, build 20)**: 50 states/provinces activated (registry-driven on server + app); map state selector (US + Canada atlas) → county map picker; preview mode expanded to `/lake/:id` with identity redaction + hashed ids; app opens to last persisted state; forecast ratings (GA/MO/IL/FL/KY/OK + KS) with rating-mode scatter; CPUE-aware gear defaults; per-lake agency source links for ~22 states + agency fallback everywhere; neutral block-bar redaction (decoy names removed); offline read cache; API retry/backoff + X-User-Sig; Share Lake Card committed (activates with build 21); jest-expo smoke tests; ASO keyword swap. Build 20 submitted to TestFlight 2026-07-15; 15 OTA rounds on runtime 1.1.0 through 2026-07-16. Server: registry-driven `ACTIVE_STATES`, `LAKELORE_DB_DIR=/data`, `/readyz` + deploy gate, RC 72h fail-open grace, `/api/subscribe`, `/api/:state/lakes-index`, GitHub Actions uptime monitor. Data: schema v5 (`cpue_kind`, `rating`/`rating_ordinal`, `adults_est`), all 56 DBs deployed to production 2026-07-15.
 
 ---
 
