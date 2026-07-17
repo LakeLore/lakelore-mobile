@@ -959,14 +959,13 @@ export default function LakeDetailScreen() {
         )}
 
         {/* Tabs — Avg Size only shows when this lake reports a size metric
-            (average length, or average weight in MN). Labels shorten to fit
-            three across. */}
+            (average length, or average weight in MN). ONE vocabulary whatever
+            the tab count (D9 — the old two-tab layout switched to 'Catch Over
+            Time'/'Stocking History', same concepts under different names). */}
         <View style={styles.tabs}>
           {(sizeField ? (['cpue','size','stocking'] as const) : (['cpue','stocking'] as const)).map(t => {
             const on = tab === t;
-            const label = sizeField
-              ? (t === 'cpue' ? 'Catch' : t === 'size' ? 'Avg Size' : 'Stocking')
-              : (t === 'cpue' ? 'Catch Over Time' : 'Stocking History');
+            const label = t === 'cpue' ? 'Catch' : t === 'size' ? 'Avg Size' : 'Stocking';
             return (
               <Pressable key={t} style={[styles.tab, on && styles.tabActive]} onPress={() => setTab(t)}>
                 <Text numberOfLines={1} style={[
@@ -983,7 +982,9 @@ export default function LakeDetailScreen() {
         {/* CPUE tab */}
         {tab === 'cpue' && (
           cpueChartData.length > 0 ? (
-            <View style={styles.chartSection}>
+            <View style={styles.chartSection}
+              accessible
+              accessibilityLabel={`Catch chart for ${speciesName}: ${gearKeys.length} gear ${gearKeys.length === 1 ? 'series' : 'series'} across ${cpueChartData.length} survey ${cpueChartData.length === 1 ? 'year' : 'years'}, ${cpueChartData[0]?.year} to ${cpueChartData[cpueChartData.length - 1]?.year}`}>
               <Text style={[text.bodyS, { color: colors.inkSoft, marginBottom: 8 }]}>
                 {state === 'ia'
                   ? 'Total fish caught from Iowa DNR comprehensive surveys. Each line = one gear type.'

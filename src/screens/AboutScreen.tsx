@@ -159,7 +159,14 @@ function StateGlossarySection({ state }: { state: StateKey }) {
   const isND = state === 'nd';
   const isIA = state === 'ia';
   const isNE = state === 'ne';
-  const stateLabel = GENERATED_STATES[state]?.name ?? state.toUpperCase();
+  const legacy = isSD || isMN || isND || isIA || isNE;
+  const g = GENERATED_STATES[state];
+  const stateLabel = g?.name ?? state.toUpperCase();
+  // Fleet states get glossary text keyed off what their cpue ACTUALLY is
+  // (D3, 2026-07-17): the old generic fallback told relative-index and
+  // creel states their number was "fish caught per net set" — most wrong
+  // for exactly the states with the least familiar metrics.
+  const kind = g?.cpueKind ?? null;
   return (
     <View>
       <View style={styles.sectionHeader}>
@@ -168,15 +175,61 @@ function StateGlossarySection({ state }: { state: StateKey }) {
         </Text>
       </View>
 
-      {!isIA && (
+      {!isIA && legacy && (
         <GlossarySection title="Catch Rate">
           {isSD
             ? 'Fish caught per standard sampling unit. Gill nets: Catch / Net (fish per net-night). Electrofishing: Catch / Hour. Higher catch rate = more abundant fish population.'
             : isND
             ? 'Catch / Net — fish caught per net-night across all net configurations (mesh-graded gill nets and others). Electrofishing surveys use Catch / Hour. Higher = more abundant fish population.'
-            : isNE
-            ? 'Catch / Net — fish caught per net set, across all net types (gill nets, frame nets, trap nets). Electrofishing surveys use Catch / Hour. Higher = more abundant fish population. Nebraska Game & Parks uses standardized overnight gill nets for most open-water species assessments.'
-            : 'Catch / Net — fish caught per net set, across all net types (gill nets, trap nets, and others). Electrofishing surveys use Catch / Hour. Higher = more abundant fish population.'}
+            : 'Catch / Net — fish caught per net set, across all net types (gill nets, frame nets, trap nets). Electrofishing surveys use Catch / Hour. Higher = more abundant fish population.'}
+        </GlossarySection>
+      )}
+
+      {!legacy && kind === 'gear' && g?.hasCpue && (
+        <GlossarySection title="Catch Rate">
+          Fish caught per unit of standardized sampling effort in {g.agency} surveys. The unit follows the gear that produced each number — Catch / Net (per net set or net-night), Catch / Hour (electrofishing), or the unit shown on the row. Higher = more abundant fish population. Compare lakes for the same species; different species are caught at inherently different rates.
+        </GlossarySection>
+      )}
+
+      {!legacy && kind === 'relative' && (
+        <GlossarySection title="Rel. Catch Index">
+          {g.agency}&rsquo;s relative-abundance index — a standardized score, not a true fish-per-net catch rate. Use it to compare lakes for the SAME species; the numbers are not comparable across species or against other states&rsquo; catch rates.
+        </GlossarySection>
+      )}
+
+      {!legacy && kind === 'creel' && (
+        <GlossarySection title="Angler Catch Rate">
+          Catch rate derived from angler and tournament reports rather than standardized agency survey netting. It reflects fishing success, which tracks abundance but also skill, season, and effort — compare lakes for the same species with that in mind.
+        </GlossarySection>
+      )}
+
+      {g?.hasRating && (
+        <GlossarySection title="Forecast Rating & Best Bets">
+          The agency&rsquo;s own published fishing outlook per species and lake (e.g. Poor to Excellent). &ldquo;Best Bet&rdquo; marks the waters the agency features as top picks — they sort above every rated lake. Trajectory words like &ldquo;Developing&rdquo; or &ldquo;Improving&rdquo; describe direction, not a rank, and appear in their own bucket. Ratings are within-state only; never compare them across states.
+        </GlossarySection>
+      )}
+
+      {state === 'wi' && (
+        <GlossarySection title="Norm. Catch Rate">
+          A catch rate normalized across gear types for lakes surveyed with mixed gear, expressed in spring-fyke-net-equivalent fish per net so mixed-gear lakes compare against net-sampled lakes.
+        </GlossarySection>
+      )}
+
+      {!legacy && g?.hasLength && (
+        <GlossarySection title="Avg vs Est. Length">
+          &ldquo;Avg length&rdquo; is a mean of individually measured fish. &ldquo;Est. length&rdquo; is derived from published size ranges, size classes, or length charts — an estimate, not a measurement, and not comparable against measured averages.
+        </GlossarySection>
+      )}
+
+      {g?.hasStocking && (
+        <GlossarySection title="Stck Adults / 100AC">
+          Estimated stocked fish surviving to adulthood per 100 lake acres — the last 10 years of stocking records run through a survival model (fry survive at far lower rates than yearlings). Lakes without recorded acreage show an absolute estimate instead (&ldquo;Stck Adults (est)&rdquo;).
+        </GlossarySection>
+      )}
+
+      {!legacy && (
+        <GlossarySection title="Present / Presence Only">
+          The agency lists the species in this water but published no survey metric for it. &ldquo;Stocked · Inferred&rdquo; means the presence comes from stocking records — the agency stocked it there but hasn&rsquo;t published a survey observing it.
         </GlossarySection>
       )}
 
@@ -339,6 +392,11 @@ export default function AboutScreen({ visible, state, onClose }: Props) {
             </Text>
           </View>
 
+          {/* Glossary ABOVE the 50 agency rows (D3): the explanatory content
+              users open this screen for was buried below a full page of
+              credits. */}
+          {state && <StateGlossarySection state={state} />}
+
           <View style={styles.sectionHeader}>
             <Text style={[text.labelL, { color: colors.inkSoft }]}>DATA SOURCES</Text>
           </View>
@@ -367,8 +425,6 @@ export default function AboutScreen({ visible, state, onClose }: Props) {
               </Text>
             </Pressable>
           ))}
-
-          {state && <StateGlossarySection state={state} />}
 
           <View style={styles.sectionHeader}>
             <Text style={[text.labelL, { color: colors.inkSoft }]}>NOTES ON THE DATA</Text>

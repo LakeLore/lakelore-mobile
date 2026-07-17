@@ -18,6 +18,7 @@ import { StateKey, GENERATED_STATES } from '../types';
 import { isFreeState } from '../activeStates';
 import { colors, text, space, hairline, fonts } from '../lakelore-rn/theme';
 import { LockIcon, SectionLabel } from '../lakelore-rn/components';
+import { useToast } from '../Toast';
 
 interface Props {
   /** Currently-selected state (highlighted on the map), if any. */
@@ -71,6 +72,9 @@ export default function StateMapPicker({ selected, hasAllStates, entitlementLoad
   mapHRef.current = mapH;
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
+  const { toast } = useToast();
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
 
   const tapGesture = useMemo(() => Gesture.Tap()
     .runOnJS(true)
@@ -81,16 +85,28 @@ export default function StateMapPicker({ selected, hasAllStates, entitlementLoad
       const vb = mapVBRef.current;
       const vx = vb.x + (e.x / mapWRef.current) * vb.w;
       const vy = vb.y + (e.y / mapHRef.current) * vb.h;
-      let bestKey: StateKey | null = null;
-      let bestDist = Infinity;
-      for (const p of SELECTABLE) {
+      // Nearest centroid over ALL drawn states first (not just selectable):
+      // a tap on a muted no-data state must EXPLAIN itself, not silently
+      // select whichever active neighbor is closest (D4). The hit distance
+      // is capped (~90pt on screen, scaled to the current zoom) so taps in
+      // open water/whitespace do nothing rather than picking a random state.
+      const capVB = (90 / mapWRef.current) * vb.w;
+      const capSq = capVB * capVB;
+      let nearest: (typeof STATE_PATHS)[number] | null = null;
+      let nearestDist = Infinity;
+      for (const p of STATE_PATHS) {
+        if (p.key == null) continue;
         const d = (vx - p.cx) * (vx - p.cx) + (vy - p.cy) * (vy - p.cy);
-        if (d < bestDist) { bestDist = d; bestKey = p.key; }
+        if (d < nearestDist) { nearestDist = d; nearest = p; }
       }
-      if (bestKey) {
-        Haptics.selectionAsync().catch(() => {});
-        onSelectRef.current(bestKey);
+      if (!nearest || nearestDist > capSq) return;
+      const key = nearest.key as StateKey;
+      if (!GENERATED_STATES[key].active) {
+        toastRef.current?.(`${GENERATED_STATES[key].name} — no survey data yet. It'll join the All-States Pass when its agency data lands.`);
+        return;
       }
+      Haptics.selectionAsync().catch(() => {});
+      onSelectRef.current(key);
     }),
   []);
 
@@ -276,6 +292,12 @@ export default function StateMapPicker({ selected, hasAllStates, entitlementLoad
           <View style={[styles.legendSwatch, { backgroundColor: colors.paper2 }]} />
           <Text style={[text.labelS, { color: colors.inkSoft }]}>NO DATA YET</Text>
         </View>
+        {/* The map is the primary surface, and it previously said nothing
+            about free-with-redaction browsing (D5) — the pass gates lake
+            IDENTITY, not entry. */}
+        <Text style={[text.labelS, { color: colors.inkSoft, textAlign: 'center', marginTop: 4, paddingHorizontal: space.xl }]}>
+          Pass states open free in preview — every metric shown, lake names &amp; locations hidden
+        </Text>
 
         <View style={styles.sectionHead}>
           <SectionLabel>United States</SectionLabel>

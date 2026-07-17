@@ -457,6 +457,11 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
     return (
       <View style={styles.empty}>
         <Text style={[text.editorialS, { color: colors.inkSoft }]}>No plottable data</Text>
+        {/* Reasoned empty state (D7): say WHY the chart is empty instead of
+            leaving the user to guess. */}
+        <Text style={[text.bodyS, { color: colors.inkSoft, textAlign: 'center', marginTop: 6, paddingHorizontal: space.xl }]}>
+          The chart needs records with a catch rate{' '}— the current species/filters have none in this state. Try another species or the list view.
+        </Text>
       </View>
     );
   }
@@ -491,7 +496,9 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
       </Text>
 
       <GestureDetector gesture={gesture}>
-        <View style={[styles.chartWrap, { width: svgW, height: svgH }]}>
+        <View style={[styles.chartWrap, { width: svgW, height: svgH }]}
+          accessible
+          accessibilityLabel={`Scatter plot: ${points.length} lakes, ${yLabel} versus ${xLabel}. Use the list view for a screen-reader-friendly ranking.`}>
           <Svg width={svgW} height={svgH}>
           <Rect x={PAD_L} y={PAD_T} width={plotW} height={plotH}
             fill={colors.paper2} stroke={colors.ink} strokeWidth={0.8} />

@@ -1,4 +1,7 @@
-// Sort-by picker — each metric the current state supports. Descending only.
+// Sort-by picker — each metric the current state supports. Tapping the
+// active row flips the direction (D9, 2026-07-17): the toolbar's ↓/↑ arrow
+// implied togglability, but the picker was hard-wired descending — ascending
+// sorts (smallest lakes, oldest surveys) were unreachable.
 import React from 'react';
 import {
   Modal, View, Pressable, Text, ScrollView, StyleSheet,
@@ -38,13 +41,14 @@ export function SortPickerModal({
         />
         <ScrollView>
           {cfg.sortOptions.map(opt => {
-            const active = opt.value === sortBy && sortDir === 'desc';
+            const active = opt.value === sortBy;
             // When the user has narrowed to one gear (or the species/state only
             // has one), show the gear-specific unit on the catch-rate row so it
             // matches what the list rows display.
             const label = opt.value === 'cpue' && gear
               ? cpueLabelForGear(state, gear)
               : opt.label;
+            const arrow = active ? (sortDir === 'desc' ? '↓' : '↑') : '↓';
             return (
               <Pressable
                 key={opt.value}
@@ -52,15 +56,30 @@ export function SortPickerModal({
                   styles.sortOption,
                   { backgroundColor: pressed ? colors.paper2 : 'transparent' },
                 ]}
-                onPress={() => { onChange(opt.value, 'desc'); onClose(); }}
+                accessibilityRole="button"
+                accessibilityLabel={`Sort by ${label}${active ? `, currently ${sortDir === 'desc' ? 'descending' : 'ascending'} — tap to flip` : ''}`}
+                onPress={() => {
+                  if (active) {
+                    // Tap the active row again to flip direction; stay open so
+                    // the flip is visible.
+                    onChange(opt.value, sortDir === 'desc' ? 'asc' : 'desc');
+                  } else {
+                    onChange(opt.value, 'desc');
+                    onClose();
+                  }
+                }}
               >
                 <Text style={[
                   text.bodyL,
                   { color: active ? colors.walleye2 : colors.ink },
                 ]}>
-                  {label} ↓
+                  {label} {arrow}
                 </Text>
-                {active && <Text style={[text.labelL, { color: colors.walleye2 }]}>✓</Text>}
+                {active && (
+                  <Text style={[text.labelM, { color: colors.walleye2 }]}>
+                    ✓ tap to flip
+                  </Text>
+                )}
               </Pressable>
             );
           })}

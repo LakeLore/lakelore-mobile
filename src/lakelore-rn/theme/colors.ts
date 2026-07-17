@@ -15,7 +15,10 @@ export const colors = {
 
   // brand accents
   walleye:  '#c89a3c',  // active state, primary CTA highlights
-  walleye2: '#a67d25',  // small-caps labels, walleye-gold text on paper
+  // Darkened 2026-07-17 (D8): #a67d25 was 3.3:1 on paper — below WCAG AA
+  // 4.5:1 for the small-caps labels it exists for. #8a6415 is 4.7:1 and
+  // still reads walleye-gold.
+  walleye2: '#8a6415',  // small-caps labels, walleye-gold text on paper
   flash:    '#e8bc5a',  // bar fills, lighter gold
 
   // species + chart palette

@@ -17,7 +17,15 @@ type Props = {
 
 export function Chip({ children, active, dot, soft, disabled, onPress, style }: Props) {
   return (
-    <Pressable onPress={disabled ? undefined : onPress} hitSlop={6} disabled={disabled}>
+    <Pressable
+      onPress={disabled ? undefined : onPress}
+      // ~26pt visual height + 9pt slop per side ≈ 44pt effective target (D8).
+      hitSlop={{ top: 9, bottom: 9, left: 6, right: 6 }}
+      disabled={disabled}
+      // VoiceOver/TalkBack: announce button-ness and the selected state —
+      // species/gear chips previously read as plain text (D8).
+      accessibilityRole="button"
+      accessibilityState={{ selected: !!active, disabled: !!disabled }}>
       <View
         style={[
           styles.chip,

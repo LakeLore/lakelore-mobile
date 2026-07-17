@@ -58,13 +58,14 @@ export default function SpeciesPicker({ visible, species, selected, state, onSel
     // full-name states with one rule.
     const isGame = (s: string) =>
       GAME_FISH.has(s) || GAME_FISH_NAMES.has((namesMap[s] ?? s).toLowerCase());
-    return base.sort((a, b) => {
-      const ag = isGame(a.species);
-      const bg = isGame(b.species);
-      if (ag && !bg) return -1;
-      if (!ag && bg) return 1;
-      return 0;
-    });
+    // Section headers at the game/other boundary (D9): the sorted list's
+    // A-Z restart at the boundary read as a sorting bug without them.
+    const game = base.filter(s => isGame(s.species));
+    const other = base.filter(s => !isGame(s.species));
+    const rows: (SpeciesOption | { header: string })[] = [];
+    if (game.length) rows.push({ header: 'GAME FISH' }, ...game);
+    if (other.length) rows.push({ header: game.length ? 'OTHER SPECIES' : 'SPECIES' }, ...other);
+    return rows;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [species, query, namesMap]);
 
@@ -108,9 +109,16 @@ export default function SpeciesPicker({ visible, species, selected, state, onSel
         </Pressable>
         <FlatList
           data={filtered}
-          keyExtractor={item => item.species}
+          keyExtractor={item => 'header' in item ? `h:${item.header}` : item.species}
           contentContainerStyle={{ paddingBottom: kbHeight }}
           renderItem={({ item }) => {
+            if ('header' in item) {
+              return (
+                <Text style={[text.labelM, { color: colors.inkSoft, paddingHorizontal: space.xl, paddingTop: space.lg, paddingBottom: space.xs }]}>
+                  {item.header}
+                </Text>
+              );
+            }
             const name = namesMap[item.species] ?? item.species;
             const isSelected = selected === item.species;
             return (

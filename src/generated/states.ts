@@ -39,6 +39,11 @@ export interface GeneratedStateConfig {
 
 export const STATE_KEYS: readonly StateKey[] = ['mn', 'sd', 'nd', 'ia', 'ne', 'wi', 'mi', 'wa', 'mt', 'ks', 'mo', 'il', 'in', 'oh', 'fl', 'ga', 'al', 'tn', 'sc', 'ky', 'nc', 'va', 'or', 'id', 'wy', 'ut', 'co', 'az', 'nm', 'nv', 'ca', 'ok', 'tx', 'ny', 'pa', 'ar', 'la', 'me', 'ma', 'ct', 'de', 'md', 'nh', 'ak', 'ms', 'ri', 'wv', 'vt', 'on', 'hi', 'nj', 'bc', 'qc', 'mb', 'sk', 'ab'];
 
+// Fleet volume across ACTIVE states, computed at generation time from the
+// canonical artifacts (paywall value copy — D5).
+export const TOTAL_ACTIVE_LAKES = 64353;
+export const TOTAL_ACTIVE_RECORDS = 1002745;
+
 export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
   mn: {
     key: 'mn',

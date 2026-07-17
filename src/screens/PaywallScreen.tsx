@@ -23,6 +23,7 @@ import {
 import { fetchMyEntitlement } from '../api';
 import { GENERATED_STATES } from '../types';
 import { ACTIVE_STATES } from '../activeStates';
+import { TOTAL_ACTIVE_LAKES, TOTAL_ACTIVE_RECORDS, type StateKey } from '../generated/states';
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
 import { PaperHeader, PrimaryButton } from '../lakelore-rn/components';
 
@@ -130,7 +131,9 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
           </View>
 
           <Text style={[text.displayL, styles.headline]}>
-            Unlock every state &amp; province.
+            {contextName(triggeredFrom)
+              ? `Unlock ${contextName(triggeredFrom)} — and every other state.`
+              : 'Unlock every state & province.'}
           </Text>
 
           <Text style={[text.bodyL, { color: colors.ink2, marginTop: 16 }]}>
@@ -269,6 +272,19 @@ function numWord(n: number): string {
   return ['zero','one','two','three','four','five','six','seven','eight','nine'][n] ?? String(n);
 }
 
+// Contextual headline (D5): callers historically pass triggeredFrom in mixed
+// formats — a display label ("Wisconsin") or a raw state key ("wi"). Resolve
+// keys through the generated registry; anything else passes through as-is.
+function contextName(triggeredFrom?: string): string | null {
+  if (!triggeredFrom) return null;
+  const asKey = GENERATED_STATES[triggeredFrom as StateKey];
+  return asKey ? asKey.name : triggeredFrom;
+}
+
+// "64,000+ lakes" style floor phrasing — truthful as data grows, never
+// overstates.
+const floorK = (n: number) => `${Math.floor(n / 1000).toLocaleString()},000+`;
+
 // Coverage counts derived from the generated registry export — stay correct
 // as states are added without touching this copy.
 const PAID_STATES = ACTIVE_STATES.filter(s => !GENERATED_STATES[s].free);
@@ -278,6 +294,8 @@ const PAID_CA = PAID_STATES.filter(s => GENERATED_STATES[s].country === 'CA').le
 // With the whole continent covered, per-state rows no longer scale — the
 // value props aggregate instead.
 const ACTIVE_VALUE_PROPS: { label: string; detail: string }[] = [
+  { label: `${floorK(TOTAL_ACTIVE_LAKES)} lakes · ${floorK(TOTAL_ACTIVE_RECORDS)} records`,
+    detail: 'Agency survey, stocking, and forecast data — counted at build time, growing every refresh' },
   { label: `${PAID_US} more US states + ${PAID_CA} Canadian provinces`,
     detail: 'Every state and province LakeLore covers, in one pass' },
   { label: 'Lake names & locations revealed',

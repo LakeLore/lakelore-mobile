@@ -113,7 +113,11 @@ function MapCountyPicker({ visible, state, selected, countyOptions, onConfirm, o
         const d = (vx - cx) * (vx - cx) + (vy - cy) * (vy - cy);
         if (d < bestDist) { bestDist = d; bestName = name; }
       }
-      if (bestName) {
+      // Distance cap (D4): unbounded nearest-centroid meant whitespace taps
+      // toggled some county — reads as the app misfiring. ~90pt on screen,
+      // scaled to zoom; zoom in for dense small counties.
+      const capVB = (90 / mW) * vb.w;
+      if (bestName && bestDist <= capVB * capVB) {
         Haptics.selectionAsync().catch(() => {});
         setDraft(prev => prev.includes(bestName!) ? prev.filter(c => c !== bestName) : [...prev, bestName!]);
       }
@@ -249,6 +253,24 @@ function MapCountyPicker({ visible, state, selected, countyOptions, onConfirm, o
             }
           />
 
+          {/* Empty-selection semantics were unexplained (D9): a first-run
+              user forced through this modal may believe a pick is required.
+              Say what empty means, and give statewide a one-tap path. */}
+          <View style={styles.statewideRow}>
+            <Text style={[text.labelM, { color: colors.inkSoft, flex: 1 }]} numberOfLines={2}>
+              {draft.length === 0
+                ? 'None selected — searches the whole state'
+                : `${draft.length} selected — Done to apply`}
+            </Text>
+            <Pressable
+              onPress={() => { setDraft([]); onConfirm([]); onClose(); }}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Search statewide">
+              <Text style={[text.labelM, { color: colors.walleye2 }]}>Search statewide</Text>
+            </Pressable>
+          </View>
+
           {hasMap && (
             <View style={styles.hintRow}>
               <Text style={[text.labelM, { color: colors.inkSoft }]}>
@@ -359,6 +381,13 @@ const styles = StyleSheet.create({
     letterSpacing: 1.7,
     color: colors.walleye2,
   } as TextStyle,
+  statewideRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    marginHorizontal: space.xl,
+    marginTop: space.sm,
+  },
   hintRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -1,8 +1,10 @@
-// src/OfflineBanner.tsx — passive "Offline" strip that appears beneath the
-// status bar when the device has no usable internet connection.
+// src/OfflineBanner.tsx — passive "Offline" strip shown while the device has
+// no usable internet connection.
 //
-// Anchored absolute at the top, pointerEvents="none" so it never blocks
-// the underlying UI. Brand-styled (ink stripe, mono small-caps), no icon.
+// Anchored absolute at the BOTTOM (D9, 2026-07-17 — the old top anchor sat
+// over the PaperHeader and hid the state-switcher label for the whole
+// offline session), pointerEvents="none" so it never blocks the underlying
+// UI. Brand-styled (ink stripe, mono small-caps), no icon.
 
 import React, { useEffect, useState } from 'react';
 import { Animated, StyleSheet, Text, View, Easing } from 'react-native';
@@ -43,7 +45,7 @@ export function OfflineBanner() {
   return (
     <Animated.View
       pointerEvents="none"
-      style={[styles.bar, { opacity, paddingTop: insets.top + 8 }]}
+      style={[styles.bar, { opacity, paddingBottom: insets.bottom + 8 }]}
     >
       <View style={styles.dot} />
       <Text style={[text.labelM, { color: colors.paper }]}>OFFLINE — RECONNECT TO LOAD MORE</Text>
@@ -54,18 +56,17 @@ export function OfflineBanner() {
 const styles = StyleSheet.create({
   bar: {
     position: 'absolute',
-    top: 0, left: 0, right: 0,
+    bottom: 0, left: 0, right: 0,
     backgroundColor: colors.ink,
     paddingHorizontal: space.lg,
-    // paddingTop applied inline using insets.top so the banner clears the
-    // status bar / Dynamic Island on iPhone and the transparent status bar
-    // on Android edge-to-edge builds.
-    paddingBottom: 8,
+    // paddingBottom applied inline using insets.bottom so the banner clears
+    // the home indicator on iPhone / gesture bar on Android.
+    paddingTop: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    borderBottomWidth: hairline,
-    borderBottomColor: colors.walleye,
+    borderTopWidth: hairline,
+    borderTopColor: colors.walleye,
     zIndex: 999,
     elevation: 999,
   },

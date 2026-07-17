@@ -71,7 +71,12 @@ const lengthLabel = (r: Result): string =>
 const stockedStat = (r: Result): Stat =>
   r.stocked_per_100ac != null || r.stocked_adults_est == null
     ? { key: 'stocked', label: 'Stck Adults / 100AC',
-        value: r.stocked_per_100ac != null ? r.stocked_per_100ac.toFixed(0) : null }
+        // One decimal below 10 (D9): a real 0.4/100ac displayed as "0" was
+        // indistinguishable from no meaningful stocking, and other surfaces
+        // (scatter popup, lake detail) already show a decimal.
+        value: r.stocked_per_100ac != null
+          ? (r.stocked_per_100ac >= 10 ? r.stocked_per_100ac.toFixed(0) : r.stocked_per_100ac.toFixed(1))
+          : null }
     : { key: 'stocked', label: 'Stck Adults (est)',
         value: Math.round(r.stocked_adults_est).toLocaleString() };
 
@@ -324,7 +329,12 @@ export default function ResultRow({ result: r, state, sortBy, onPress }: Props) 
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel={`${sortLabel} definition`}>
-              <Text style={[text.labelS, { color: colors.walleye2, marginTop: 2 }]}>
+              <Text style={[text.labelS, {
+                color: colors.walleye2, marginTop: 2,
+                // Dotted underline = tap-to-define affordance (D2).
+                textDecorationLine: 'underline', textDecorationStyle: 'dotted',
+                textDecorationColor: colors.paper3,
+              }]}>
                 {sortLabel}
               </Text>
             </Pressable>

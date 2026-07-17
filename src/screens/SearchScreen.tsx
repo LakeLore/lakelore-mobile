@@ -696,6 +696,46 @@ export default function SearchScreen() {
           ListFooterComponent={
             loading && page > 0 ? () => <ActivityIndicator style={{ padding: 16 }} color={colors.ink} /> : null
           }
+          // Zero results used to be "0 RESULTS" over blank space (D7): say
+          // which filters are active and give one-tap loosening actions.
+          ListEmptyComponent={!loading ? (
+            <View style={styles.emptyResults}>
+              <Text style={[text.editorialS, { color: colors.inkSoft, textAlign: 'center' }]}>
+                No lakes match this search
+              </Text>
+              <Text style={[text.bodyS, { color: colors.inkSoft, textAlign: 'center', marginTop: 6 }]}>
+                {[
+                  filters.species ? `${speciesDisplayName(filters.species, state)}` : null,
+                  filters.counties.length ? `${filters.counties.length} ${filters.counties.length === 1 ? 'county' : 'counties'}` : null,
+                  filters.lakeName ? `name “${filters.lakeName}”` : null,
+                  filters.mostRecentOnly ? 'latest surveys only' : null,
+                ].filter(Boolean).join(' · ') || 'no filters set'}
+              </Text>
+              <View style={styles.emptyActions}>
+                {filters.counties.length > 0 && (
+                  <Pressable style={styles.emptyActionBtn}
+                    onPress={() => { const f = { counties: [] as string[] }; setFilters(prev => ({ ...prev, ...f })); persistCountySelection(state, []); handleSearch(0, f); }}
+                    accessibilityRole="button">
+                    <Text style={[text.labelM, { color: colors.ink }]}>Search statewide</Text>
+                  </Pressable>
+                )}
+                {!!filters.lakeName && (
+                  <Pressable style={styles.emptyActionBtn}
+                    onPress={() => { const f = { lakeName: '' }; setFilters(prev => ({ ...prev, ...f })); if (filters.species) handleSearch(0, f); }}
+                    accessibilityRole="button">
+                    <Text style={[text.labelM, { color: colors.ink }]}>Clear lake name</Text>
+                  </Pressable>
+                )}
+                {filters.mostRecentOnly && (
+                  <Pressable style={styles.emptyActionBtn}
+                    onPress={() => { const f = { mostRecentOnly: false }; setFilters(prev => ({ ...prev, ...f })); handleSearch(0, f); }}
+                    accessibilityRole="button">
+                    <Text style={[text.labelM, { color: colors.ink }]}>Include older surveys</Text>
+                  </Pressable>
+                )}
+              </View>
+            </View>
+          ) : null}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           style={{ backgroundColor: colors.paper }}
@@ -770,6 +810,11 @@ export default function SearchScreen() {
             })
             .catch(() => {});
           if (updated.species) handleSearch(0, updated);
+          // First-run flow (D2): without a species the guided path used to
+          // END here on an empty screen ("Select a species to begin") after
+          // 2-3 choices with zero fish shown. Chain straight into the species
+          // picker so the next required step presents itself.
+          else setShowSpeciesPicker(true);
         }}
         onClose={() => setShowCountyPicker(false)}
       />
@@ -830,6 +875,24 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
 
   stripe: { height: 3 },
+
+  emptyResults: {
+    paddingHorizontal: space.xl,
+    paddingVertical: 40,
+  },
+  emptyActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: space.md,
+    marginTop: space.lg,
+  },
+  emptyActionBtn: {
+    borderWidth: hairline,
+    borderColor: colors.ink,
+    paddingHorizontal: space.lg,
+    paddingVertical: 8,
+  },
 
   speciesBtn: {
     borderWidth: hairline,
