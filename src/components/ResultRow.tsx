@@ -68,7 +68,7 @@ const stockedStat = (r: Result): Stat =>
 
 function sdStats(r: Result): Stat[] {
   return [
-    { key: 'cpue',    label: 'Catch / Net', value: r.cpue    != null ? r.cpue.toFixed(1)      : null },
+    { key: 'cpue',    label: cpueLabelForGear('sd', r.gear, r.cpue_kind), value: r.cpue    != null ? r.cpue.toFixed(1)      : null },
     { key: 'length',  label: 'Avg length',  value: r.average_length != null ? `${r.average_length.toFixed(1)}"` : null },
     stockedStat(r),
     ...metaStats(r),
@@ -77,7 +77,7 @@ function sdStats(r: Result): Stat[] {
 
 function mnStats(r: Result): Stat[] {
   return [
-    { key: 'cpue',    label: 'Catch / Net', value: r.cpue           != null ? r.cpue.toFixed(1)           : null },
+    { key: 'cpue',    label: cpueLabelForGear('mn', r.gear, r.cpue_kind), value: r.cpue           != null ? r.cpue.toFixed(1)           : null },
     { key: 'weight',  label: 'Avg wt',      value: r.average_weight != null ? `${r.average_weight.toFixed(2)} lb` : null },
     { key: 'catch',   label: 'Catch',       value: r.total_catch    != null ? String(r.total_catch)        : null },
     stockedStat(r),
@@ -87,7 +87,7 @@ function mnStats(r: Result): Stat[] {
 
 function ndStats(r: Result): Stat[] {
   return [
-    { key: 'cpue',    label: 'Catch / Net', value: r.cpue           != null ? r.cpue.toFixed(2)                : null },
+    { key: 'cpue',    label: cpueLabelForGear('nd', r.gear, r.cpue_kind), value: r.cpue           != null ? r.cpue.toFixed(2)                : null },
     { key: 'length',  label: 'Avg length', value: r.average_length != null ? `${r.average_length.toFixed(1)}"` : null },
     { key: 'catch',   label: 'Total catch', value: r.total_catch    != null ? r.total_catch.toLocaleString()    : null },
     stockedStat(r),
@@ -109,7 +109,7 @@ function wiStats(r: Result): Stat[] {
 
 function neStats(r: Result): Stat[] {
   return [
-    { key: 'cpue',    label: 'Catch / Net', value: r.cpue           != null ? r.cpue.toFixed(2)                : null },
+    { key: 'cpue',    label: cpueLabelForGear('ne', r.gear, r.cpue_kind), value: r.cpue           != null ? r.cpue.toFixed(2)                : null },
     { key: 'length',  label: 'Avg length', value: r.average_length != null ? `${r.average_length.toFixed(1)}"` : null },
     stockedStat(r),
     ...metaStats(r),
@@ -118,7 +118,7 @@ function neStats(r: Result): Stat[] {
 
 function miStats(r: Result): Stat[] {
   return [
-    { key: 'cpue',    label: 'Catch / Net', value: r.cpue              != null ? r.cpue.toFixed(2)              : null },
+    { key: 'cpue',    label: cpueLabelForGear('mi', r.gear, r.cpue_kind), value: r.cpue              != null ? r.cpue.toFixed(2)              : null },
     { key: 'length',  label: 'Avg length',  value: r.average_length    != null ? `${r.average_length.toFixed(1)}"` : null },
     { key: 'catch',   label: 'Total catch', value: r.total_catch       != null ? r.total_catch.toLocaleString() : null },
     stockedStat(r),
@@ -160,15 +160,37 @@ export function cpueLabelForGear(state: StateKey, gear?: string | null, rowKind?
   if (kind === 'relative' || kind === 'creel') return fallback;
   if (!gear) return fallback;
   const g = gear.toLowerCase();
+  // Several states bake the CPUE unit into the gear string as a trailing
+  // parenthetical — MS "electrofishing (fish/mile)", LA "lead net (fish/hour)"
+  // and "gill net (pounds/net-night)", WV "Tournament (catfish/hr)". That unit
+  // is authoritative; check it BEFORE the substring heuristics below, which
+  // otherwise mislabel exactly these rows (electrofishing≠per-hour in MS,
+  // net≠per-net in LA).
+  const paren = g.match(/\(([^)]*\/[^)]*)\)\s*$/);
+  if (paren) {
+    const slash = paren[1].lastIndexOf('/');
+    const num = paren[1].slice(0, slash).trim();
+    const den = paren[1].slice(slash + 1).trim();
+    const denLabel = /^(hr|hour)s?$/.test(den) ? 'Hour'
+      : /^miles?$/.test(den) ? 'Mile'
+      : /net/.test(den) || /night/.test(den) ? 'Net'
+      : null;
+    if (denLabel) return (/^(pound|lb)/.test(num) ? 'Lbs / ' : 'Catch / ') + denLabel;
+  }
   if (/electrofish|shocker|(?:^|[\s-])ef(?:[-\s*]|$)/.test(g)) return 'Catch / Hour';
-  if (state === 'wi' && /^(se|fe)\d?$/.test(g)) return 'Catch / Hour';
+  // Two-letter gear codes are per-state vocabularies and MUST stay state-gated:
+  // WI and PA use SE/FE for spring/fall ELECTROFISHING, but CO uses SE/SEI for
+  // SEINE (and FE for electrofishing) — the same code means different gear in
+  // different states (see the CO accumulator REPASS_SPEC gear key).
+  if ((state === 'wi' || state === 'pa') && /^(se|fe)\d?$/.test(g)) return 'Catch / Hour';
+  if (state === 'co' && g === 'fe') return 'Catch / Hour';
   if (g.includes('net')) return 'Catch / Net';
   return fallback;
 }
 
 function iaStats(r: Result): Stat[] {
   return [
-    { key: 'cpue',    label: 'Catch / Net',  value: fmtCpue(r.cpue) },
+    { key: 'cpue',    label: cpueLabelForGear('ia', r.gear, r.cpue_kind),  value: fmtCpue(r.cpue) },
     { key: 'catch',   label: 'Total catch',  value: r.total_catch       != null ? r.total_catch.toLocaleString()    : null },
     { key: 'length',  label: 'Avg length',   value: r.average_length    != null ? `${r.average_length.toFixed(1)}"` : null },
     stockedStat(r),

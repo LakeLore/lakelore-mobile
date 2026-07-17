@@ -48,10 +48,15 @@ export function useEntitlement(): EntitlementState {
     // Server wins on disagreement so the lock chips on State Select match
     // what the data endpoints will actually allow. Falls back to the SDK
     // result if the server is unreachable, so the app keeps working offline.
+    //
+    // Exception: source 'rc-error' means the SERVER couldn't reach RevenueCat
+    // (and had no grace record) — its `false` is an outage artifact, not a
+    // denial. Trusting it over the device's valid receipt locked paying
+    // subscribers out during RC outages; treat it like an unreachable server.
     const [sdkResult, serverResult] = await Promise.all([
       hasAllStatesEntitlement(),
       fetchMyEntitlement()
-        .then(r => r.hasAllStates as boolean | null)
+        .then(r => (r.source === 'rc-error' ? null : (r.hasAllStates as boolean | null)))
         .catch(() => null),
     ]);
     const final = serverResult !== null ? serverResult : sdkResult;

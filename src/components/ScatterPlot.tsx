@@ -5,7 +5,7 @@ import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import Svg, { Circle, Line, Text as SvgText, Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { useSvgPanZoom, useCommittedMirror, assertWorklet } from '../hooks/useSvgPanZoom';
 import BlurredLakeName from './BlurredLakeName';
-import { Result, StateKey, STATE_CONFIGS } from '../types';
+import { Result, StateKey, STATE_CONFIGS, GENERATED_STATES } from '../types';
 import { SPECIES_NAMES_BY_STATE } from '../generated/species';
 import { colors, text, space, hairline, fonts } from '../lakelore-rn/theme';
 
@@ -279,8 +279,10 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
     const xLabel = state==='mn' ? 'Avg Weight (lb)'
       : (LEGACY_STATES.has(state) || genericHasLength || ratingMode) ? 'Avg Length (in)'
       : 'Survey Year';
-    // desc shown in render — keep in sync with xLabel
-    const yLabel = ratingMode ? 'Forecast Rating' : 'Catch Rate';
+    // The render caption is BUILT from these labels (see below), so they can't
+    // drift apart. Relative-index states get an honest y-axis name.
+    const yLabel = ratingMode ? 'Forecast Rating'
+      : GENERATED_STATES[state]?.cpueKind === 'relative' ? 'Catch Index' : 'Catch Rate';
     return { points: pts, sortedStocked, dataBounds, xLabel, yLabel, ratingMode };
   }, [results, state]);
 
@@ -474,10 +476,14 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
 
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: space.xxl }}>
+      {/* Caption derives from the SAME xLabel/yLabel the axes use, so it can't
+          contradict them (the old hardcoded 'Catch rate vs. avg length' was
+          wrong in both generic fallback modes: Survey-Year x-axis and rating
+          mode). The stocking color-scale note drops for states without
+          stocking data — all-hollow dots with a density caption read broken. */}
       <Text style={[text.bodyS, { color: colors.inkSoft, marginHorizontal: space.lg, marginTop: space.md, marginBottom: space.xs }]}>
-        {state === 'mn' ? 'Catch rate vs. avg weight'
-          : state === 'sd' ? 'Catch rate vs. est. mean length'
-          : 'Catch rate vs. avg length'} · color = Stck Adults / 100AC · tap a dot
+        {state === 'sd' ? 'Catch rate vs. est. mean length' : `${yLabel} vs. ${xLabel.replace(/ \((in|lb)\)$/, '')}`}
+        {GENERATED_STATES[state]?.hasStocking ? ' · color = Stck Adults / 100AC' : ''} · tap a dot
       </Text>
 
       <GestureDetector gesture={gesture}>

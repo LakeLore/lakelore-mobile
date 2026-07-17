@@ -68,6 +68,9 @@ interface CatchRow {
   cpue: number | null;
   average_weight?: number | null; total_catch?: number | null; gear_count?: number | null;
   average_length?: number | null; species_name?: string | null;
+  // Agency forecast rating — on the /lake wire for the ratings-tier states
+  // (GA/MO/IL/FL/KY/OK/KS) since 2026-07-17; null/absent elsewhere.
+  rating?: string | null; rating_ordinal?: number | null;
 }
 interface StockRow { stock_year: number; species: string; life_stage: string; quantity: number }
 // adults_per_100ac is null for lakes with no usable acreage (metricsV2) —
@@ -156,6 +159,20 @@ function buildYearGearSeries(rows: CatchRow[], value: (c: CatchRow) => number | 
   const activeKeys = gearKeys.filter(g => chartData.some(r => r[g] != null));
   return { chartData, gearKeys: activeKeys };
 }
+
+// Catch-tab caption phrase, honest about what this state's cpue IS (keyed off
+// the generated cpueKind). Replaces the pre-all-states-launch hardcoded
+// ternary that credited "MN DNR netting surveys" for every fleet state.
+function cpueMetricPhrase(state: StateKey): string {
+  switch (GENERATED_STATES[state]?.cpueKind) {
+    case 'relative': return 'Relative catch index';
+    case 'creel': return 'Angler catch rate';
+    default: return 'Catch rate';
+  }
+}
+
+// Title-case an agency rating string ('excellent' -> 'Excellent').
+const fmtRating = (s: string) => s.replace(/\b\w/g, ch => ch.toUpperCase());
 
 const CHART_TICK_FONT = { fontFamily: fonts.mono, fontSize: 9 };
 
@@ -455,6 +472,14 @@ export default function LakeDetailScreen() {
           const top = [...counts.entries()].sort((a,b)=>b[1]-a[1])[0];
           if (top) setLocalSpecies(top[0]);
         }
+        // Open on the first tab that actually has data: rating- and
+        // stocking-only lakes otherwise land on an empty Catch tab and the
+        // user must discover the Stocking tab themselves (A5).
+        if (!ld.catches.some(c => c.cpue != null)) {
+          const hasSize = ld.catches.some(c => (c.average_length ?? 0) > 0 || (c.average_weight ?? 0) > 0);
+          if (hasSize) setTab('size');
+          else if (ld.stocking.length > 0) setTab('stocking');
+        }
       })
       .catch(err => {
         if (err instanceof SubscriptionRequiredError) {
@@ -534,6 +559,22 @@ export default function LakeDetailScreen() {
     return { sizeChartData: chartData, sizeGearKeys: gearKeys, sizeField: field };
   }, [data, localSpecies]);
   const sizeUnit = sizeField === 'average_weight' ? 'lb' : 'in';
+
+  // Latest agency forecast rating for the selected species (ratings-tier
+  // states). This is those states' HEADLINE metric — before 2026-07-17 it
+  // appeared in results but vanished entirely on this screen (A5).
+  const latestRating = useMemo(() => {
+    if (!data) return null;
+    let best: { rating: string; year: number | null } | null = null;
+    for (const c of data.catches) {
+      if (c.rating == null) continue;
+      if (localSpecies && c.species !== localSpecies) continue;
+      if (!best || (c.survey_year ?? 0) > (best.year ?? 0)) {
+        best = { rating: c.rating, year: c.survey_year ?? null };
+      }
+    }
+    return best;
+  }, [data, localSpecies]);
 
   const { stockChartData, stageKeys } = useMemo(() => {
     if (!data) return { stockChartData: [], stageKeys: [] };
@@ -870,6 +911,21 @@ export default function LakeDetailScreen() {
           </ScrollView>
         )}
 
+        {/* Agency forecast rating (GA/MO/IL/FL/KY/OK/KS) — shown above the
+            tabs so it's visible whichever tab has data. */}
+        {latestRating && (
+          <Pressable
+            style={styles.ratingBadge}
+            onPress={() => toast(`Forecast — ${GENERATED_STATES[state].agency}'s own fishing-forecast rating for this species at this lake.`)}
+            accessibilityRole="button"
+            accessibilityLabel={`Forecast rating ${fmtRating(latestRating.rating)}${latestRating.year ? `, ${latestRating.year}` : ''}. Tap for definition.`}>
+            <Text style={[text.labelM, { color: colors.walleye2 }]}>FORECAST</Text>
+            <Text style={[text.dataL, { color: colors.ink }]}>
+              {fmtRating(latestRating.rating)}{latestRating.year ? `  ·  ${latestRating.year}` : ''}
+            </Text>
+          </Pressable>
+        )}
+
         {/* Tabs — Avg Size only shows when this lake reports a size metric
             (average length, or average weight in MN). Labels shorten to fit
             three across. */}
@@ -899,10 +955,10 @@ export default function LakeDetailScreen() {
               <Text style={[text.bodyS, { color: colors.inkSoft, marginBottom: 8 }]}>
                 {state === 'ia'
                   ? 'Total fish caught from Iowa DNR comprehensive surveys. Each line = one gear type.'
-                  : `Catch / Net from ${state==='sd'?'SD GFP':state==='nd'?'ND GF&P':state==='ne'?'Nebraska Game & Parks':'MN DNR'} netting surveys. Each line = one gear type.`}
+                  : `${cpueMetricPhrase(state)} from ${GENERATED_STATES[state].agency} surveys. Each line = one gear type.`}
               </Text>
               <CpueChart data={cpueChartData} seriesKeys={gearKeys} scaledGear={scaledGear} width={chartWidth}
-                yLabel="Catch Rate"
+                yLabel={GENERATED_STATES[state]?.cpueKind === 'relative' ? 'Catch Index' : 'Catch Rate'}
                 onDotPress={(year, row) => setSelectedCpueYear(prev => prev?.year === year ? null : { year, row })} />
               <Text style={[text.bodyS, { color: colors.inkSoft, textAlign: 'center', marginTop: 4 }]}>
                 Tap a dot to see year detail · tap a gear to rescale Y axis
@@ -1294,6 +1350,16 @@ const styles = StyleSheet.create({
     gap: 6,
   },
 
+  ratingBadge: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: space.md,
+    paddingHorizontal: space.xl,
+    paddingVertical: space.md,
+    borderBottomWidth: hairline,
+    borderBottomColor: colors.paper3,
+    backgroundColor: colors.paper2,
+  },
   tabs: {
     flexDirection: 'row',
     borderBottomWidth: hairline,
