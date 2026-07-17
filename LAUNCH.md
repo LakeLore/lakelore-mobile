@@ -64,14 +64,14 @@ Last reviewed: 2026-07-16 (all-states launch reconciliation).
 
 1. **Owner TestFlight pass on 1.1.0** — state map → county map, preview lake detail, an acreage-less stocked lake (e.g. AK), sandbox purchase if not already exercised.
 2. **Native build 21** — activates the Share Lake Card (view-shot + expo-sharing); batch in the optional in-app ratings prompt (`expo-store-review`) if authorized.
-3. **Fresh screenshots** — must include the new map state selector. iPhone 6.9" / 6.5" (1320×2868 / 1284×2778) for App Store, Android phone (1080×1920+ 9:16) for Play. Shot list in STORE_LISTING.md (verify its copy reflects all-states counts first).
+3. **Fresh screenshots** — must include the new map state selector. iPhone 6.9" / 6.5" (1320×2868 / 1284×2778) for App Store, Android phone (1080×1920+ 9:16) for Play. Shot list in STORE_LISTING.md (its copy was rewritten for all-states 2026-07-17 — description, review notes, Play data-safety answers, and test instructions are current).
 4. **Submit to App Store and Play Store** — iOS subscription product rides along with the binary; Android needs a 1.1.x production AAB built + submitted (`npm run build:prod:android`, none kicked yet).
 5. **Merge branches to main** — mobile repo is on `mn-species-display-names`, lakelore-data on `data-strength-and-acreage-backfill`; merge both at release.
 6. **THEN push the web repo** — all-states marketing copy + programmatic SEO are committed locally only; pushing auto-deploys, so it waits until the 1.1.0 app is live in stores.
 
 ## Known minor open items (not blocking)
 
-- **Sentry source-map upload — still failing** with "Project not found" against `lakelore/lakelore-mobile`, even though the `SENTRY_AUTH_TOKEN` is set as an EAS project secret. Working around it with `SENTRY_ALLOW_FAILURE=true` in `eas.json` production profile so source-map upload is attempted but doesn't tank the build; symbolicated stack traces remain absent until the Sentry org/project/token access is sorted out. (Revisit when launch dust settles.)
+- **Sentry source-map upload — still failing** with "Project not found" against `lakelore-app-llc/react-native`, even though the `SENTRY_AUTH_TOKEN` is set as an EAS project secret. Working around it with `SENTRY_ALLOW_FAILURE=true` in `eas.json` production profile so source-map upload is attempted but doesn't tank the build; symbolicated stack traces remain absent until the Sentry org/project/token access is sorted out. (Revisit when launch dust settles.)
 - **`expo-updates` (OTA) wired** as of 2026-05-13 — `production` channel, `runtimeVersion.policy: appVersion`. First production OTA published the same day (update group `bfed3391`). See `~/lake-fish-mobile/CLAUDE.md` "OTA updates" section for usage and `~/RUNBOOK.md §12` for rollback.
 - **RC dashboard "Credentials need attention" warning** on the Play Store credential block. Cosmetic — verified directly against Google's API that all permissions are correct and Google accepts the credentials. Worth filing as an RC support ticket.
 - ~~**Offsite DB backups**~~ ✅ DONE 2026-07-07 — Backblaze B2 (`lakelore-backups`) + git (`LakeLore/lakelore-data`), automated via weekly launchd + every `refresh.sh`. See `~/APP_OPS.md` + `~/RUNBOOK.md §9`.
@@ -114,52 +114,18 @@ Last reviewed: 2026-07-16 (all-states launch reconciliation).
 
 **Why.** Without this, there's no shippable binary. `npx expo prebuild` + `xcodebuild` can theoretically produce one, but EAS handles signing, version increments, TestFlight upload, and Play upload in a single command.
 
-**Done when.**
+**Done when.** ✅ ALL DONE — the full build → submit → TestFlight loop is in routine use (build 20 of 1.1.0 on TestFlight as of 2026-07-15).
 - [x] `eas.json` exists with `development`, `preview`, and `production` profiles.
-- [ ] `eas init` run (writes `extra.eas.projectId` to `app.json`).
+- [x] `eas init` run — `extra.eas.projectId` is `8d4acf25-f8aa-4f97-a2f0-d0b41d95af01` in `app.json`.
 - [x] `auto-increment` enabled in eas.json so Apple doesn't reject a build for reusing `CFBundleVersion`.
-- [ ] `submit.production.ios.ascAppId` and `appleTeamId` filled in (currently `TBD-...` placeholders) — needed only for `eas submit`, not for `eas build`.
-- [ ] `npm run build:dev:ios` succeeds and produces a simulator-installable dev client.
-- [ ] `npm run build:preview:ios` succeeds and produces a TestFlight-installable build.
-- [ ] `npm run build:preview:android` succeeds and produces an internal-testing-installable APK.
+- [x] `submit.production.ios` filled in: `ascAppId` `6767341863`, `appleTeamId` `2SXGANA52C` (plus Android `serviceAccountKeyPath`).
+- [x] Dev, preview, and production builds all succeed — `npm run build:prod:ios && npm run submit:ios` is the standard TestFlight iteration loop (see CLAUDE.md).
 
 **Where.** `~/lake-fish-mobile/eas.json`. Build commands wired into `package.json` scripts.
 
-**Owner.** Shared. Config is in. You handle the interactive bits below.
+**Owner.** Done — nothing left to take further here.
 
-**Your steps to take it the rest of the way:**
-
-```bash
-# 1. Install EAS CLI (one-time, global)
-npm install -g eas-cli
-
-# 2. Log in (interactive — opens browser)
-eas login
-
-# 3. Initialize the project — writes projectId into app.json
-cd ~/lake-fish-mobile
-eas init
-
-# 4. First build — make a dev client for simulator
-npm run build:dev:ios
-
-# 5. Once it's built (~10–15 min), install in simulator and connect:
-npm start
-# Press 'i' to launch the simulator + your dev build
-```
-
-After the first dev build succeeds, RC's "SDK detected" check will go green
-the first time you launch the app — that'll satisfy the wizard step you skipped.
-
-**Filling in the submit placeholders** (only needed when you run `eas submit`, not for `eas build`):
-
-- `appleTeamId` → developer.apple.com/account → Membership → Team ID (10-character string).
-- `ascAppId` → App Store Connect → My Apps → LakeLore → App Information → "Apple ID" (numeric, ~10 digits).
-- `serviceAccountKeyPath` → after Google bank verification, the JSON file you'll download for RC.
-
-Edit `eas.json` directly to swap them in.
-
-**Notes.** Pre-requisite to screenshots if you want them from a real native build. Screenshots can also be captured from Expo Go without EAS — see STORE_LISTING.md.
+**Notes.** Kept for reference: the one-time bootstrap was `npm install -g eas-cli` → `eas login` → `eas init`, then filling the `submit.production` block from developer.apple.com (Team ID) and App Store Connect (numeric Apple ID). RC's "SDK detected" check went green on the first dev-build launch.
 
 ---
 

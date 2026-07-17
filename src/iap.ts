@@ -6,10 +6,10 @@
 // in the binary. The *secret* REST API key never goes in this file — it
 // lives only as a Fly secret on the server.
 //
-// While the keys are empty strings, this module degrades gracefully:
-// `isIapConfigured()` returns false and every other call no-ops. The app
-// continues to run without a paywall, which lets development proceed
-// before you've finished the RC + Apple/Google product setup.
+// Both real keys are in place below. If a key were ever blanked (e.g. a
+// fresh platform before RC setup), this module degrades gracefully:
+// `isIapConfigured()` returns false and every other call no-ops, so the
+// app runs without a paywall rather than crashing.
 
 import { Platform } from 'react-native';
 import Purchases, {
