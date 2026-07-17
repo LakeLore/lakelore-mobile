@@ -69,7 +69,13 @@ function defaultGearFor(opts: FilterOptions | null): string[] {
   if (!opts || opts.gearTypes.length === 0) return [];
   if (opts.defaultGear) return [opts.defaultGear];
   const cpue = opts.gearCpueCounts ?? {};
-  const withCpue = opts.gearTypes.filter(g => (cpue[g] ?? 0) > 0);
+  let withCpue = opts.gearTypes.filter(g => (cpue[g] ?? 0) > 0);
+  // WI's 'CPUE Normalized' bucket is a cross-gear rescue for lakes lacking a
+  // clean single-gear rate — a fallback, not a primary gear. Prefer any real
+  // gear as the default; only fall back to Normalized when it's the sole
+  // CPUE-bearing option (same spirit as the server's IA 'Comprehensive' rule).
+  const real = withCpue.filter(g => g !== 'CPUE Normalized');
+  if (real.length > 0) withCpue = real;
   if (withCpue.length > 0) {
     return [withCpue.slice().sort((a, b) => (cpue[b] ?? 0) - (cpue[a] ?? 0))[0]];
   }

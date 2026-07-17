@@ -39,6 +39,7 @@ function metricDefinition(key: string, label: string): string | null {
   if (key === 'cpue') {
     if (label === 'Rel. Catch Index') return 'Agency relative-abundance index. Compare lakes for the same species only — not a true catch rate.';
     if (label === 'Angler Catch Rate') return 'Catch rate derived from angler/tournament creel data rather than standardized survey nets.';
+    if (label === 'Norm. Catch Rate') return 'A catch rate normalized across gear types for lakes surveyed with mixed gear, expressed in spring-fyke-net-equivalent fish per net so it compares to net-sampled lakes.';
     if (label === 'Catch / Hour') return 'Fish caught per hour of electrofishing in the agency survey. Higher = more abundant.';
     return 'Fish caught per net set (gill, trap, or fyke net) in the agency survey. Higher = more abundant.';
   }
@@ -95,8 +96,10 @@ function ndStats(r: Result): Stat[] {
 }
 
 function wiStats(r: Result): Stat[] {
+  // Label follows the gear/cpue_kind: SE/FE electrofishing → Catch/Hour, the
+  // SN nets → Catch/Net, and the synthetic normalized bucket → Norm. Catch Rate.
   return [
-    { key: 'cpue',    label: 'Catch / Net', value: r.cpue              != null ? r.cpue.toFixed(2)                : null },
+    { key: 'cpue',    label: cpueLabelForGear('wi', r.gear, r.cpue_kind), value: r.cpue != null ? r.cpue.toFixed(2) : null },
     { key: 'length',  label: 'Avg length',  value: r.average_length    != null ? `${r.average_length.toFixed(1)}"` : null },
     { key: 'catch',   label: 'Total catch', value: r.total_catch       != null ? r.total_catch.toLocaleString()    : null },
     stockedStat(r),
@@ -145,8 +148,12 @@ function fmtCpue(v: number | null | undefined): string | null {
 // Matches on "electrofish", "shocker", or "ef" as a standalone token / hyphen
 // prefix, plus WI's SE/FE codes (whole-string match — gating on state to
 // avoid false positives in other states' gear strings).
-export function cpueLabelForGear(state: StateKey, gear?: string | null): string {
+export function cpueLabelForGear(state: StateKey, gear?: string | null, rowKind?: string | null): string {
   const fallback = STATE_CONFIGS[state].sortOptions.find(o => o.value === 'cpue')?.label ?? 'Catch / Net';
+  // Per-ROW normalized rate (WI's synthetic 'CPUE Normalized' bucket): a
+  // gear-efficiency-normalized index, not a raw per-net count. Label it as
+  // such regardless of state (fleet-ready — keys off the wire's cpue_kind).
+  if (rowKind === 'normalized') return 'Norm. Catch Rate';
   // Relative indices / creel-derived rates keep their disclaimer label — a
   // per-gear "Catch / Hour" override would dress an index up as a real rate.
   const kind = GENERATED_STATES[state]?.cpueKind;
@@ -177,7 +184,7 @@ const fmtRating = (s: string) => s.replace(/\b\w/g, ch => ch.toUpperCase());
 // presence-only states just show fewer pills.
 function genericStats(r: Result, state: StateKey): Stat[] {
   return [
-    { key: 'cpue',    label: cpueLabelForGear(state, r.gear),  value: fmtCpue(r.cpue) },
+    { key: 'cpue',    label: cpueLabelForGear(state, r.gear, r.cpue_kind),  value: fmtCpue(r.cpue) },
     { key: 'rating',  label: 'Forecast',     value: r.rating != null ? fmtRating(r.rating) : null },
     { key: 'length',  label: 'Avg length',   value: r.average_length != null ? `${r.average_length.toFixed(1)}"` : null },
     { key: 'weight',  label: 'Avg wt',       value: r.average_weight != null ? `${r.average_weight.toFixed(2)} lb` : null },
@@ -197,7 +204,7 @@ export default function ResultRow({ result: r, state, sortBy, onPress }: Props) 
   // by Electrofishing, where the unit is per-hour. Override per row so the
   // label matches the gear that produced the value.
   const sortLabel = sortBy === 'cpue'
-    ? cpueLabelForGear(state, r.gear)
+    ? cpueLabelForGear(state, r.gear, r.cpue_kind)
     : (STATE_CONFIGS[state].sortOptions.find(o => o.value === sortBy)?.label ?? sortBy);
   // Meta keys (acres/depth/year/date/lake) are excluded from the pill row —
   // their values appear in the location line beneath the lake name, so a pill

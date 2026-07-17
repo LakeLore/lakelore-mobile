@@ -400,6 +400,10 @@ export const WI_GEAR_LABELS: Record<string, string> = {
   FE:  'Fall EF (FE)',
   GN:  'Gill Net',
   TL:  'Tow Line (TL)',
+  // Synthetic bucket (gear_category from the server): a gear-efficiency-
+  // normalized catch rate for lakes with no clean single-gear survey. Values
+  // are in spring-fyke-net-equivalent units so they compare to the SN gears.
+  'CPUE Normalized': 'Normalized (all-gear)',
 };
 
 export const SD_SPECIES_FROM_NAME: Record<string, string> = {
