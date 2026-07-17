@@ -65,21 +65,30 @@ Object.assign(STATE_STRIPES, {
 // (NC's "no Largemouth records" bug). IA's server-computed station default
 // wins when present. No CPUE anywhere in scope → no gear filter at all
 // (restricting presence-tier results to one bucket adds nothing).
+// Fallback/residual buckets — never the default when a primary signal exists
+// (they're derived/leftover categories, not a survey a user would pick first).
+const RESIDUAL_GEARS = new Set(['Presence Only', 'Trajectory', 'CPUE Normalized', 'Comprehensive', 'Mixed Gear']);
+
 function defaultGearFor(opts: FilterOptions | null): string[] {
   if (!opts || opts.gearTypes.length === 0) return [];
   if (opts.defaultGear) return [opts.defaultGear];
+  const argmax = (gears: string[], score: (g: string) => number) =>
+    gears.slice().sort((a, b) => score(b) - score(a))[0];
+  // 1) Biggest CPUE-BEARING gear — real survey rates win, so a synthetic
+  //    presence bucket at the top of the raw counts never hides them (NC "no
+  //    Largemouth records"). 'CPUE Normalized' is a rescue fallback, so it only
+  //    wins when it's the sole CPUE option (IA 'Comprehensive' rule spirit).
   const cpue = opts.gearCpueCounts ?? {};
-  let withCpue = opts.gearTypes.filter(g => (cpue[g] ?? 0) > 0);
-  // WI's 'CPUE Normalized' bucket is a cross-gear rescue for lakes lacking a
-  // clean single-gear rate — a fallback, not a primary gear. Prefer any real
-  // gear as the default; only fall back to Normalized when it's the sole
-  // CPUE-bearing option (same spirit as the server's IA 'Comprehensive' rule).
-  const real = withCpue.filter(g => g !== 'CPUE Normalized');
-  if (real.length > 0) withCpue = real;
-  if (withCpue.length > 0) {
-    return [withCpue.slice().sort((a, b) => (cpue[b] ?? 0) - (cpue[a] ?? 0))[0]];
-  }
-  return [];
+  const withCpue = opts.gearTypes.filter(g => (cpue[g] ?? 0) > 0 && g !== 'CPUE Normalized');
+  if (withCpue.length > 0) return [argmax(withCpue, g => cpue[g] ?? 0)];
+  // 2) No CPUE anywhere (ratings/presence states): default to the bucket with
+  //    the MOST RECORDS for this selection, preferring a primary signal over a
+  //    fallback bucket — e.g. IL 'Forecast Rating' (298) over 'Trajectory' (20).
+  const counts = opts.gearTypeCounts ?? {};
+  if (!Object.keys(counts).length) return [];
+  const primary = opts.gearTypes.filter(g => !RESIDUAL_GEARS.has(g));
+  const pool = primary.length ? primary : opts.gearTypes;
+  return pool.length ? [argmax(pool, g => counts[g] ?? 0)] : [];
 }
 
 interface SearchSession {
