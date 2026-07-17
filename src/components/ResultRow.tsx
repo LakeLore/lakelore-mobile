@@ -211,6 +211,14 @@ export default function ResultRow({ result: r, state, sortBy, onPress }: Props) 
   // would just duplicate. Pills are reserved for measurable per-survey stats.
   const otherStats = allStats.filter(s => s.key !== sortBy && !META_KEYS.has(s.key) && s.value !== null);
 
+  // Presence-only record: the agency lists this species as present but published
+  // no survey metric (the server buckets these under a 'Presence Only' gear).
+  // Show it honestly as "Present" instead of a bare "—" under a metric label
+  // that has no value (the Hawaii "Stck Adults = null" confusion).
+  const isPresenceRow = r.cpue == null && r.average_length == null && r.average_weight == null
+    && r.rating == null && r.total_catch == null
+    && r.stocked_per_100ac == null && r.stocked_adults_est == null;
+
   const yearLabel = (state === 'mn' || state === 'ia') && r.survey_date
     ? r.survey_date.substring(0, 10)
     : String(r.survey_year);
@@ -251,22 +259,35 @@ export default function ResultRow({ result: r, state, sortBy, onPress }: Props) 
         )}
       </View>
       <View style={styles.right}>
-        <Text style={[text.dataXL, { color: colors.ink }]}>
-          {sortStat?.value ?? '—'}
-        </Text>
-        {/* Tap the sort label for its definition (same map as the pills). */}
-        <Pressable
-          onPress={() => {
-            const def = metricDefinition(sortBy, sortLabel);
-            if (def) toast(`${sortLabel} — ${def}`);
-          }}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel={`${sortLabel} definition`}>
-          <Text style={[text.labelS, { color: colors.walleye2, marginTop: 2 }]}>
-            {sortLabel}
-          </Text>
-        </Pressable>
+        {isPresenceRow ? (
+          <Pressable
+            onPress={() => toast('Presence Only — the agency lists this species as present in this water but published no survey metric (catch rate, length, or stocking).')}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Presence only definition">
+            <Text style={[text.dataL, { color: colors.ink2, textAlign: 'right' }]}>Present</Text>
+            <Text style={[text.labelS, { color: colors.walleye2, marginTop: 2 }]}>Presence Only</Text>
+          </Pressable>
+        ) : (
+          <>
+            <Text style={[text.dataXL, { color: colors.ink }]}>
+              {sortStat?.value ?? '—'}
+            </Text>
+            {/* Tap the sort label for its definition (same map as the pills). */}
+            <Pressable
+              onPress={() => {
+                const def = metricDefinition(sortBy, sortLabel);
+                if (def) toast(`${sortLabel} — ${def}`);
+              }}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={`${sortLabel} definition`}>
+              <Text style={[text.labelS, { color: colors.walleye2, marginTop: 2 }]}>
+                {sortLabel}
+              </Text>
+            </Pressable>
+          </>
+        )}
       </View>
     </Pressable>
   );
