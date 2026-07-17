@@ -124,6 +124,39 @@ function niceTicks(min: number, max: number, count = 5): number[] {
 
 function fmtK(v: number) { return v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v); }
 
+// Shared year×gear line-series builder for the Catch and Avg Size tabs: one
+// line per gear, values averaged when a year has multiple surveys with the
+// same gear.
+function buildYearGearSeries(rows: CatchRow[], value: (c: CatchRow) => number | null | undefined) {
+  const gearSet = new Set<string>();
+  const byYearGear = new Map<string, number[]>();
+  for (const c of rows) {
+    const v = value(c);
+    if (v == null) continue;
+    const gk = c.gear ?? (c.survey_type ?? 'Unknown');
+    gearSet.add(gk);
+    const key = `${c.survey_year}|${gk}`;
+    if (!byYearGear.has(key)) byYearGear.set(key, []);
+    byYearGear.get(key)!.push(v);
+  }
+  const gearKeys = [...gearSet].sort();
+  const yearMap = new Map<number, Record<string,number|null>>();
+  for (const [key, vals] of byYearGear) {
+    const [yr, gk] = key.split('|');
+    const year = Number(yr);
+    if (!yearMap.has(year)) yearMap.set(year, { year });
+    const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+    const entry = yearMap.get(year)!;
+    if (entry[gk] == null) entry[gk] = avg;
+    else entry[gk] = ((entry[gk] as number) + avg) / 2;
+  }
+  const chartData = [...yearMap.values()]
+    .map(e => { const r: Record<string,number|null> = { year: e.year as number }; for (const g of gearKeys) r[g] = e[g] ?? null; return r; })
+    .sort((a,b) => (a.year as number) - (b.year as number));
+  const activeKeys = gearKeys.filter(g => chartData.some(r => r[g] != null));
+  return { chartData, gearKeys: activeKeys };
+}
+
 const CHART_TICK_FONT = { fontFamily: fonts.mono, fontSize: 9 };
 
 function CpueChart({ data, seriesKeys, scaledGear, width, onDotPress, yLabel = 'Catch Rate' }: {
@@ -394,11 +427,12 @@ export default function LakeDetailScreen() {
   const [data, setData] = useState<LakeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<'cpue'|'stocking'>('cpue');
+  const [tab, setTab] = useState<'cpue'|'size'|'stocking'>('cpue');
   const [localSpecies, setLocalSpecies] = useState(initialSpecies);
   const [scaledGear, setScaledGear] = useState<string|null>(null);
   const [selectedStockYear, setSelectedStockYear] = useState<{year: number; row: Record<string,number> | undefined} | null>(null);
   const [selectedCpueYear, setSelectedCpueYear] = useState<{year: number; row: Record<string,number|null>} | null>(null);
+  const [selectedSizeYear, setSelectedSizeYear] = useState<{year: number; row: Record<string,number|null>} | null>(null);
   const [paywallTriggered, setPaywallTriggered] = useState<StateKey | null>(null);
   // True when the paywall came from the preview banner (screen still usable
   // behind it) rather than a hard 402 (screen has nothing to show).
@@ -460,7 +494,10 @@ export default function LakeDetailScreen() {
   const lakeSpecies = useMemo(() => {
     if (!data) return [];
     const set = new Set([
-      ...data.catches.filter(c => c.cpue != null || c.total_catch != null).map(c => c.species),
+      // average_length/weight included: some states (e.g. CA) carry measured
+      // size on rows with no CPUE — those species still deserve a chip.
+      ...data.catches.filter(c => c.cpue != null || c.total_catch != null
+        || c.average_length != null || c.average_weight != null).map(c => c.species),
       ...data.stocking.map(s => s.species),
     ]);
     return [...set].sort((a, b) => {
@@ -476,36 +513,27 @@ export default function LakeDetailScreen() {
 
   const { cpueChartData, gearKeys } = useMemo(() => {
     if (!data) return { cpueChartData: [], gearKeys: [] };
-    const filtered = data.catches.filter(c =>
-      (!localSpecies || c.species === localSpecies) &&
-      c.cpue != null
-    );
-    const gearSet = new Set<string>();
-    const byYearGear = new Map<string, number[]>();
-    for (const c of filtered) {
-      const gk = c.gear ?? (c.survey_type ?? 'Unknown');
-      gearSet.add(gk);
-      const key = `${c.survey_year}|${gk}`;
-      if (!byYearGear.has(key)) byYearGear.set(key, []);
-      byYearGear.get(key)!.push(c.cpue!);
-    }
-    const gearKeys = [...gearSet].sort();
-    const yearMap = new Map<number, Record<string,number|null>>();
-    for (const [key, vals] of byYearGear) {
-      const [yr, gk] = key.split('|');
-      const year = Number(yr);
-      if (!yearMap.has(year)) yearMap.set(year, { year });
-      const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
-      const entry = yearMap.get(year)!;
-      if (entry[gk] == null) entry[gk] = avg;
-      else entry[gk] = ((entry[gk] as number) + avg) / 2;
-    }
-    const cpueChartData = [...yearMap.values()]
-      .map(e => { const r: Record<string,number|null> = { year: e.year as number }; for (const g of gearKeys) r[g] = e[g] ?? null; return r; })
-      .sort((a,b) => (a.year as number) - (b.year as number));
-    const activeKeys = gearKeys.filter(g => cpueChartData.some(r => r[g] != null));
-    return { cpueChartData, gearKeys: activeKeys };
+    const filtered = data.catches.filter(c => !localSpecies || c.species === localSpecies);
+    const { chartData, gearKeys } = buildYearGearSeries(filtered, c => c.cpue);
+    return { cpueChartData: chartData, gearKeys };
   }, [data, localSpecies]);
+
+  // Avg Size tab: average length (inches) where the state reports it; MN
+  // reports average weight (lbs) instead — the tab adapts per lake and hides
+  // entirely when the lake has neither.
+  const { sizeChartData, sizeGearKeys, sizeField } = useMemo(() => {
+    if (!data) return { sizeChartData: [], sizeGearKeys: [], sizeField: null as 'average_length'|'average_weight'|null };
+    const field: 'average_length'|'average_weight'|null =
+      data.catches.some(c => (c.average_length ?? 0) > 0) ? 'average_length'
+      : data.catches.some(c => (c.average_weight ?? 0) > 0) ? 'average_weight'
+      : null;
+    if (!field) return { sizeChartData: [], sizeGearKeys: [], sizeField: null };
+    const filtered = data.catches.filter(c => !localSpecies || c.species === localSpecies);
+    // A 0 average is a survey placeholder (no fish measured), not a real size.
+    const { chartData, gearKeys } = buildYearGearSeries(filtered, c => (c[field] ?? 0) > 0 ? c[field] : null);
+    return { sizeChartData: chartData, sizeGearKeys: gearKeys, sizeField: field };
+  }, [data, localSpecies]);
+  const sizeUnit = sizeField === 'average_weight' ? 'lb' : 'in';
 
   const { stockChartData, stageKeys } = useMemo(() => {
     if (!data) return { stockChartData: [], stageKeys: [] };
@@ -659,7 +687,7 @@ export default function LakeDetailScreen() {
                 pages/PDFs that name the lake (and preview ids are hashed, so
                 id-based URLs wouldn't work anyway). */}
             {!isPreview && <>
-            {state === 'sd' && tab === 'cpue' && latestReportId ? (
+            {state === 'sd' && tab !== 'stocking' && latestReportId ? (
               <Pressable
                 onPress={() => Linking.openURL(SD_REPORT_URL(latestReportId))}
                 accessibilityRole="link"
@@ -686,7 +714,7 @@ export default function LakeDetailScreen() {
                 <Text style={[text.labelM, { color: colors.walleye2 }]}>MN DNR LakeFinder ↗</Text>
               </Pressable>
             ) : null}
-            {state === 'ia' && tab === 'cpue' && (
+            {state === 'ia' && tab !== 'stocking' && (
               <Pressable
                 onPress={() => Linking.openURL(IA_PBI_SURVEY_URL)}
                 accessibilityRole="link"
@@ -711,7 +739,7 @@ export default function LakeDetailScreen() {
                   WI: source_url captured from WDNR's reports index
                   MI: stable DNR directory listing — built from the filename */}
             {(state === 'ne' || state === 'mi' || state === 'wi') &&
-              (tab === 'cpue' || state === 'mi') && (() => {
+              (tab !== 'stocking' || state === 'mi') && (() => {
               const pick = (data?.surveys ?? []).find(s =>
                 s.source_pdf && (!speciesSurveyIds || speciesSurveyIds.has(String(s.id))),
               );
@@ -750,7 +778,7 @@ export default function LakeDetailScreen() {
                 <Text style={[text.labelM, { color: colors.walleye2 }]}>WI Stocking Records Search ↗</Text>
               </Pressable>
             )}
-            {state === 'nd' && tab === 'cpue' && (
+            {state === 'nd' && tab !== 'stocking' && (
               <Pressable
                 onPress={() => Linking.openURL(ND_SURVEY_URL(lake.id))}
                 accessibilityRole="link"
@@ -834,7 +862,7 @@ export default function LakeDetailScreen() {
               const active = localSpecies === sp;
               return (
                 <Chip key={sp} active={active}
-                  onPress={() => { setLocalSpecies(sp); setScaledGear(null); setSelectedStockYear(null); setSelectedCpueYear(null); }}>
+                  onPress={() => { setLocalSpecies(sp); setScaledGear(null); setSelectedStockYear(null); setSelectedCpueYear(null); setSelectedSizeYear(null); }}>
                   {name}
                 </Chip>
               );
@@ -842,17 +870,22 @@ export default function LakeDetailScreen() {
           </ScrollView>
         )}
 
-        {/* Tabs */}
+        {/* Tabs — Avg Size only shows when this lake reports a size metric
+            (average length, or average weight in MN). Labels shorten to fit
+            three across. */}
         <View style={styles.tabs}>
-          {(['cpue','stocking'] as const).map(t => {
+          {(sizeField ? (['cpue','size','stocking'] as const) : (['cpue','stocking'] as const)).map(t => {
             const on = tab === t;
+            const label = sizeField
+              ? (t === 'cpue' ? 'Catch' : t === 'size' ? 'Avg Size' : 'Stocking')
+              : (t === 'cpue' ? 'Catch Over Time' : 'Stocking History');
             return (
               <Pressable key={t} style={[styles.tab, on && styles.tabActive]} onPress={() => setTab(t)}>
-                <Text style={[
+                <Text numberOfLines={1} style={[
                   text.labelL,
                   { color: on ? colors.ink : colors.inkSoft, fontFamily: on ? fonts.monoSemi : fonts.mono },
                 ]}>
-                  {t === 'cpue' ? 'Catch Over Time' : 'Stocking History'}
+                  {label}
                 </Text>
               </Pressable>
             );
@@ -919,6 +952,71 @@ export default function LakeDetailScreen() {
           ) : (
             <View style={styles.emptyChart}>
               <Text style={[text.editorialS, { color: colors.inkSoft }]}>No catch data for {speciesName}</Text>
+            </View>
+          )
+        )}
+
+        {/* Avg Size tab — same line chart as Catch, y-axis is the state's
+            size metric (avg length in inches, or avg weight in lbs for MN). */}
+        {tab === 'size' && (
+          sizeChartData.length > 0 ? (
+            <View style={styles.chartSection}>
+              <Text style={[text.bodyS, { color: colors.inkSoft, marginBottom: 8 }]}>
+                {sizeField === 'average_weight'
+                  ? 'Average weight (lbs) of fish sampled, by survey year. Each line = one gear type.'
+                  : 'Average length (inches) of fish sampled, by survey year. Each line = one gear type.'}
+              </Text>
+              <CpueChart data={sizeChartData} seriesKeys={sizeGearKeys} scaledGear={scaledGear} width={chartWidth}
+                yLabel={sizeField === 'average_weight' ? 'Avg Weight (lb)' : 'Avg Length (in)'}
+                onDotPress={(year, row) => setSelectedSizeYear(prev => prev?.year === year ? null : { year, row })} />
+              <Text style={[text.bodyS, { color: colors.inkSoft, textAlign: 'center', marginTop: 4 }]}>
+                Tap a dot to see year detail · tap a gear to rescale Y axis
+              </Text>
+              {selectedSizeYear && (
+                <View style={styles.yearPopup}>
+                  <View style={styles.yearPopupHeader}>
+                    <Text style={[text.dataL, { color: colors.ink }]}>{selectedSizeYear.year}</Text>
+                    <Pressable
+                      onPress={() => setSelectedSizeYear(null)}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel="Close year detail">
+                      <Text style={[text.labelL, { color: colors.inkSoft }]}>✕</Text>
+                    </Pressable>
+                  </View>
+                  {sizeGearKeys.map((g, i) => {
+                    const val = selectedSizeYear.row[g];
+                    if (val == null) return null;
+                    return (
+                      <View key={g} style={styles.popupRow}>
+                        <View style={[styles.popupDot, { backgroundColor: LINE_COLORS[i % LINE_COLORS.length] }]} />
+                        <Text style={[text.bodyM, { flex: 1, color: colors.ink2 }]} numberOfLines={1}>{g}</Text>
+                        <Text style={[text.dataM, { color: colors.ink }]}>
+                          {`${(val as number).toFixed(sizeUnit === 'lb' ? 2 : 1)} ${sizeUnit}`}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+              <View style={styles.gearLegend}>
+                {sizeGearKeys.map((g, i) => {
+                  const sel = scaledGear === g;
+                  return (
+                    <Pressable key={g}
+                      style={[styles.gearChip, { borderColor: sel ? colors.ink : colors.paper3,
+                        backgroundColor: sel ? colors.paper2 : colors.paper }]}
+                      onPress={() => { setScaledGear(sel ? null : g); setSelectedSizeYear(null); }}>
+                      <View style={[styles.gearDot, { backgroundColor: LINE_COLORS[i%LINE_COLORS.length] }]} />
+                      <Text style={[text.labelM, { color: colors.ink }]} numberOfLines={1}>{g}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ) : (
+            <View style={styles.emptyChart}>
+              <Text style={[text.editorialS, { color: colors.inkSoft }]}>No size data for {speciesName}</Text>
             </View>
           )
         )}
@@ -1041,7 +1139,7 @@ export default function LakeDetailScreen() {
               <Text style={[text.dataS, { color: colors.inkSoft, marginTop: 4 }]}>
                 {`${STATE_CONFIGS[state]?.label ?? state.toUpperCase()} · ${lake.name ?? 'name hidden'} · ID ${lake.id} · `}
                 {`${localSpecies ? speciesDisplayName(localSpecies, state) : 'no species'} · `}
-                {`${tab === 'cpue' ? 'Catch tab' : 'Stocking tab'}`}
+                {`${tab === 'cpue' ? 'Catch tab' : tab === 'size' ? 'Avg Size tab' : 'Stocking tab'}`}
               </Text>
               <TextInput
                 style={styles.feedbackInput}
@@ -1068,7 +1166,7 @@ export default function LakeDetailScreen() {
                       lakeId: lake.id,
                       lakeName: lake.name,
                       species: localSpecies ?? null,
-                      tab: tab === 'cpue' ? 'catch' : 'stocking',
+                      tab: tab === 'cpue' ? 'catch' : tab === 'size' ? 'size' : 'stocking',
                       version: Application.nativeApplicationVersion ?? null,
                       build: Application.nativeBuildVersion ?? null,
                     });
