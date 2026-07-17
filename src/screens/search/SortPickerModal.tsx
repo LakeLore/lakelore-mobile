@@ -25,7 +25,7 @@ export function SortPickerModal({
   const cfg = STATE_CONFIGS[state];
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.paper }}>
         <PaperHeader
           modal

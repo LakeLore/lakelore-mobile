@@ -218,6 +218,28 @@ export default function SearchScreen() {
       if (err instanceof SubscriptionRequiredError) {
         setPaywallTriggered(err.state);
       } else {
+        // Cold-start offline (the MOST common offline case): /status fails
+        // before any search can run, the species button is disabled, and the
+        // offline cache used to be unreachable — hydrate it directly so the
+        // "shows SOMETHING at the lake" goal survives a cold launch with no
+        // signal (IMPROVEMENT_PLAN_2026-07-17 D1).
+        const isNetwork = err instanceof Error && /reach server|timed out/.test(err.message);
+        if (isNetwork) {
+          try {
+            const raw = await AsyncStorage.getItem(`offlineCache.v1.${stateKey}`);
+            if (raw) {
+              const cached = JSON.parse(raw);
+              setResults(cached.results ?? []);
+              setScatterResults(cached.scatterResults ?? []);
+              setTotal(cached.total ?? 0);
+              setPage(0);
+              setSearched(true);
+              setOfflineCacheDate(cached.ts ?? null);
+              setLoadingOptions(false);
+              return;
+            }
+          } catch { /* fall through to the error banner */ }
+        }
         setError(err instanceof Error ? err.message : 'Could not load filters');
       }
     } finally {

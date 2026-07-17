@@ -97,7 +97,8 @@ Then wait for Apple processing (5–30 min after EAS finishes). TestFlight on th
 
 ```bash
 cd ~/lake-fish-mobile
-eas update --branch production --message "fix paywall typo"
+npm run ota -- --message "fix paywall typo"   # tsc --noEmit + jest gate first (2026-07-17, B5)
+# Raw escape hatch (skips the gates): eas update --branch production --message "..."
 ```
 
 That bundles the current JS, uploads to EAS Updates, and the next time any installed build with matching `runtimeVersion` cold-launches it picks up the new bundle. First production OTA was published 2026-05-13 (update group `bfed3391`, runtime `1.0.0`).

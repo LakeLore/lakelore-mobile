@@ -69,7 +69,7 @@ export default function SpeciesPicker({ visible, species, selected, state, onSel
   }, [species, query, namesMap]);
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={styles.safe}>
         <PaperHeader
           modal

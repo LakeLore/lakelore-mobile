@@ -10,6 +10,7 @@ import * as Application from 'expo-application';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import Svg, { Line, Polyline, Circle, Rect, Text as SvgText, G } from 'react-native-svg';
 import { fetchLakeWithSpecies, SubscriptionRequiredError, submitFeedback } from '../api';
+import { putLake, getLake } from '../lakeCache';
 import { useToast } from '../Toast';
 import { StateKey, STATE_CONFIGS, GENERATED_STATES, speciesDisplayName, SD_SPECIES_FROM_NAME } from '../types';
 import PaywallScreen from './PaywallScreen';
@@ -450,6 +451,7 @@ export default function LakeDetailScreen() {
   const [selectedStockYear, setSelectedStockYear] = useState<{year: number; row: Record<string,number> | undefined} | null>(null);
   const [selectedCpueYear, setSelectedCpueYear] = useState<{year: number; row: Record<string,number|null>} | null>(null);
   const [selectedSizeYear, setSelectedSizeYear] = useState<{year: number; row: Record<string,number|null>} | null>(null);
+  const [cacheDate, setCacheDate] = useState<number | null>(null);
   const [paywallTriggered, setPaywallTriggered] = useState<StateKey | null>(null);
   // True when the paywall came from the preview banner (screen still usable
   // behind it) rather than a hard 402 (screen has nothing to show).
@@ -459,37 +461,54 @@ export default function LakeDetailScreen() {
   const [feedbackSending, setFeedbackSending] = useState(false);
   const { toast } = useToast();
 
+  const applyLake = React.useCallback((ld: LakeData) => {
+    setData(ld);
+    if (!initialSpecies) {
+      const counts = new Map<string,number>();
+      for (const c of ld.catches) counts.set(c.species,(counts.get(c.species)??0)+1);
+      const top = [...counts.entries()].sort((a,b)=>b[1]-a[1])[0];
+      if (top) setLocalSpecies(top[0]);
+    }
+    // Open on the first tab that actually has data: rating- and
+    // stocking-only lakes otherwise land on an empty Catch tab and the
+    // user must discover the Stocking tab themselves (A5).
+    if (!ld.catches.some(c => c.cpue != null)) {
+      const hasSize = ld.catches.some(c => (c.average_length ?? 0) > 0 || (c.average_weight ?? 0) > 0);
+      if (hasSize) setTab('size');
+      else if (ld.stocking.length > 0) setTab('stocking');
+    }
+  }, [initialSpecies]);
+
   const loadLake = React.useCallback(() => {
     setLoading(true);
     setError(null);
     fetchLakeWithSpecies(lakeId, state, initialSpecies)
       .then(d => {
         const ld = d as LakeData;
-        setData(ld);
-        if (!initialSpecies) {
-          const counts = new Map<string,number>();
-          for (const c of ld.catches) counts.set(c.species,(counts.get(c.species)??0)+1);
-          const top = [...counts.entries()].sort((a,b)=>b[1]-a[1])[0];
-          if (top) setLocalSpecies(top[0]);
-        }
-        // Open on the first tab that actually has data: rating- and
-        // stocking-only lakes otherwise land on an empty Catch tab and the
-        // user must discover the Stocking tab themselves (A5).
-        if (!ld.catches.some(c => c.cpue != null)) {
-          const hasSize = ld.catches.some(c => (c.average_length ?? 0) > 0 || (c.average_weight ?? 0) > 0);
-          if (hasSize) setTab('size');
-          else if (ld.stocking.length > 0) setTab('stocking');
-        }
+        setCacheDate(null);
+        applyLake(ld);
+        putLake(state, lakeId, ld); // fire-and-forget offline cache (D1)
       })
-      .catch(err => {
+      .catch(async err => {
         if (err instanceof SubscriptionRequiredError) {
           setPaywallTriggered(err.state);
-        } else {
-          setError(err instanceof Error ? err.message : 'Could not load lake');
+          return;
         }
+        // Offline: serve the cached payload for a recently-viewed lake
+        // (stale beats a dead-end at the water) with a dated banner.
+        const isNetwork = err instanceof Error && /reach server|timed out/.test(err.message);
+        if (isNetwork) {
+          const cached = await getLake(state, lakeId);
+          if (cached?.data) {
+            applyLake(cached.data as LakeData);
+            setCacheDate(cached.ts ?? null);
+            return;
+          }
+        }
+        setError(err instanceof Error ? err.message : 'Could not load lake');
       })
       .finally(() => setLoading(false));
-  }, [lakeId, state, initialSpecies]);
+  }, [lakeId, state, initialSpecies, applyLake]);
 
   useEffect(() => { loadLake(); }, [loadLake]);
 
@@ -706,6 +725,19 @@ export default function LakeDetailScreen() {
             accessibilityLabel="Unlock lake names with the All-States subscription"
             style={styles.unlockBtn}>
             <Text style={[text.labelM, { color: colors.ink }]}>Unlock</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {/* Offline cache banner (D1) — same copy pattern as SearchScreen's. */}
+      {cacheDate != null && (
+        <View style={styles.cacheBanner}>
+          <Text style={[text.labelM, { color: colors.ink2, flex: 1 }]} numberOfLines={1}>
+            Offline — showing this lake saved {new Date(cacheDate).toLocaleDateString()}
+          </Text>
+          <Pressable onPress={loadLake} hitSlop={8}
+            accessibilityRole="button" accessibilityLabel="Retry loading lake">
+            <Text style={[text.labelM, { color: colors.walleye2 }]}>Retry</Text>
           </Pressable>
         </View>
       )}
@@ -1356,6 +1388,16 @@ const styles = StyleSheet.create({
     gap: space.md,
     paddingHorizontal: space.xl,
     paddingVertical: space.md,
+    borderBottomWidth: hairline,
+    borderBottomColor: colors.paper3,
+    backgroundColor: colors.paper2,
+  },
+  cacheBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    paddingHorizontal: space.xl,
+    paddingVertical: space.sm,
     borderBottomWidth: hairline,
     borderBottomColor: colors.paper3,
     backgroundColor: colors.paper2,

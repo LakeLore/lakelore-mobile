@@ -3,6 +3,7 @@
   "version": "1.1.0",
   "main": "index.ts",
   "scripts": {
+    "ota": "tsc --noEmit && jest --silent && eas update --branch production",
     "start": "expo start --dev-client",
     "start:expo-go": "expo start",
     "build:dev:ios": "eas build --profile development --platform ios",

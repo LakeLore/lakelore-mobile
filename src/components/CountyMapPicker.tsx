@@ -229,7 +229,7 @@ function MapCountyPicker({ visible, state, selected, countyOptions, onConfirm, o
   const baseFontSize = Object.keys(counties).length > 70 ? 5.5 : 6.5;
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onShow={handleShow}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onShow={handleShow} onRequestClose={onClose}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaView style={styles.safe}>
           <PaperHeader

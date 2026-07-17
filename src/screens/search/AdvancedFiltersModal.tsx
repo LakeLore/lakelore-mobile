@@ -44,7 +44,7 @@ export function AdvancedFiltersModal({
   const cfg = GENERATED_STATES[state as StateKey];
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.paper }}>
         <PaperHeader
           modal
