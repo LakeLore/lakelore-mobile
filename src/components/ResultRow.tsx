@@ -203,8 +203,15 @@ export default function ResultRow({ result: r, state, sortBy, onPress }: Props) 
   // For NE the configured 'cpue' label is "Catch / Net" — but bass are sampled
   // by Electrofishing, where the unit is per-hour. Override per row so the
   // label matches the gear that produced the value.
+  // The stocked sort ranks in two blocks: lakes WITH acreage by density
+  // (adults/100ac), then acreage-less lakes by ABSOLUTE estimated adults. The
+  // two carry different units, so the sort label must switch per row —
+  // otherwise the absolute block reads as "/100AC" (why 24,748 looks like a
+  // giant density right after the density block hit 0).
   const sortLabel = sortBy === 'cpue'
     ? cpueLabelForGear(state, r.gear, r.cpue_kind)
+    : sortBy === 'stocked'
+    ? (r.stocked_per_100ac != null ? 'Stck Adults / 100AC' : 'Stck Adults (est)')
     : (STATE_CONFIGS[state].sortOptions.find(o => o.value === sortBy)?.label ?? sortBy);
   // Meta keys (acres/depth/year/date/lake) are excluded from the pill row —
   // their values appear in the location line beneath the lake name, so a pill
