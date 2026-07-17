@@ -72,6 +72,7 @@ interface DotData {
   average_weight?: number|null;
   total_catch?: number|null;
   estLength?: number;
+  estimatedLength?: boolean;
   // Rating mode (GA/MO/IL): y is the rating ordinal; this is the agency's
   // display wording for the popup.
   ratingText?: string|null;
@@ -127,6 +128,9 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
       area_acres: r.area_acres ?? null,
       max_depth_feet: r.max_depth_feet ?? null,
       stockedEst: r.stocked_adults_est ?? null,
+      // Schema v6: non-measured lengths (prose midpoints, size classes,
+      // charts) label as 'Est. length' in the dot card.
+      estimatedLength: r.length_derivation != null && r.length_derivation !== 'measured',
     });
 
     if (state==='mn') {
@@ -608,7 +612,7 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
               <Stat label={STATE_CONFIGS[state].sortOptions.find(o => o.value === 'cpue')?.label ?? 'Catch / Net'}
                     value={selectedDot.y.toFixed(2)} />
             )}
-            {selectedDot.average_length!=null && <Stat label="Avg length" value={`${selectedDot.average_length.toFixed(1)} in`} />}
+            {selectedDot.average_length!=null && <Stat label={selectedDot.estimatedLength ? 'Est. length' : 'Avg length'} value={`${selectedDot.average_length.toFixed(1)} in`} />}
             {selectedDot.estLength!=null && <Stat label="Est. length" value={`${selectedDot.estLength.toFixed(1)} in`} />}
             {selectedDot.average_weight!=null && selectedDot.average_weight>0 && <Stat label="Avg weight" value={`${selectedDot.average_weight.toFixed(2)} lb`} />}
             {selectedDot.total_catch!=null && <Stat label="Total catch" value={String(selectedDot.total_catch)} />}

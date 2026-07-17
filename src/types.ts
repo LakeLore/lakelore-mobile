@@ -236,9 +236,17 @@ export interface Result {
   // SD fields
   sample_n?: number | null;
   cpue?: number | null;
-  // What the cpue number means ('gear' | 'derived' | 'relative' | 'creel') —
-  // relative indices must never be labeled as real catch rates.
+  // What the cpue number means ('gear' | 'relative' | 'creel' | per-row
+  // 'normalized'; schema v6 folded 'derived' into 'gear') — relative indices
+  // must never be labeled as real catch rates.
   cpue_kind?: string | null;
+  // Schema v6 (2026-07-17): how average_length was obtained ('measured' |
+  // 'estimate' | 'chart' | 'psd_midpoint') — non-measured lengths render as
+  // "Est. length" so prose-midpoint estimates never read as measured means.
+  length_derivation?: string | null;
+  // Schema v6: 'surveyed' (observed) vs 'stocked' (presence inferred from
+  // stocking records — NY/ON/MD synthesize these). Null on non-presence rows.
+  presence_basis?: string | null;
   psd?: number | null;
   psd_p?: number | null;
   wr?: number | null;

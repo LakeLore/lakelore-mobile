@@ -49,12 +49,21 @@ function metricDefinition(key: string, label: string): string | null {
         ? 'Estimated stocked fish surviving to adulthood — an absolute count, because this lake has no recorded acreage for a per-acre rate. Based on the last 10 years of stocking.'
         : 'Estimated stocked fish surviving to adulthood per 100 acres, from the last 10 years of stocking run through a survival model.';
     case 'rating': return 'The state agency’s own fishing-forecast rating for this species at this lake.';
-    case 'length': return 'Average length of fish sampled (or estimated) for this species in the survey.';
+    case 'length':
+      return label === 'Est. length'
+        ? 'Estimated average length — derived from published size ranges, size classes, or length charts rather than direct measurement. Not comparable to measured averages.'
+        : 'Average length of fish measured for this species in the survey.';
     case 'weight': return 'Average weight of fish sampled for this species in the survey.';
     case 'catch':  return 'Total fish of this species counted in the survey.';
     default: return null;
   }
 }
+
+// Length label (schema v6): non-measured derivations (prose midpoints, size
+// classes, length charts, PSD midpoints) say so — KS's quality-size mean and
+// GA's prose estimates must not read like CA/MS measured population means.
+const lengthLabel = (r: Result): string =>
+  r.length_derivation && r.length_derivation !== 'measured' ? 'Est. length' : 'Avg length';
 
 // Stocked metric: density when the lake has acreage; absolute estimated
 // adults when it doesn't (no denominator — the server ranks those rows below
@@ -69,7 +78,7 @@ const stockedStat = (r: Result): Stat =>
 function sdStats(r: Result): Stat[] {
   return [
     { key: 'cpue',    label: cpueLabelForGear('sd', r.gear, r.cpue_kind), value: r.cpue    != null ? r.cpue.toFixed(1)      : null },
-    { key: 'length',  label: 'Avg length',  value: r.average_length != null ? `${r.average_length.toFixed(1)}"` : null },
+    { key: 'length',  label: lengthLabel(r),  value: r.average_length != null ? `${r.average_length.toFixed(1)}"` : null },
     stockedStat(r),
     ...metaStats(r),
   ];
@@ -88,7 +97,7 @@ function mnStats(r: Result): Stat[] {
 function ndStats(r: Result): Stat[] {
   return [
     { key: 'cpue',    label: cpueLabelForGear('nd', r.gear, r.cpue_kind), value: r.cpue           != null ? r.cpue.toFixed(2)                : null },
-    { key: 'length',  label: 'Avg length', value: r.average_length != null ? `${r.average_length.toFixed(1)}"` : null },
+    { key: 'length',  label: lengthLabel(r), value: r.average_length != null ? `${r.average_length.toFixed(1)}"` : null },
     { key: 'catch',   label: 'Total catch', value: r.total_catch    != null ? r.total_catch.toLocaleString()    : null },
     stockedStat(r),
     ...metaStats(r),
@@ -100,7 +109,7 @@ function wiStats(r: Result): Stat[] {
   // SN nets → Catch/Net, and the synthetic normalized bucket → Norm. Catch Rate.
   return [
     { key: 'cpue',    label: cpueLabelForGear('wi', r.gear, r.cpue_kind), value: r.cpue != null ? r.cpue.toFixed(2) : null },
-    { key: 'length',  label: 'Avg length',  value: r.average_length    != null ? `${r.average_length.toFixed(1)}"` : null },
+    { key: 'length',  label: lengthLabel(r),  value: r.average_length    != null ? `${r.average_length.toFixed(1)}"` : null },
     { key: 'catch',   label: 'Total catch', value: r.total_catch       != null ? r.total_catch.toLocaleString()    : null },
     stockedStat(r),
     ...metaStats(r),
@@ -110,7 +119,7 @@ function wiStats(r: Result): Stat[] {
 function neStats(r: Result): Stat[] {
   return [
     { key: 'cpue',    label: cpueLabelForGear('ne', r.gear, r.cpue_kind), value: r.cpue           != null ? r.cpue.toFixed(2)                : null },
-    { key: 'length',  label: 'Avg length', value: r.average_length != null ? `${r.average_length.toFixed(1)}"` : null },
+    { key: 'length',  label: lengthLabel(r), value: r.average_length != null ? `${r.average_length.toFixed(1)}"` : null },
     stockedStat(r),
     ...metaStats(r),
   ];
@@ -119,7 +128,7 @@ function neStats(r: Result): Stat[] {
 function miStats(r: Result): Stat[] {
   return [
     { key: 'cpue',    label: cpueLabelForGear('mi', r.gear, r.cpue_kind), value: r.cpue              != null ? r.cpue.toFixed(2)              : null },
-    { key: 'length',  label: 'Avg length',  value: r.average_length    != null ? `${r.average_length.toFixed(1)}"` : null },
+    { key: 'length',  label: lengthLabel(r),  value: r.average_length    != null ? `${r.average_length.toFixed(1)}"` : null },
     { key: 'catch',   label: 'Total catch', value: r.total_catch       != null ? r.total_catch.toLocaleString() : null },
     stockedStat(r),
     ...metaStats(r),
@@ -192,7 +201,7 @@ function iaStats(r: Result): Stat[] {
   return [
     { key: 'cpue',    label: cpueLabelForGear('ia', r.gear, r.cpue_kind),  value: fmtCpue(r.cpue) },
     { key: 'catch',   label: 'Total catch',  value: r.total_catch       != null ? r.total_catch.toLocaleString()    : null },
-    { key: 'length',  label: 'Avg length',   value: r.average_length    != null ? `${r.average_length.toFixed(1)}"` : null },
+    { key: 'length',  label: lengthLabel(r),   value: r.average_length    != null ? `${r.average_length.toFixed(1)}"` : null },
     stockedStat(r),
     ...metaStats(r),
   ];
@@ -208,7 +217,7 @@ function genericStats(r: Result, state: StateKey): Stat[] {
   return [
     { key: 'cpue',    label: cpueLabelForGear(state, r.gear, r.cpue_kind),  value: fmtCpue(r.cpue) },
     { key: 'rating',  label: 'Forecast',     value: r.rating != null ? fmtRating(r.rating) : null },
-    { key: 'length',  label: 'Avg length',   value: r.average_length != null ? `${r.average_length.toFixed(1)}"` : null },
+    { key: 'length',  label: lengthLabel(r),   value: r.average_length != null ? `${r.average_length.toFixed(1)}"` : null },
     { key: 'weight',  label: 'Avg wt',       value: r.average_weight != null ? `${r.average_weight.toFixed(2)} lb` : null },
     { key: 'catch',   label: 'Total catch',  value: r.total_catch != null ? r.total_catch.toLocaleString() : null },
     stockedStat(r),
@@ -290,12 +299,16 @@ export default function ResultRow({ result: r, state, sortBy, onPress }: Props) 
       <View style={styles.right}>
         {isPresenceRow ? (
           <Pressable
-            onPress={() => toast('Presence Only — the agency lists this species as present in this water but published no survey metric (catch rate, length, or stocking).')}
+            onPress={() => toast(r.presence_basis === 'stocked'
+              ? 'Stocked — presence inferred from stocking records: the agency stocked this species here but has not published a survey observing it.'
+              : 'Presence Only — the agency lists this species as present in this water but published no survey metric (catch rate, length, or stocking).')}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Presence only definition">
+            accessibilityLabel={r.presence_basis === 'stocked' ? 'Stocked presence definition' : 'Presence only definition'}>
             <Text style={[text.dataL, { color: colors.ink2, textAlign: 'right' }]}>Present</Text>
-            <Text style={[text.labelS, { color: colors.walleye2, marginTop: 2 }]}>Presence Only</Text>
+            <Text style={[text.labelS, { color: colors.walleye2, marginTop: 2 }]}>
+              {r.presence_basis === 'stocked' ? 'Stocked · Inferred' : 'Presence Only'}
+            </Text>
           </Pressable>
         ) : (
           <>

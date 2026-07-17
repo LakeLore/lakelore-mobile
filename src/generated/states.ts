@@ -27,10 +27,12 @@ export interface GeneratedStateConfig {
   hasCounties: boolean;
   // Agency fishing-forecast rating available (GA/MO/IL/FL/KY/OK/KS).
   hasRating: boolean;
-  // What this state's cpue means: 'gear' genuine catch-per-unit-effort |
-  // 'derived' computed from counts/effort | 'relative' agency index (not
-  // cross-species comparable) | 'creel' angler/tournament-derived | null.
-  cpueKind: 'gear' | 'derived' | 'relative' | 'creel' | null;
+  // What this state's cpue means (schema v6 selector definition — see
+  // lakelore-data/schema/canonical.sql): 'gear' effort-standardized rate
+  // from a named sampling method with a known unit | 'relative' index from
+  // a synthetic pseudo-gear or undocumented effort | 'creel'
+  // angler/tournament-derived | null. (v5's 'derived' folded into 'gear'.)
+  cpueKind: 'gear' | 'relative' | 'creel' | null;
   sortOptions: { value: string; label: string }[];
   stripe: string;
 }
@@ -151,7 +153,7 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     free: false,
     active: true,
     hasCpue: true, hasLength: true, hasWeight: false, hasCatch: true, hasStocking: true, hasCounties: true, hasRating: false,
-    cpueKind: 'derived',
+    cpueKind: 'gear',
     sortOptions: [{'value':'cpue','label':'Catch / Net'},{'value':'length','label':'Avg Length'},{'value':'catch','label':'Total Catch'},{'value':'stocked','label':'Stck Adults / 100AC'}],
     stripe: '#2a4a3a',
   },
@@ -645,8 +647,8 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     free: false,
     active: true,
     hasCpue: true, hasLength: false, hasWeight: false, hasCatch: false, hasStocking: false, hasCounties: true, hasRating: false,
-    cpueKind: 'gear',
-    sortOptions: [{'value':'cpue','label':'Catch / Net'}],
+    cpueKind: 'creel',
+    sortOptions: [{'value':'cpue','label':'Angler Catch Rate'}],
     stripe: '#4a3728',
   },
   vt: {
@@ -762,7 +764,7 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     free: false,
     active: true,
     hasCpue: true, hasLength: false, hasWeight: false, hasCatch: false, hasStocking: true, hasCounties: false, hasRating: false,
-    cpueKind: 'derived',
+    cpueKind: 'gear',
     sortOptions: [{'value':'cpue','label':'Catch / Net'},{'value':'stocked','label':'Stck Adults / 100AC'}],
     stripe: '#33532a',
   },
