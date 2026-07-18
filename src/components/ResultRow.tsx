@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { Result, StateKey, STATE_CONFIGS, GENERATED_STATES } from '../types';
+import { Result, StateKey, STATE_CONFIGS, GENERATED_STATES, speciesDisplayName } from '../types';
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
 import { StatPill } from '../lakelore-rn/components';
 import { useToast } from '../Toast';
@@ -10,6 +10,11 @@ interface Props {
   result: Result;
   state: StateKey;
   sortBy: string;
+  /** True when the search is NOT species-scoped (All Species + lake-name
+      search): each row is a different species, so the row must say which —
+      without this the multi-species rows were indistinguishable except by
+      their numbers (2026-07-17). */
+  showSpecies?: boolean;
   onPress: () => void;
 }
 
@@ -230,7 +235,7 @@ function genericStats(r: Result, state: StateKey): Stat[] {
   ];
 }
 
-export default function ResultRow({ result: r, state, sortBy, onPress }: Props) {
+export default function ResultRow({ result: r, state, sortBy, showSpecies, onPress }: Props) {
   const { toast } = useToast();
   const allStats = state === 'sd' ? sdStats(r) : state === 'nd' ? ndStats(r) : state === 'ne' ? neStats(r) : state === 'ia' ? iaStats(r) : state === 'wi' ? wiStats(r) : state === 'mi' ? miStats(r) : state === 'mn' ? mnStats(r) : genericStats(r, state);
   const sortStat = allStats.find(s => s.key === sortBy);
@@ -267,6 +272,9 @@ export default function ResultRow({ result: r, state, sortBy, onPress }: Props) 
     : String(r.survey_year);
 
   const location = [
+    // Species leads the line in un-scoped searches; dropped when the whole
+    // list is one species (redundant).
+    showSpecies ? speciesDisplayName(r.species, state) : null,
     r.county,
     r.area_acres ? `${Math.round(r.area_acres).toLocaleString()} ac` : null,
     r.max_depth_feet ? `${Math.round(r.max_depth_feet)} ft` : null,

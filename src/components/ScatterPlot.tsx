@@ -73,6 +73,7 @@ interface DotData {
   total_catch?: number|null;
   estLength?: number;
   estimatedLength?: boolean;
+  rawSpecies?: string;
   // Rating mode (GA/MO/IL): y is the rating ordinal; this is the agency's
   // display wording for the popup.
   ratingText?: string|null;
@@ -83,7 +84,7 @@ type ViewBounds = { xMin:number; xMax:number; yMin:number; yMax:number };
 interface Props {
   results: Result[];
   state: StateKey;
-  onLakePress: (lakeId: number|string, lakeName: string) => void;
+  onLakePress: (lakeId: number|string, lakeName: string, species?: string) => void;
 }
 
 export default function ScatterPlot({ results, state, onLakePress }: Props) {
@@ -131,6 +132,10 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
       // Schema v6: non-measured lengths (prose midpoints, size classes,
       // charts) label as 'Est. length' in the dot card.
       estimatedLength: r.length_derivation != null && r.length_derivation !== 'measured',
+      // Raw species_native for NAVIGATION — mn/nd store the display name in
+      // `species` for the card, which doesn't match the detail screen's
+      // chip keys (2026-07-17).
+      rawSpecies: r.species,
     });
 
     if (state==='mn') {
@@ -588,7 +593,7 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
 
       {selectedDot && (
         <Pressable style={styles.dotCard}
-          onPress={() => { onLakePress(selectedDot.lake_id, selectedDot.name ?? ''); setSelectedDot(null); }}
+          onPress={() => { onLakePress(selectedDot.lake_id, selectedDot.name ?? '', selectedDot.rawSpecies); setSelectedDot(null); }}
         >
           {selectedDot.name != null ? (
             <Text style={[text.displayM, { color: colors.ink }]}>{selectedDot.name}</Text>

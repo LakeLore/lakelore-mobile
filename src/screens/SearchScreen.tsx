@@ -679,13 +679,18 @@ export default function SearchScreen() {
               result={item}
               state={state}
               sortBy={filters.sortBy}
+              showSpecies={!filters.species}
               onPress={() => {
                 // Preview users get the full detail screen too — the server
                 // serves /lake/:id with identity fields redacted (2026-07-15).
+                // species: the ROW's species, never the filter's — with All
+                // Species the filter is empty and the detail used to open on
+                // the lake's most-recorded species regardless of which row
+                // was tapped (2026-07-17).
                 navigation.navigate('LakeDetail', {
                   lakeId: item.lake_id,
                   lakeName: item.lake_name ?? '',
-                  species: filters.species,
+                  species: item.species ?? filters.species,
                   state,
                 });
               }}
@@ -747,9 +752,11 @@ export default function SearchScreen() {
         <ScatterPlot
           results={scatterResults}
           state={state}
-          onLakePress={(lakeId, lakeName) => {
+          onLakePress={(lakeId, lakeName, species) => {
+            // Same row-species rule as the list (the dot CARD shows a
+            // species; the tap must honor it).
             navigation.navigate('LakeDetail', {
-              lakeId, lakeName, species: filters.species, state,
+              lakeId, lakeName, species: species ?? filters.species, state,
             });
           }}
         />
