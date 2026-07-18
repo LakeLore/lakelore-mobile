@@ -11,6 +11,7 @@ import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import Svg, { Line, Polyline, Circle, Rect, Text as SvgText, G } from 'react-native-svg';
 import { fetchLakeWithSpecies, SubscriptionRequiredError, submitFeedback } from '../api';
 import { putLake, getLake } from '../lakeCache';
+import { noteLakeViewAndMaybeAsk } from '../ratings';
 import { useToast } from '../Toast';
 import { StateKey, STATE_CONFIGS, GENERATED_STATES, speciesDisplayName, SD_SPECIES_FROM_NAME } from '../types';
 import PaywallScreen from './PaywallScreen';
@@ -488,6 +489,10 @@ export default function LakeDetailScreen() {
         setCacheDate(null);
         applyLake(ld);
         putLake(state, lakeId, ld); // fire-and-forget offline cache (D1)
+        // Ratings ask rides successful lake views (engaged-user moment),
+        // delayed so the sheet never races the initial render. Heavily
+        // gated inside; no-op on pre-21 builds.
+        setTimeout(() => { noteLakeViewAndMaybeAsk(); }, 2500);
       })
       .catch(async err => {
         if (err instanceof SubscriptionRequiredError) {
