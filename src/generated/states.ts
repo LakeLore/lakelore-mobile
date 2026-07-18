@@ -430,9 +430,9 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     country: 'US',
     free: false,
     active: true,
-    hasCpue: true, hasLength: false, hasWeight: false, hasCatch: false, hasStocking: true, hasCounties: true, hasRating: false,
+    hasCpue: true, hasLength: true, hasWeight: false, hasCatch: false, hasStocking: true, hasCounties: true, hasRating: false,
     cpueKind: 'gear',
-    sortOptions: [{'value':'cpue','label':'Catch / Net'},{'value':'stocked','label':'Stck Adults / 100AC'}],
+    sortOptions: [{'value':'cpue','label':'Catch / Net'},{'value':'length','label':'Avg Length'},{'value':'stocked','label':'Stck Adults / 100AC'}],
     stripe: '#8a6d3b',
   },
   ca: {
