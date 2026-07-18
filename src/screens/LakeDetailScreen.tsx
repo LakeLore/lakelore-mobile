@@ -519,6 +519,20 @@ export default function LakeDetailScreen() {
   // them — a top-level import would crash those at launch.
   const shareRef = React.useRef<View>(null);
   const shareLakeCard = async () => {
+    // Native-availability probe BEFORE any require, via a pure-JS property
+    // read that cannot enter the TurboModule lookup path: on a binary
+    // WITHOUT these native modules (build ≤ 20), merely require()-ing
+    // react-native-view-shot 4.x crashes the app — its spec calls
+    // TurboModuleRegistry.getEnforcing at MODULE SCOPE, and under the
+    // bridgeless runtime that failure aborts natively, below the reach of
+    // this function's try/catch (2026-07-17 crash report, MN Lake Benton).
+    // ExpoSharing shipped in the same commit/build as RNViewShot, so its
+    // presence in the expo-modules host object implies both exist.
+    const expoModules = (globalThis as unknown as { expo?: { modules?: Record<string, unknown> } }).expo?.modules;
+    if (!expoModules?.ExpoSharing) {
+      toast('Sharing arrives with the next app build — this version doesn’t include it yet.');
+      return;
+    }
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { captureRef } = require('react-native-view-shot');
