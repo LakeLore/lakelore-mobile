@@ -156,6 +156,16 @@ export interface FilterState {
   mostRecentOnly: boolean;
   sortBy: string;
   sortDir: 'asc' | 'desc';
+  // Data model (DATA_MODEL_PROPOSAL_2026-07-20). `measure` is the primary
+  // control (abundance/size/stocking/presence). The selected Source sets the
+  // scope fields: `gearTypes` (gear source), `cpueKind` (merged
+  // relative/creel/normalized), `stockingFirst` (Stocking measure), or
+  // `presenceUnion` (Presence measure = derived union). All optional — absent,
+  // /results behaves exactly as the legacy path.
+  measure?: MeasureId;
+  cpueKind?: string;
+  stockingFirst?: boolean;
+  presenceUnion?: boolean;
   // MN-specific
   surveyTypes: string[];
   minWeight: string;
@@ -186,6 +196,10 @@ export function defaultFilters(state: StateKey): FilterState {
     mostRecentOnly: true,
     sortBy: cfg.sortOptions[0]?.value ?? 'cpue',
     sortDir: 'desc',
+    measure: undefined,
+    cpueKind: '',
+    stockingFirst: false,
+    presenceUnion: false,
     surveyTypes: cfg.defaultSurveyTypes,
     minWeight: '',
     maxWeight: '',
@@ -211,6 +225,49 @@ export interface FilterOptions {
   surveyTypes?: string[];
   yearRange: { min: number; max: number };
   defaultGear?: string;
+}
+
+// The data model (DATA_MODEL_PROPOSAL_2026-07-20). A **Measure** is what's being
+// quantified — a small, stable set (Abundance / Avg Size / Stocking Impact /
+// Presence) that is the primary control and the "Sort by" label. A **Source** is
+// a Gear Type / Source — the required filter nested under Abundance & Avg Size.
+// The app builds both controls from the /measures manifest. Each Source carries
+// the exact params to send to /results.
+export type MeasureId = 'abundance' | 'size' | 'stocking' | 'presence';
+export type SourceExpression =
+  | 'catch-per-unit' | 'ranking' | 'normalized' | 'size' | 'stocking' | 'presence';
+
+export interface Source {
+  id: string;
+  gear: string | null;        // scope /results by gear when set
+  cpueKind: string | null;    // scope /results by cpueKind when set (relative/creel/normalized)
+  expression: SourceExpression;
+  label: string;
+  unit: string | null;
+  sort: string | null;
+  sortDir: 'asc' | 'desc';
+  stockingFirst: boolean;
+  presenceUnion?: boolean;
+  records: number;
+  lakes: number;
+  measuredRecords?: number;
+  densityRecords?: number;
+}
+
+export interface Measure {
+  id: MeasureId;
+  label: string;
+  requiresSource: boolean;
+  records: number;
+  lakes: number;
+  sources: Source[];
+  defaultSourceId: string | null;
+}
+
+export interface MeasureResponse {
+  species: string | null;
+  county: string[];
+  measures: Measure[];
 }
 
 export interface Result {

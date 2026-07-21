@@ -765,6 +765,18 @@ export default function LakeDetailScreen() {
        {/* collapsable=false: Android flattens plain Views, which breaks
            view-shot's node lookup for the share card. */}
        <View ref={shareRef} collapsable={false} style={{ backgroundColor: colors.paper }}>
+        {/* Share-card title: the app's PaperHeader (which shows the lake name)
+            sits OUTSIDE shareRef, so the captured image had no name (2026-07-21
+            bug). Give the card its own title. Share is gated to !isPreview, so
+            lake.name is always the real name here. */}
+        <View style={styles.shareTitle}>
+          <Text style={[text.labelS, { color: colors.inkSoft }]}>
+            LAKELORE · {state.toUpperCase()}
+          </Text>
+          <Text style={[text.displayL, { color: colors.ink, marginTop: 2 }]} numberOfLines={2}>
+            {lake.name ?? state.toUpperCase()}
+          </Text>
+        </View>
         {/* Lake meta + source links */}
         <View style={styles.metaBar}>
           <Text style={[text.labelM, { color: colors.inkSoft }]}>
@@ -1374,6 +1386,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
+  shareTitle: {
+    paddingHorizontal: space.xl,
+    paddingTop: space.lg,
+    paddingBottom: space.sm,
+    backgroundColor: colors.paper,
+  },
   metaBar: {
     paddingHorizontal: space.xl,
     paddingVertical: space.lg,

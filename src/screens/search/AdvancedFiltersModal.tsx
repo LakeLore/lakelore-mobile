@@ -32,13 +32,6 @@ export function AdvancedFiltersModal({
     onChange({ gearTypes: next });
   };
 
-  const toggleSurveyType = (st: string) => {
-    const next = filters.surveyTypes.includes(st)
-      ? filters.surveyTypes.filter(s => s !== st)
-      : [...filters.surveyTypes, st];
-    onChange({ surveyTypes: next });
-  };
-
   // Data-shape flags from the generated registry export — gate each numeric
   // range on whether this state's data actually carries the metric.
   const cfg = GENERATED_STATES[state as StateKey];
@@ -73,14 +66,8 @@ export function AdvancedFiltersModal({
               labels={state === 'wi' ? WI_GEAR_LABELS : undefined}
             />
           ) : null}
-          {state === 'mn' && options?.surveyTypes?.length ? (
-            <MultiChipSelect
-              label="Survey Type"
-              options={options.surveyTypes}
-              selected={filters.surveyTypes}
-              onToggle={toggleSurveyType}
-            />
-          ) : null}
+          {/* MN "Survey Type" (Standard vs Targeted) removed per DATA_MODEL §4 —
+              the distinction confused more than it helped. */}
           {state === 'mn' && options?.gearTypes?.length ? (
             <MultiChipSelect
               label="Gear Type"

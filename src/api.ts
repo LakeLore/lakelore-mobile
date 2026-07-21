@@ -1,5 +1,5 @@
 import Constants from 'expo-constants';
-import { FilterState, FilterOptions, ResultsResponse, StateKey } from './types';
+import { FilterState, FilterOptions, MeasureResponse, ResultsResponse, StateKey } from './types';
 import { getUserId } from './userId';
 
 // ── Server URL configuration ───────────────────────────────────────────────────
@@ -191,6 +191,23 @@ export async function fetchFilters(
   return get(qs ? `${baseUrl(state)}/filters?${qs}` : `${baseUrl(state)}/filters`);
 }
 
+// Measure × Gear/Source manifest (DATA_MODEL_PROPOSAL_2026-07-20). Returns the
+// measures with data in the current species×county scope, in cascade order, each
+// with its nested Gear/Source options. Older servers 404 this route — callers
+// treat a failure as "no measures" and fall back to the legacy sortOptions +
+// defaultGear behavior.
+export async function fetchMeasures(
+  state: StateKey,
+  species?: string,
+  counties?: string[],
+): Promise<MeasureResponse> {
+  const params = new URLSearchParams();
+  if (species) params.set('species', species);
+  if (counties && counties.length > 0) params.set('county', counties.join(','));
+  const qs = params.toString();
+  return get(qs ? `${baseUrl(state)}/measures?${qs}` : `${baseUrl(state)}/measures`);
+}
+
 export async function fetchResults(
   state: StateKey,
   filters: FilterState,
@@ -238,6 +255,13 @@ function buildParams(
 
   if (f.species)          params.set('species', f.species);
   if (f.lakeName)         params.set('lakeName', f.lakeName);
+  // Measure/Source scope. presenceUnion → derived-union path (Presence measure);
+  // stockingFirst → stocking-metrics path (Stocking Impact); cpueKind confines a
+  // merged relative/creel/normalized abundance source; a gear source uses the
+  // gear filter below.
+  if (f.presenceUnion)    params.set('presenceUnion', '1');
+  if (f.stockingFirst)    params.set('stockingFirst', '1');
+  if (f.cpueKind)         params.set('cpueKind', f.cpueKind);
   if (f.gearTypes.length) params.set('gear', f.gearTypes.join(','));
   if (f.minCpue)          params.set('minCpue', f.minCpue);
   if (f.maxCpue)          params.set('maxCpue', f.maxCpue);
@@ -254,7 +278,8 @@ function buildParams(
   if (f.maxCatch)         params.set('maxCatch', f.maxCatch);
 
   if (state === 'mn') {
-    if (f.surveyTypes?.length) params.set('surveyType', f.surveyTypes.join(','));
+    // MN "Survey Type" (Standard vs Targeted) removed per DATA_MODEL §4 — no
+    // longer sent even though the server still accepts it.
     if (f.minWeight)           params.set('minWeight', f.minWeight);
     if (f.maxWeight)           params.set('maxWeight', f.maxWeight);
     if (f.minGearCount)        params.set('minGearCount', f.minGearCount);

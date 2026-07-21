@@ -5,7 +5,7 @@ import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import Svg, { Circle, Line, Text as SvgText, Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { useSvgPanZoom, useCommittedMirror, assertWorklet } from '../hooks/useSvgPanZoom';
 import BlurredLakeName from './BlurredLakeName';
-import { Result, StateKey, STATE_CONFIGS, GENERATED_STATES } from '../types';
+import { Measure, Result, StateKey, STATE_CONFIGS, GENERATED_STATES } from '../types';
 import { SPECIES_NAMES_BY_STATE } from '../generated/species';
 import { colors, text, space, hairline, fonts } from '../lakelore-rn/theme';
 
@@ -84,10 +84,16 @@ type ViewBounds = { xMin:number; xMax:number; yMin:number; yMax:number };
 interface Props {
   results: Result[];
   state: StateKey;
+  // Active measure (DATA_MODEL_PROPOSAL_2026-07-20). Fixed axis rule: Abundance
+  // → Y, Avg Size → X, always. The result set is already scoped to the selected
+  // Gear/Source, so the Y (abundance) axis carries one unit — no more silently
+  // stacking fish/net-night against fish/min-EF. When the measure is Stocking
+  // Impact, channels remap so stocked lakes plot against size.
+  activeMeasure?: Measure | null;
   onLakePress: (lakeId: number|string, lakeName: string, species?: string) => void;
 }
 
-export default function ScatterPlot({ results, state, onLakePress }: Props) {
+export default function ScatterPlot({ results, state, activeMeasure, onLakePress }: Props) {
   const { width } = useWindowDimensions();
 
   const PAD_L = 48, PAD_R = 16, PAD_T = 12, PAD_B = 44;
@@ -137,6 +143,11 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
       // chip keys (2026-07-17).
       rawSpecies: r.species,
     });
+
+    // Axis rule (DATA_MODEL): Abundance → Y, Avg Size → X, ALWAYS. The scatter
+    // never remaps by measure — it's the one place all sources of abundance vs
+    // size are compared. Because the result set is scoped to the selected
+    // Gear/Source, the Y axis carries a single unit.
 
     if (state==='mn') {
       for (const r of results) {
@@ -289,11 +300,16 @@ export default function ScatterPlot({ results, state, onLakePress }: Props) {
       : (LEGACY_STATES.has(state) || genericHasLength || ratingMode) ? 'Avg Length (in)'
       : 'Survey Year';
     // The render caption is BUILT from these labels (see below), so they can't
-    // drift apart. Relative-index states get an honest y-axis name.
+    // drift apart. The Y axis (Abundance) is scoped to the selected Gear/Source,
+    // so it carries one unit; prefer the active source's unit where we have it.
+    const src = activeMeasure?.sources.find(s => s.expression === 'catch-per-unit' || s.expression === 'ranking' || s.expression === 'normalized');
+    const abundanceUnit = src?.unit && src.unit !== 'catch rate' ? ` (${src.unit})` : '';
     const yLabel = ratingMode ? 'Forecast Rating'
-      : GENERATED_STATES[state]?.cpueKind === 'relative' ? 'Catch Index' : 'Catch Rate';
+      : GENERATED_STATES[state]?.cpueKind === 'relative'
+        ? `Catch Index${abundanceUnit}`
+        : `Catch Rate${abundanceUnit}`;
     return { points: pts, sortedStocked, dataBounds, xLabel, yLabel, ratingMode };
-  }, [results, state]);
+  }, [results, state, activeMeasure]);
 
   // Keep refs in sync with latest render values
   pointsRef.current = points;

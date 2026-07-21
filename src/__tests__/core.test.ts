@@ -18,10 +18,14 @@ describe('speciesDisplayName', () => {
 });
 
 describe('state configs', () => {
-  it('every state key has a config with at least one sort option', () => {
+  it('every state key has a config with a sortOptions array', () => {
+    // sortOptions feeds only the LEGACY sort picker (fallback when the server
+    // predates /measures); the Measure × Source model is the primary sort
+    // mechanism (DATA_MODEL 2026-07-20). A pure presence-only state can have an
+    // empty legacy array — the measure picker still gives it Presence.
     for (const k of STATE_KEYS) {
       expect(STATE_CONFIGS[k]).toBeDefined();
-      expect(STATE_CONFIGS[k].sortOptions.length).toBeGreaterThan(0);
+      expect(Array.isArray(STATE_CONFIGS[k].sortOptions)).toBe(true);
     }
   });
   it('relative-index states never label cpue as a real rate', () => {

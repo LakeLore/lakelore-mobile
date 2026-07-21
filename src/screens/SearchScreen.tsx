@@ -10,11 +10,11 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppState } from '../StateContext';
 import {
-  FilterState, FilterOptions, Result, ResultsResponse, StateKey,
+  FilterState, FilterOptions, Measure, Source, Result, ResultsResponse, StateKey,
   defaultFilters, STATE_CONFIGS, speciesDisplayName, GENERATED_STATES, STATE_KEYS,
 } from '../types';
 import { isFreeState } from '../activeStates';
-import { fetchFilters, fetchResults, fetchAllResults, DbStatus, fetchStatus, SubscriptionRequiredError } from '../api';
+import { fetchFilters, fetchMeasures, fetchResults, fetchAllResults, DbStatus, fetchStatus, SubscriptionRequiredError } from '../api';
 import PaywallScreen from './PaywallScreen';
 import AboutScreen from './AboutScreen';
 import ResultRow, { cpueLabelForGear } from '../components/ResultRow';
@@ -32,6 +32,7 @@ import {
 } from '../lakelore-rn/components';
 import { AdvancedFiltersModal } from './search/AdvancedFiltersModal';
 import { SortPickerModal } from './search/SortPickerModal';
+import { MeasurePickerModal } from './search/MeasurePickerModal';
 import { StatePickerModal } from './search/StatePickerModal';
 
 const PAGE_SIZE = 50;
@@ -91,6 +92,49 @@ function defaultGearFor(opts: FilterOptions | null): string[] {
   return pool.length ? [argmax(pool, g => counts[g] ?? 0)] : [];
 }
 
+// Fold a Measure + its chosen Source into the filter state. The Source IS the
+// Gear/Source choice, so it sets the scope fields (gearTypes / cpueKind /
+// stockingFirst / presenceUnion) and the sort key; direction stays or is passed
+// in. Presence has no ranking → stable name order (sortBy 'lake').
+function applyMeasureSource(
+  measure: Measure, source: Source | null, base: FilterState, dir?: 'asc' | 'desc',
+): FilterState {
+  const src = source ?? measure.sources.find(s => s.id === measure.defaultSourceId) ?? measure.sources[0] ?? null;
+  return {
+    ...base,
+    measure: measure.id,
+    sortBy: src?.sort ?? 'lake',
+    sortDir: dir ?? src?.sortDir ?? 'desc',
+    gearTypes: src?.gear ? [src.gear] : [],
+    cpueKind: src?.cpueKind ?? '',
+    stockingFirst: !!src?.stockingFirst,
+    presenceUnion: !!src?.presenceUnion,
+  };
+}
+
+// Default cascade (DATA_MODEL §2): measures arrive in cascade order (abundance →
+// stocking → size → presence), so the first is the default. On a scope change we
+// keep the user's current measure if it still has data, else fall to the first.
+function pickMeasure(measures: Measure[], preferId?: string | null): Measure | null {
+  if (!measures.length) return null;
+  if (preferId) {
+    const match = measures.find(m => m.id === preferId);
+    if (match) return match;
+  }
+  return measures[0];
+}
+
+// Within a measure, keep the user's current source if it survives the scope
+// change, else the measure's default (most records).
+function pickSource(measure: Measure, preferId?: string | null): Source | null {
+  if (!measure.sources.length) return null;
+  if (preferId) {
+    const match = measure.sources.find(s => s.id === preferId);
+    if (match) return match;
+  }
+  return measure.sources.find(s => s.id === measure.defaultSourceId) ?? measure.sources[0];
+}
+
 interface SearchSession {
   filters: FilterState;
   results: Result[];
@@ -99,6 +143,9 @@ interface SearchSession {
   page: number;
   searched: boolean;
   viewMode: 'list' | 'scatter';
+  measures: Measure[];
+  activeMeasureId: string | null;
+  activeSourceId: string | null;
 }
 
 export default function SearchScreen() {
@@ -130,6 +177,15 @@ export default function SearchScreen() {
   const [showStatePicker, setShowStatePicker] = useState(false);
   const [paywallTriggered, setPaywallTriggered] = useState<StateKey | null>(null);
   const [showSort, setShowSort] = useState(false);
+  const [showMeasure, setShowMeasure] = useState(false);
+  // Measures for the current species×county scope (DATA_MODEL_PROPOSAL_2026-07-20).
+  // Empty when the server predates /measures — the toolbar then falls back to the
+  // legacy sort button. The gear/source WITHIN a measure is chosen via the FILTERS
+  // button (not a separate control); activeSourceId only tracks the current
+  // default internally so measure/county changes can preserve it.
+  const [measures, setMeasures] = useState<Measure[]>([]);
+  const [activeMeasureId, setActiveMeasureId] = useState<string | null>(null);
+  const [activeSourceId, setActiveSourceId] = useState<string | null>(null);
   const [showAbout, setShowAbout] = useState(false);
   const [paywallFor, setPaywallFor] = useState<StateKey | null>(null);
   const { hasAllStates, loading: entitlementLoading } = useEntitlement();
@@ -251,6 +307,7 @@ export default function SearchScreen() {
     if (prevStateRef.current !== state) {
       sessionCache.current[prevStateRef.current as StateKey] = {
         filters, results, scatterResults, total, page, searched, viewMode,
+        measures, activeMeasureId, activeSourceId,
       };
       prevStateRef.current = state;
 
@@ -263,6 +320,9 @@ export default function SearchScreen() {
         setPage(cached.page);
         setSearched(cached.searched);
         setViewMode(cached.viewMode);
+        setMeasures(cached.measures ?? []);
+        setActiveMeasureId(cached.activeMeasureId ?? null);
+        setActiveSourceId(cached.activeSourceId ?? null);
       } else {
         // Restore saved counties for this state if we have them. Falls back
         // to defaultFilters' empty array if persistedCounties hasn't loaded
@@ -275,6 +335,9 @@ export default function SearchScreen() {
         setPage(0);
         setSearched(false);
         setViewMode('list');
+        setMeasures([]);
+        setActiveMeasureId(null);
+        setActiveSourceId(null);
         // Auto-opening the county picker for new states is handled by the
         // [state, countyPickerSeen] effect above, gated on per-state seen
         // flags so it only fires the first time the user enters each state.
@@ -349,6 +412,41 @@ export default function SearchScreen() {
     }
   }, [filters, state]);
 
+  // Load the Measure × Source manifest for a scope and fold the chosen
+  // measure+source into `applyTo`. Returns the resulting filters. On any failure
+  // (older server without /measures) it clears the measure list so the toolbar
+  // falls back to the legacy sort button, and returns `applyTo` unchanged.
+  // preferMeasureId/preferSourceId keep the user's current selection across a
+  // county change; pass null on a species change to reset to the cascade default.
+  const loadMeasuresFor = useCallback(async (
+    species: string,
+    counties: string[],
+    applyTo: FilterState,
+    preferMeasureId: string | null,
+    preferSourceId: string | null,
+  ): Promise<FilterState> => {
+    try {
+      const resp = await fetchMeasures(state, species || undefined, counties);
+      const ms = resp.measures ?? [];
+      setMeasures(ms);
+      const measure = pickMeasure(ms, preferMeasureId);
+      if (measure) {
+        const source = pickSource(measure, preferSourceId);
+        setActiveMeasureId(measure.id);
+        setActiveSourceId(source?.id ?? null);
+        return applyMeasureSource(measure, source, applyTo);
+      }
+      setActiveMeasureId(null);
+      setActiveSourceId(null);
+      return applyTo;
+    } catch {
+      setMeasures([]);
+      setActiveMeasureId(null);
+      setActiveSourceId(null);
+      return applyTo;
+    }
+  }, [state]);
+
   const handleSpeciesSelect = async (species: string) => {
     // Refresh filter options so gear counts reflect this species, and reset the
     // gear filter to whichever gear has the most records for the new species.
@@ -360,9 +458,12 @@ export default function SearchScreen() {
       setOptions(nextOpts);
     } catch { /* keep existing options if refetch fails */ }
 
-    // Most common CPUE-bearing gear for the new species in the current area
-    // (defaultGearFor; IA's server default wins when present).
-    const updated = { ...filters, species, gearTypes: defaultGearFor(nextOpts) };
+    // Seed gear via the legacy default first (fallback when /measures is absent),
+    // then let the measure cascade for the new species take over the whole
+    // (measure, gear/source, sort) choice. A new species resets to the default
+    // measure (most abundance records) and its default source.
+    let updated = { ...filters, species, gearTypes: defaultGearFor(nextOpts) };
+    updated = await loadMeasuresFor(species, filters.counties, updated, null, null);
     setFilters(updated);
     if (species || filters.lakeName) {
       handleSearch(0, updated);
@@ -414,15 +515,29 @@ export default function SearchScreen() {
   const sortLabel = filters.sortBy === 'cpue' && singleGear
     ? cpueLabelForGear(state, singleGear)
     : (stateCfg.sortOptions.find(o => o.value === filters.sortBy)?.label ?? filters.sortBy);
+  // Measure toolbar state (DATA_MODEL). When measures loaded, the Measure is the
+  // primary control (the "Sort by" label). Gear/source within a measure is
+  // chosen via the FILTERS button, not a separate toolbar control.
+  const activeMeasure = measures.find(m => m.id === activeMeasureId) ?? null;
+  const useMeasurePicker = measures.length > 0;
   const viewMode2 = viewMode === 'list' ? 0 : 1;
+
+  // County selector label — mirrors the state: one selection shows the county's
+  // own name (like the state name), several show "Counties (n)", none = "All".
+  const countyLabel =
+    filters.counties.length === 0 ? 'All'
+    : filters.counties.length === 1 ? filters.counties[0]
+    : `${regionWord} (${filters.counties.length})`;
 
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar style="light" />
 
-      {/* Ink header w/ state name. Raw lake totals intentionally omitted
-          here — species/county-scoped counts surface elsewhere when they're
-          actually informative. */}
+      {/* Ink header: STATE selector is the title (top-left, where it's always
+          been); COUNTY selector sits top-right across from it (DATA_MODEL §4 —
+          the two region selectors framing the header). Tapping County opens the
+          county/region picker; tapping anywhere else on the header opens the
+          atlas. */}
       <Pressable
         onPress={() => setShowStatePicker(true)}
         accessibilityRole="button"
@@ -431,6 +546,25 @@ export default function SearchScreen() {
         <PaperHeader
           title={`${stateCfg.label} ▾`}
           eyebrow={`ATLAS · ${state.toUpperCase()}`}
+          right={GENERATED_STATES[state].hasCounties ? (
+            <Pressable
+              onPress={() => options && setShowCountyPicker(true)}
+              disabled={!options}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={`${regionWord}: ${countyLabel}`}
+              accessibilityHint={`Opens the ${regionWord.toLowerCase()} picker`}
+              style={[{ alignItems: 'flex-end' }, !options && { opacity: 0.55 }]}>
+              {/* Invisible spacer mirrors the state's eyebrow line so the county
+                  name sits on the same baseline as the state name. */}
+              <Text style={[text.labelS, { opacity: 0 }]} numberOfLines={1}> </Text>
+              <Text
+                style={[text.displayL, { color: filters.counties.length > 0 ? colors.walleye : colors.paper, textAlign: 'right', marginTop: 2 }]}
+                numberOfLines={1}>
+                {countyLabel} ▾
+              </Text>
+            </Pressable>
+          ) : undefined}
         />
       </Pressable>
 
@@ -479,7 +613,8 @@ export default function SearchScreen() {
         </PrimaryButton>
       </View>
 
-      {/* Filter chips row — Filters + Counties disabled until options load */}
+      {/* Filter chips row — Filters disabled until options load. (County moved
+          to the scope row at the top per DATA_MODEL §4.) */}
       <View style={styles.filterRow}>
         <Chip
           dot={!!hasFilters}
@@ -488,20 +623,6 @@ export default function SearchScreen() {
         >
           Filters
         </Chip>
-        {/* Hidden entirely for states with no county/region vocabulary
-            (BC, AB). Canadian provinces filter by REGIONS (FMZs/divisions),
-            so the chip says so. */}
-        {GENERATED_STATES[state].hasCounties && (
-          <Chip
-            active={filters.counties.length > 0}
-            disabled={!options}
-            onPress={() => options && setShowCountyPicker(true)}
-          >
-            {filters.counties.length > 0
-              ? `${filters.counties.length} ${regionWord}`
-              : regionWord}
-          </Chip>
-        )}
         <View style={styles.toggleWrap}>
           <Text style={[text.labelM, { color: colors.inkSoft, marginRight: 6 }]}>Latest Only</Text>
           <Pressable
@@ -653,7 +774,23 @@ export default function SearchScreen() {
                 onChange={i => setViewMode(i === 0 ? 'list' : 'scatter')}
               />
             )}
-            {viewMode === 'list' && (
+            {/* Gear/Source is NOT a separate control (2026-07-21 owner feedback):
+                it's filtered through the existing FILTERS button, same as it
+                always was. The measure's default gear applies automatically. */}
+            {/* Measure — the primary control, labelled by measure. */}
+            {viewMode === 'list' && useMeasurePicker && (
+              <Pressable
+                onPress={() => setShowMeasure(true)}
+                accessibilityRole="button"
+                accessibilityLabel={`Measure: ${activeMeasure?.label ?? sortLabel}${activeMeasure && activeMeasure.id !== 'presence' ? `, ${filters.sortDir === 'desc' ? 'descending' : 'ascending'}` : ''}`}
+                accessibilityHint="Opens the measure picker (abundance, size, stocking, presence)"
+                style={styles.sortBtn}>
+                <Text style={[text.labelM, { color: colors.ink }]} numberOfLines={1}>
+                  {activeMeasure?.label ?? sortLabel}{activeMeasure && activeMeasure.id !== 'presence' ? ` ${filters.sortDir === 'desc' ? '↓' : '↑'}` : ''}
+                </Text>
+              </Pressable>
+            )}
+            {viewMode === 'list' && !useMeasurePicker && (
               <Pressable
                 onPress={() => setShowSort(true)}
                 accessibilityRole="button"
@@ -752,6 +889,7 @@ export default function SearchScreen() {
         <ScatterPlot
           results={scatterResults}
           state={state}
+          activeMeasure={activeMeasure}
           onLakePress={(lakeId, lakeName, species) => {
             // Same row-species rule as the list (the dot CARD shows a
             // species; the tap must honor it).
@@ -762,7 +900,28 @@ export default function SearchScreen() {
         />
       )}
 
-      {/* Sort picker */}
+      {/* Measure picker — the primary control (DATA_MODEL). Selecting a measure
+          adopts its default Gear/Source and sets the sort; the Source picker
+          refines it. Presence has no ranking so an incompatible sort can't
+          linger — fixes the MB "Presence Only still offers Catch Rate" bug. */}
+      <MeasurePickerModal
+        visible={showMeasure}
+        measures={measures}
+        activeMeasureId={activeMeasureId}
+        sortDir={filters.sortDir}
+        onClose={() => setShowMeasure(false)}
+        onChange={(measure, sortDir) => {
+          // Keep the current source if this measure still has it, else default.
+          const source = pickSource(measure, activeSourceId);
+          setActiveMeasureId(measure.id);
+          setActiveSourceId(source?.id ?? null);
+          const updated = applyMeasureSource(measure, source, filters, sortDir);
+          setFilters(updated);
+          if (updated.species || updated.lakeName) handleSearch(0, updated);
+        }}
+      />
+
+      {/* Sort picker (legacy fallback when /measures is unavailable) */}
       <SortPickerModal
         visible={showSort}
         state={state}
@@ -807,13 +966,21 @@ export default function SearchScreen() {
           // gear for this area+species. If the default changed and a search
           // is showing, re-run it so results match the new gear.
           fetchFilters(state, filters.species || undefined, counties)
-            .then(opts => {
+            .then(async opts => {
               setOptions(opts);
               const gear = defaultGearFor(opts);
-              if (JSON.stringify(gear) === JSON.stringify(updated.gearTypes)) return;
+              // Re-resolve measures for the new county scope, keeping the same
+              // measure + source if they still have data (else cascade default).
               const withGear = { ...updated, gearTypes: gear };
-              setFilters(withGear);
-              if (withGear.species) handleSearch(0, withGear);
+              const withMeasure = await loadMeasuresFor(
+                filters.species, counties, withGear, activeMeasureId, activeSourceId);
+              // Nothing meaningful changed → don't churn a re-search.
+              if (JSON.stringify({ g: withMeasure.gearTypes, s: withMeasure.sortBy, k: withMeasure.cpueKind, sf: withMeasure.stockingFirst, p: withMeasure.presenceUnion })
+                === JSON.stringify({ g: updated.gearTypes, s: updated.sortBy, k: updated.cpueKind, sf: updated.stockingFirst, p: updated.presenceUnion })) {
+                return;
+              }
+              setFilters(withMeasure);
+              if (withMeasure.species) handleSearch(0, withMeasure);
             })
             .catch(() => {});
           if (updated.species) handleSearch(0, updated);
@@ -832,7 +999,24 @@ export default function SearchScreen() {
         filters={filters}
         state={state}
         options={options}
-        onChange={updates => setFilters(prev => ({ ...prev, ...updates }))}
+        onChange={updates => {
+          // Manually choosing a gear in advanced filters IS choosing a gear
+          // Source: clear the relative/stocking/presence scope so /results
+          // doesn't AND an incompatible cpueKind/stockingFirst/presenceUnion into
+          // an empty set, and sync the toolbar Source to the matching gear.
+          setFilters(prev => {
+            const next = { ...prev, ...updates };
+            if (updates.gearTypes) { next.cpueKind = ''; next.stockingFirst = false; next.presenceUnion = false; }
+            return next;
+          });
+          if (updates.gearTypes) {
+            const g = updates.gearTypes[0];
+            const match = g && activeMeasure
+              ? activeMeasure.sources.find(s => s.gear === g)
+              : null;
+            setActiveSourceId(match ? match.id : null);
+          }
+        }}
         onClose={() => setShowAdvanced(false)}
         onApply={() => { setShowAdvanced(false); handleSearch(0); }}
       />
