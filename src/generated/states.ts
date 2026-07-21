@@ -42,7 +42,7 @@ export const STATE_KEYS: readonly StateKey[] = ['mn', 'sd', 'nd', 'ia', 'ne', 'w
 // Fleet volume across ACTIVE states, computed at generation time from the
 // canonical artifacts (paywall value copy — D5).
 export const TOTAL_ACTIVE_LAKES = 64353;
-export const TOTAL_ACTIVE_RECORDS = 1006110;
+export const TOTAL_ACTIVE_RECORDS = 1006260;
 
 export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
   mn: {
@@ -716,9 +716,9 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     country: 'CA',
     free: false,
     active: true,
-    hasCpue: false, hasLength: false, hasWeight: false, hasCatch: false, hasStocking: true, hasCounties: false, hasRating: false,
-    cpueKind: null,
-    sortOptions: [{'value':'stocked','label':'Stck Adults / 100AC'}],
+    hasCpue: true, hasLength: true, hasWeight: true, hasCatch: true, hasStocking: true, hasCounties: false, hasRating: false,
+    cpueKind: 'gear',
+    sortOptions: [{'value':'cpue','label':'Catch / Net'},{'value':'length','label':'Avg Length'},{'value':'weight','label':'Avg Weight'},{'value':'stocked','label':'Stck Adults / 100AC'}],
     stripe: '#155e75',
   },
   qc: {
