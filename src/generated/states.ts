@@ -41,8 +41,8 @@ export const STATE_KEYS: readonly StateKey[] = ['mn', 'sd', 'nd', 'ia', 'ne', 'w
 
 // Fleet volume across ACTIVE states, computed at generation time from the
 // canonical artifacts (paywall value copy — D5).
-export const TOTAL_ACTIVE_LAKES = 64451;
-export const TOTAL_ACTIVE_RECORDS = 1010860;
+export const TOTAL_ACTIVE_LAKES = 64489;
+export const TOTAL_ACTIVE_RECORDS = 1018157;
 
 export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
   mn: {
@@ -391,9 +391,9 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     country: 'US',
     free: false,
     active: true,
-    hasCpue: true, hasLength: true, hasWeight: false, hasCatch: true, hasStocking: false, hasCounties: true, hasRating: false,
+    hasCpue: true, hasLength: true, hasWeight: false, hasCatch: true, hasStocking: true, hasCounties: true, hasRating: false,
     cpueKind: 'gear',
-    sortOptions: [{'value':'cpue','label':'Catch / Net'},{'value':'length','label':'Avg Length'}],
+    sortOptions: [{'value':'cpue','label':'Catch / Net'},{'value':'length','label':'Avg Length'},{'value':'stocked','label':'Stck Adults / 100AC'}],
     stripe: '#7c2d12',
   },
   az: {
@@ -404,9 +404,9 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     country: 'US',
     free: false,
     active: false,
-    hasCpue: false, hasLength: false, hasWeight: false, hasCatch: false, hasStocking: false, hasCounties: true, hasRating: false,
-    cpueKind: null,
-    sortOptions: [],
+    hasCpue: true, hasLength: true, hasWeight: false, hasCatch: false, hasStocking: false, hasCounties: true, hasRating: false,
+    cpueKind: 'gear',
+    sortOptions: [{'value':'cpue','label':'Catch / Net'},{'value':'length','label':'Avg Length'}],
     stripe: '#155e75',
   },
   nm: {
@@ -443,9 +443,9 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     country: 'US',
     free: false,
     active: true,
-    hasCpue: false, hasLength: true, hasWeight: false, hasCatch: false, hasStocking: false, hasCounties: true, hasRating: false,
-    cpueKind: null,
-    sortOptions: [{'value':'length','label':'Avg Length'}],
+    hasCpue: true, hasLength: true, hasWeight: true, hasCatch: true, hasStocking: false, hasCounties: true, hasRating: false,
+    cpueKind: 'gear',
+    sortOptions: [{'value':'cpue','label':'Catch / Net'},{'value':'length','label':'Avg Length'},{'value':'weight','label':'Avg Weight'}],
     stripe: '#4a3728',
   },
   ok: {
@@ -456,9 +456,9 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     country: 'US',
     free: false,
     active: true,
-    hasCpue: false, hasLength: false, hasWeight: false, hasCatch: false, hasStocking: true, hasCounties: true, hasRating: true,
-    cpueKind: null,
-    sortOptions: [{'value':'rating','label':'Forecast Rating'},{'value':'stocked','label':'Stck Adults / 100AC'}],
+    hasCpue: true, hasLength: false, hasWeight: false, hasCatch: false, hasStocking: true, hasCounties: true, hasRating: true,
+    cpueKind: 'gear',
+    sortOptions: [{'value':'cpue','label':'Catch / Net'},{'value':'rating','label':'Forecast Rating'},{'value':'stocked','label':'Stck Adults / 100AC'}],
     stripe: '#33532a',
   },
   tx: {
@@ -495,9 +495,9 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     country: 'US',
     free: false,
     active: true,
-    hasCpue: true, hasLength: true, hasWeight: false, hasCatch: true, hasStocking: false, hasCounties: true, hasRating: false,
+    hasCpue: true, hasLength: true, hasWeight: false, hasCatch: true, hasStocking: true, hasCounties: true, hasRating: false,
     cpueKind: 'gear',
-    sortOptions: [{'value':'cpue','label':'Catch / Net'},{'value':'length','label':'Avg Length'}],
+    sortOptions: [{'value':'cpue','label':'Catch / Net'},{'value':'length','label':'Avg Length'},{'value':'stocked','label':'Stck Adults / 100AC'}],
     stripe: '#7c2d12',
   },
   ar: {
@@ -508,9 +508,9 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     country: 'US',
     free: false,
     active: true,
-    hasCpue: true, hasLength: false, hasWeight: false, hasCatch: false, hasStocking: false, hasCounties: true, hasRating: false,
+    hasCpue: true, hasLength: true, hasWeight: true, hasCatch: false, hasStocking: false, hasCounties: true, hasRating: true,
     cpueKind: 'gear',
-    sortOptions: [{'value':'cpue','label':'Catch / Net'}],
+    sortOptions: [{'value':'cpue','label':'Catch / Net'},{'value':'rating','label':'Forecast Rating'},{'value':'length','label':'Avg Length'},{'value':'weight','label':'Avg Weight'}],
     stripe: '#155e75',
   },
   la: {
@@ -521,9 +521,9 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     country: 'US',
     free: false,
     active: true,
-    hasCpue: true, hasLength: false, hasWeight: false, hasCatch: false, hasStocking: false, hasCounties: true, hasRating: false,
+    hasCpue: true, hasLength: false, hasWeight: false, hasCatch: false, hasStocking: true, hasCounties: true, hasRating: false,
     cpueKind: 'gear',
-    sortOptions: [{'value':'cpue','label':'Catch / Net'}],
+    sortOptions: [{'value':'cpue','label':'Catch / Net'},{'value':'stocked','label':'Stck Adults / 100AC'}],
     stripe: '#5c4a72',
   },
   me: {
@@ -573,9 +573,9 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     country: 'US',
     free: false,
     active: false,
-    hasCpue: false, hasLength: false, hasWeight: false, hasCatch: false, hasStocking: false, hasCounties: true, hasRating: false,
-    cpueKind: null,
-    sortOptions: [],
+    hasCpue: true, hasLength: false, hasWeight: false, hasCatch: false, hasStocking: false, hasCounties: true, hasRating: false,
+    cpueKind: 'gear',
+    sortOptions: [{'value':'cpue','label':'Catch / Net'}],
     stripe: '#2a4a3a',
   },
   md: {
@@ -625,9 +625,9 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     country: 'US',
     free: false,
     active: true,
-    hasCpue: true, hasLength: true, hasWeight: false, hasCatch: false, hasStocking: false, hasCounties: true, hasRating: false,
+    hasCpue: true, hasLength: true, hasWeight: true, hasCatch: false, hasStocking: false, hasCounties: true, hasRating: false,
     cpueKind: 'gear',
-    sortOptions: [{'value':'cpue','label':'Catch / Net'},{'value':'length','label':'Avg Length'}],
+    sortOptions: [{'value':'cpue','label':'Catch / Net'},{'value':'length','label':'Avg Length'},{'value':'weight','label':'Avg Weight'}],
     stripe: '#5c4a72',
   },
   ri: {
@@ -651,9 +651,9 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     country: 'US',
     free: false,
     active: true,
-    hasCpue: true, hasLength: false, hasWeight: false, hasCatch: false, hasStocking: false, hasCounties: true, hasRating: false,
+    hasCpue: true, hasLength: true, hasWeight: false, hasCatch: false, hasStocking: false, hasCounties: true, hasRating: false,
     cpueKind: 'creel',
-    sortOptions: [{'value':'cpue','label':'Angler Catch Rate'}],
+    sortOptions: [{'value':'cpue','label':'Angler Catch Rate'},{'value':'length','label':'Avg Length'}],
     stripe: '#4a3728',
   },
   vt: {
@@ -729,9 +729,9 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     country: 'CA',
     free: false,
     active: false,
-    hasCpue: false, hasLength: false, hasWeight: false, hasCatch: false, hasStocking: false, hasCounties: true, hasRating: false,
-    cpueKind: null,
-    sortOptions: [],
+    hasCpue: true, hasLength: true, hasWeight: true, hasCatch: true, hasStocking: false, hasCounties: true, hasRating: false,
+    cpueKind: 'creel',
+    sortOptions: [{'value':'cpue','label':'Angler Catch Rate'},{'value':'length','label':'Avg Length'},{'value':'weight','label':'Avg Weight'}],
     stripe: '#5c4a72',
   },
   mb: {
