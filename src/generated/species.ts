@@ -1795,6 +1795,7 @@ export const TN_SPECIES_NAMES: Record<string, string> = {
   'RBT': 'Rainbow Trout',
   'BNT': 'Brown Trout',
   'GRC': 'Grass Carp',
+  'FRD': 'Freshwater Drum',
   'LKS': 'Lake Sturgeon',
   'PAH': 'Paddlefish',
   'GOS': 'Golden Shiner',
@@ -1818,6 +1819,7 @@ export const TN_SPECIES_NAMES: Record<string, string> = {
   'Black Crappie': 'Black Crappie',
   'Blacknose Black Crappie': 'Black Crappie',
   'Black / Blacknose Crappie Mix': 'Black Crappie',
+  'Blacknose Crappie': 'Black Crappie',
   'White Crappie': 'White Crappie',
   'Crappie': 'Crappie (unspecified)',
   'Bluegill': 'Bluegill',
@@ -1838,6 +1840,7 @@ export const TN_SPECIES_NAMES: Record<string, string> = {
   'Rainbow Trout': 'Rainbow Trout',
   'Brown Trout': 'Brown Trout',
   'Grass Carp': 'Grass Carp',
+  'Freshwater Drum': 'Freshwater Drum',
   'Lake Sturgeon': 'Lake Sturgeon',
   'Paddlefish': 'Paddlefish',
   'Golden Shiner': 'Golden Shiner',
@@ -1874,6 +1877,7 @@ export const SC_SPECIES_NAMES: Record<string, string> = {
   'CHP': 'Chain Pickerel',
   'ALB': 'Alabama Bass',
   'REB': 'Redbreast Sunfish',
+  'AMS': 'American Shad',
   'Largemouth Bass': 'Largemouth Bass',
   'Smallmouth Bass': 'Smallmouth Bass',
   'Spotted Bass': 'Spotted Bass',
@@ -1900,6 +1904,7 @@ export const SC_SPECIES_NAMES: Record<string, string> = {
   'Chain Pickerel': 'Chain Pickerel',
   'Alabama Bass': 'Alabama Bass',
   'Redbreast Sunfish': 'Redbreast Sunfish',
+  'American Shad': 'American Shad',
 };
 
 export const KY_SPECIES_NAMES: Record<string, string> = {
