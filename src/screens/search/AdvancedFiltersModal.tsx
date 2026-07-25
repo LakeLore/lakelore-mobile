@@ -25,15 +25,18 @@ type Props = {
 export function AdvancedFiltersModal({
   visible, filters, state, options, onChange, onClose, onApply,
 }: Props) {
-  // Gear/Source is single-select (DATA_MODEL_PROPOSAL_2026-07-20): it's a
-  // required filter naming ONE source, and each gear carries its own expression
-  // + unit (fish/net vs fish/hr), so combining several into one abundance
-  // ranking mixes incomparable units. Radio behavior — tapping a gear selects
-  // only it; tapping the active gear clears back to "all". Keeping it to at
-  // most one also keeps activeSourceId, the toolbar unit, and the scatter Y
-  // label honest (a multi-gear selection used to desync them).
+  // Gear/Source: the DEFAULT is always a single gear (the most-prevalent source
+  // for the scope, set by the measure cascade / defaultGearFor), but the user
+  // may MANUALLY select more than one at a time. Multi-select — tapping toggles
+  // a gear in/out of the set. Choosing several gears (with possibly different
+  // units) is the user's explicit choice; when >1 is active the toolbar and
+  // scatter drop the single-source unit label (SearchScreen only syncs
+  // activeSourceId when exactly one gear is selected) so nothing claims one
+  // specific source.
   const toggleGear = (gear: string) => {
-    const next = filters.gearTypes.includes(gear) ? [] : [gear];
+    const next = filters.gearTypes.includes(gear)
+      ? filters.gearTypes.filter(g => g !== gear)
+      : [...filters.gearTypes, gear];
     onChange({ gearTypes: next });
   };
 
@@ -55,7 +58,16 @@ export function AdvancedFiltersModal({
             </Pressable>
           }
         />
-        <ScrollView style={{ padding: space.xl }} keyboardShouldPersistTaps="handled">
+        {/* automaticallyAdjustKeyboardInsets + a tall bottom pad keep a focused
+            numeric field (Total Catch, ranges near the bottom) above the
+            keyboard when the gear list is long; interactive dismiss lets a drag
+            close the keyboard. */}
+        <ScrollView
+          style={{ padding: space.xl }}
+          contentContainerStyle={{ paddingBottom: space.xxxl }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          automaticallyAdjustKeyboardInsets>
           {/* Show the gear chip even when there's only one option so the
               user can see which gear is in play for the current species
               (e.g. NE Largemouth Bass is sampled by Electrofishing only —

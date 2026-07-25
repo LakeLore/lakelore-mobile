@@ -1025,7 +1025,11 @@ export default function SearchScreen() {
             return next;
           });
           if (updates.gearTypes) {
-            const g = updates.gearTypes[0];
+            // Map to a single Source only when EXACTLY one gear is selected. The
+            // user may manually pick several gears; with 0 or >1 there is no one
+            // source, so clear activeSourceId and let the toolbar/scatter fall
+            // back to a neutral (measure) label instead of claiming one gear.
+            const g = updates.gearTypes.length === 1 ? updates.gearTypes[0] : null;
             const match = g && activeMeasure
               ? activeMeasure.sources.find(s => s.gear === g)
               : null;
