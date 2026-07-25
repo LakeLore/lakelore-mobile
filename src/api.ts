@@ -257,7 +257,8 @@ function buildParams(
   if (f.lakeName)         params.set('lakeName', f.lakeName);
   // Measure/Source scope. presenceUnion → derived-union path (Presence measure);
   // stockingFirst → stocking-metrics path (Stocking Impact); cpueKind confines a
-  // merged relative/creel/normalized abundance source; a gear source uses the
+  // `normalized` abundance source (2026-07-25: relative/creel are now per-gear
+  // sources and use the gear filter below, not cpueKind); a gear source uses the
   // gear filter below.
   if (f.presenceUnion)    params.set('presenceUnion', '1');
   if (f.stockingFirst)    params.set('stockingFirst', '1');

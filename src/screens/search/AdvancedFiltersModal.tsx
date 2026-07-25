@@ -25,10 +25,15 @@ type Props = {
 export function AdvancedFiltersModal({
   visible, filters, state, options, onChange, onClose, onApply,
 }: Props) {
+  // Gear/Source is single-select (DATA_MODEL_PROPOSAL_2026-07-20): it's a
+  // required filter naming ONE source, and each gear carries its own expression
+  // + unit (fish/net vs fish/hr), so combining several into one abundance
+  // ranking mixes incomparable units. Radio behavior — tapping a gear selects
+  // only it; tapping the active gear clears back to "all". Keeping it to at
+  // most one also keeps activeSourceId, the toolbar unit, and the scatter Y
+  // label honest (a multi-gear selection used to desync them).
   const toggleGear = (gear: string) => {
-    const next = filters.gearTypes.includes(gear)
-      ? filters.gearTypes.filter(g => g !== gear)
-      : [...filters.gearTypes, gear];
+    const next = filters.gearTypes.includes(gear) ? [] : [gear];
     onChange({ gearTypes: next });
   };
 

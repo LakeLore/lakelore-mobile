@@ -173,10 +173,23 @@ export function cpueLabelForGear(state: StateKey, gear?: string | null, rowKind?
   // gear-efficiency-normalized index, not a raw per-net count. Label it as
   // such regardless of state (fleet-ready — keys off the wire's cpue_kind).
   if (rowKind === 'normalized') return 'Norm. Catch Rate';
-  // Relative indices / creel-derived rates keep their disclaimer label — a
-  // per-gear "Catch / Hour" override would dress an index up as a real rate.
-  const kind = GENERATED_STATES[state]?.cpueKind;
-  if (kind === 'relative' || kind === 'creel') return fallback;
+  // Per-ROW relative / creel rows must NOT be dressed up as a real gear rate.
+  // A cpue_kind='relative' value (a 0–5 rating, % composition, a historical
+  // index) or a creel angler rate is not "Catch / Net" / "Catch / Hour", and
+  // the gear heuristics below would mislabel it straight from the gear name.
+  // This keys off the ROW's kind, not the state flag — a mixed state like MB
+  // (state cpueKind 'gear', but individual walleye rows tagged 'relative')
+  // otherwise fell through and labelled LIFA ratings + % composition as
+  // gill-net / electrofishing catch rates, so one result list showed a
+  // meaningless mix of "Catch / Net" and "Catch / Hour". A wholly
+  // relative/creel state already carries a fitting cpue label in its
+  // sortOptions (e.g. "Density Rating") — use it; a mixed state gets a neutral
+  // "Index" / "Angler Rate" so the row reads honestly.
+  const stateKind = GENERATED_STATES[state]?.cpueKind;
+  if (rowKind === 'relative') return stateKind === 'relative' ? fallback : 'Index';
+  if (rowKind === 'creel')    return stateKind === 'creel'    ? fallback : 'Angler Rate';
+  // Rows with no per-row kind in a wholly relative/creel state keep the label.
+  if (stateKind === 'relative' || stateKind === 'creel') return fallback;
   if (!gear) return fallback;
   const g = gear.toLowerCase();
   // Several states bake the CPUE unit into the gear string as a trailing

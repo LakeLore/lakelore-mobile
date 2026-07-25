@@ -13,7 +13,6 @@ export interface StateConfig {
   agency: string;
   color: string;
   defaultGear: string;
-  defaultSurveyTypes: string[];
   sortOptions: { value: string; label: string }[];
 }
 
@@ -27,11 +26,9 @@ const LEGACY_STATE_CONFIGS: Partial<Record<StateKey, StateConfig>> = {
     agency: 'ND Game, Fish & Parks',
     color: '#7c2d12',
     defaultGear: '',
-    defaultSurveyTypes: [],
     sortOptions: [
       { value: 'cpue', label: 'Catch / Net' },
       { value: 'length', label: 'Avg Length' },
-      { value: 'catch', label: 'Total Catch' },
       { value: 'stocked', label: 'Stck Adults / 100AC' },
     ],
   },
@@ -41,7 +38,6 @@ const LEGACY_STATE_CONFIGS: Partial<Record<StateKey, StateConfig>> = {
     agency: 'SD Game, Fish & Parks',
     color: '#1e3a5f',
     defaultGear: '',
-    defaultSurveyTypes: [],
     sortOptions: [
       { value: 'cpue', label: 'Catch / Net' },
       { value: 'length', label: 'Avg Length' },
@@ -54,11 +50,9 @@ const LEGACY_STATE_CONFIGS: Partial<Record<StateKey, StateConfig>> = {
     agency: 'Iowa DNR',
     color: '#1b5e20',
     defaultGear: '',
-    defaultSurveyTypes: [],
     sortOptions: [
       { value: 'cpue',    label: 'Catch / Net' },
       { value: 'length',  label: 'Avg Length' },
-      { value: 'catch',   label: 'Total Catch' },
       { value: 'stocked', label: 'Stck Adults / 100AC' },
     ],
   },
@@ -68,7 +62,6 @@ const LEGACY_STATE_CONFIGS: Partial<Record<StateKey, StateConfig>> = {
     agency: 'Nebraska Game & Parks',
     color: '#b91c1c',
     defaultGear: '',
-    defaultSurveyTypes: [],
     sortOptions: [
       { value: 'cpue', label: 'Catch / Net' },
       { value: 'length', label: 'Avg Length' },
@@ -81,11 +74,9 @@ const LEGACY_STATE_CONFIGS: Partial<Record<StateKey, StateConfig>> = {
     agency: 'WI DNR',
     color: '#155e75',
     defaultGear: '',
-    defaultSurveyTypes: [],
     sortOptions: [
       { value: 'cpue',    label: 'Catch / Net' },
       { value: 'length',  label: 'Avg Length' },
-      { value: 'catch',   label: 'Total Catch' },
       { value: 'stocked', label: 'Stck Adults / 100AC' },
     ],
   },
@@ -95,11 +86,9 @@ const LEGACY_STATE_CONFIGS: Partial<Record<StateKey, StateConfig>> = {
     agency: 'MN DNR',
     color: '#14532d',
     defaultGear: '',
-    defaultSurveyTypes: ['Standard Survey'],
     sortOptions: [
       { value: 'cpue', label: 'Catch / Net' },
       { value: 'weight', label: 'Avg Weight' },
-      { value: 'catch', label: 'Total Catch' },
       { value: 'stocked', label: 'Stck Adults / 100AC' },
     ],
   },
@@ -109,11 +98,9 @@ const LEGACY_STATE_CONFIGS: Partial<Record<StateKey, StateConfig>> = {
     agency: 'MI DNR',
     color: '#1e40af',
     defaultGear: '',
-    defaultSurveyTypes: [],
     sortOptions: [
       { value: 'cpue',    label: 'Catch / Net' },
       { value: 'length',  label: 'Avg Length' },
-      { value: 'catch',   label: 'Total Catch' },
       { value: 'stocked', label: 'Stck Adults / 100AC' },
     ],
   },
@@ -130,7 +117,6 @@ export const STATE_CONFIGS: Record<StateKey, StateConfig> = Object.fromEntries(
       agency: g.agency,
       color: g.stripe,
       defaultGear: '',
-      defaultSurveyTypes: [],
       sortOptions: g.sortOptions,
     }];
   }),
@@ -158,8 +144,9 @@ export interface FilterState {
   sortDir: 'asc' | 'desc';
   // Data model (DATA_MODEL_PROPOSAL_2026-07-20). `measure` is the primary
   // control (abundance/size/stocking/presence). The selected Source sets the
-  // scope fields: `gearTypes` (gear source), `cpueKind` (merged
-  // relative/creel/normalized), `stockingFirst` (Stocking measure), or
+  // scope fields: `gearTypes` (gear/relative/creel source — each gear_category
+  // is its own source), `cpueKind` (the `normalized` cross-gear metric),
+  // `stockingFirst` (Stocking measure), or
   // `presenceUnion` (Presence measure = derived union). All optional — absent,
   // /results behaves exactly as the legacy path.
   measure?: MeasureId;
@@ -167,7 +154,6 @@ export interface FilterState {
   stockingFirst?: boolean;
   presenceUnion?: boolean;
   // MN-specific
-  surveyTypes: string[];
   minWeight: string;
   maxWeight: string;
   minGearCount: string;
@@ -200,7 +186,6 @@ export function defaultFilters(state: StateKey): FilterState {
     cpueKind: '',
     stockingFirst: false,
     presenceUnion: false,
-    surveyTypes: cfg.defaultSurveyTypes,
     minWeight: '',
     maxWeight: '',
     minGearCount: '',
@@ -222,7 +207,6 @@ export interface FilterOptions {
   // presence buckets never hide real survey rows.
   gearCpueCounts?: Record<string, number>;
   counties: string[];
-  surveyTypes?: string[];
   yearRange: { min: number; max: number };
   defaultGear?: string;
 }
@@ -240,7 +224,7 @@ export type SourceExpression =
 export interface Source {
   id: string;
   gear: string | null;        // scope /results by gear when set
-  cpueKind: string | null;    // scope /results by cpueKind when set (relative/creel/normalized)
+  cpueKind: string | null;    // scope /results by cpueKind — set only for the `normalized` cross-gear metric (relative/creel are per-gear sources)
   expression: SourceExpression;
   label: string;
   unit: string | null;

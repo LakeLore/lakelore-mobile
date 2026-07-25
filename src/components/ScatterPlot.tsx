@@ -5,7 +5,7 @@ import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import Svg, { Circle, Line, Text as SvgText, Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { useSvgPanZoom, useCommittedMirror, assertWorklet } from '../hooks/useSvgPanZoom';
 import BlurredLakeName from './BlurredLakeName';
-import { Measure, Result, StateKey, STATE_CONFIGS, GENERATED_STATES } from '../types';
+import { Measure, Source, Result, StateKey, STATE_CONFIGS, GENERATED_STATES } from '../types';
 import { SPECIES_NAMES_BY_STATE } from '../generated/species';
 import { colors, text, space, hairline, fonts } from '../lakelore-rn/theme';
 
@@ -85,15 +85,19 @@ interface Props {
   results: Result[];
   state: StateKey;
   // Active measure (DATA_MODEL_PROPOSAL_2026-07-20). Fixed axis rule: Abundance
-  // → Y, Avg Size → X, always. The result set is already scoped to the selected
-  // Gear/Source, so the Y (abundance) axis carries one unit — no more silently
-  // stacking fish/net-night against fish/min-EF. When the measure is Stocking
-  // Impact, channels remap so stocked lakes plot against size.
+  // → Y, Avg Size → X, always — the scatter never remaps by measure. The result
+  // set is already scoped to the selected Gear/Source, so the Y (abundance) axis
+  // carries one unit — no more silently stacking fish/net-night against
+  // fish/min-EF.
   activeMeasure?: Measure | null;
+  // Id of the currently-selected Gear/Source (from the Filters gear chip). Used
+  // to label the Y axis with THAT source's unit rather than the measure's first
+  // catch-per-unit source, which lies once the user switches gear.
+  activeSourceId?: string | null;
   onLakePress: (lakeId: number|string, lakeName: string, species?: string) => void;
 }
 
-export default function ScatterPlot({ results, state, activeMeasure, onLakePress }: Props) {
+export default function ScatterPlot({ results, state, activeMeasure, activeSourceId, onLakePress }: Props) {
   const { width } = useWindowDimensions();
 
   const PAD_L = 48, PAD_R = 16, PAD_T = 12, PAD_B = 44;
@@ -301,15 +305,22 @@ export default function ScatterPlot({ results, state, activeMeasure, onLakePress
       : 'Survey Year';
     // The render caption is BUILT from these labels (see below), so they can't
     // drift apart. The Y axis (Abundance) is scoped to the selected Gear/Source,
-    // so it carries one unit; prefer the active source's unit where we have it.
-    const src = activeMeasure?.sources.find(s => s.expression === 'catch-per-unit' || s.expression === 'ranking' || s.expression === 'normalized');
+    // so it carries one unit. Prefer the ACTUALLY-selected source's unit (by id);
+    // only fall back to the measure's first abundance source when nothing is
+    // selected — otherwise switching gear in Filters left the Y label wrong.
+    const isAbundanceSource = (s: Source) =>
+      s.expression === 'catch-per-unit' || s.expression === 'ranking' || s.expression === 'normalized';
+    const selected = activeSourceId
+      ? activeMeasure?.sources.find(s => s.id === activeSourceId && isAbundanceSource(s))
+      : null;
+    const src = selected ?? activeMeasure?.sources.find(isAbundanceSource);
     const abundanceUnit = src?.unit && src.unit !== 'catch rate' ? ` (${src.unit})` : '';
     const yLabel = ratingMode ? 'Forecast Rating'
       : GENERATED_STATES[state]?.cpueKind === 'relative'
         ? `Catch Index${abundanceUnit}`
         : `Catch Rate${abundanceUnit}`;
     return { points: pts, sortedStocked, dataBounds, xLabel, yLabel, ratingMode };
-  }, [results, state, activeMeasure]);
+  }, [results, state, activeMeasure, activeSourceId]);
 
   // Keep refs in sync with latest render values
   pointsRef.current = points;
@@ -481,7 +492,7 @@ export default function ScatterPlot({ results, state, activeMeasure, onLakePress
         {/* Reasoned empty state (D7): say WHY the chart is empty instead of
             leaving the user to guess. */}
         <Text style={[text.bodyS, { color: colors.inkSoft, textAlign: 'center', marginTop: 6, paddingHorizontal: space.xl }]}>
-          The chart needs records with a catch rate{' '}— the current species/filters have none in this state. Try another species or the list view.
+          The chart needs records with a catch rate{' '}— switch the Measure to Abundance if it's currently on Stocking or Presence (nothing to plot there), or try another species or the list view.
         </Text>
       </View>
     );

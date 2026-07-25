@@ -9,7 +9,7 @@ Last reviewed: 2026-07-16 (all-states launch reconciliation).
 ## Monetization model (locked in 2026-05-07 · preview model 2026-07-08 · all-states scope 2026-07-15)
 
 - **Free tier:** Minnesota only. Full access, all features.
-- **Paid tier — "LakeLore All-States":** every other active state/province — **44 US states + 5 Canadian provinces (ON/BC/MB/SK/AB)**. 50 active total; SC/AZ/MA/DE/RI/QC are held back (registry `active:false` — no stocking AND no CPUE data).
+- **Paid tier — "LakeLore All-States":** every other active state/province — **44 US states + 5 Canadian provinces (ON/BC/MB/SK/AB)**. 50 active total; SC/AZ/MA/DE/RI/QC are held back (registry `active:false`). AZ/MA/RI remain presence/rating-thin; **DE/SC/QC now carry measured CPUE** (from the 2026-07-22/23 data hunt) and are activation-eligible pending an owner decision — the old "no CPUE" rationale no longer applies to them.
 - **Price:** $5.99 / year, auto-renewing.
 - **Free trial:** None.
 - **Provider:** RevenueCat (cross-platform abstraction over Apple StoreKit + Google Play Billing).
@@ -51,7 +51,16 @@ Last reviewed: 2026-07-16 (all-states launch reconciliation).
 
 ## Remaining blockers, in order
 
-> **2026-07-16 status (all-states launch):** the app is now **v1.1.0 (build 20), on
+> **2026-07-25 status (current):** the current build is **v1.1.1 (build 24)** — an
+> earlier version is live in the App Store; **1.1.1 (24) is the build to evaluate.**
+> Because `app.json` sets `runtimeVersion.policy: appVersion`, bumping 1.1.0 → 1.1.1
+> started a **fresh OTA runtime**: the 1.1.0 OTA rounds noted below do NOT carry into
+> 1.1.1, so 1.1.1 (24) must be complete in the binary itself (it is — the Measure ×
+> Gear/Source model and all its fixes are committed). Native build 21+ (Share Lake
+> Card) is therefore already in this build. The 2026-07-16 block below is the
+> historical all-states-launch snapshot.
+>
+> **2026-07-16 status (all-states launch):** the app was **v1.1.0 (build 20), on
 > TestFlight since 2026-07-15** — 50 active states/provinces (44 US paid + 5 CA paid +
 > free MN), map state selector → county picker, preview lake detail, forecast ratings
 > (schema v4/v5), offline read cache, retry/backoff, X-User-Sig. Fifteen OTA rounds

@@ -1,8 +1,10 @@
 // Measure picker — the primary metric control (DATA_MODEL_PROPOSAL_2026-07-20).
 // A Measure is WHAT is being quantified: Abundance / Avg Size / Stocking Impact
 // / Presence. This is the "Sort by" control, labelled by measure. Selecting a
-// measure adopts its default Gear/Source; the separate Source picker refines it.
-// Tapping the active measure flips sort direction (Presence has no ranking).
+// measure adopts its default Gear/Source (most records); the Gear Type filter
+// inside the Filters modal refines it (2026-07-21 owner call — no separate
+// Source picker). Tapping the active measure flips sort direction (Presence
+// has no ranking).
 import React from 'react';
 import {
   Modal, View, Pressable, Text, ScrollView, StyleSheet,
@@ -23,7 +25,7 @@ type Props = {
 
 // One-line explanation shown under each measure so switching feels legible.
 const BLURB: Record<string, string> = {
-  abundance: 'How many fish — pick a survey method under Gear / Source.',
+  abundance: 'How many fish — change the survey method under Gear Type in Filters.',
   size: 'How big the fish run, on average.',
   stocking: 'Stocking impact — includes lakes with no survey on record.',
   presence: 'Every species recorded present. No ranking — the complete list.',

@@ -488,6 +488,12 @@ export default function SearchScreen() {
     setPage(0);
     setSearched(false);
     setViewMode('list');
+    // Clear the measure manifest too, else the toolbar keeps showing the old
+    // measure (e.g. "Presence") while df's sort has reset — measures reload on
+    // the next species/county pick.
+    setMeasures([]);
+    setActiveMeasureId(null);
+    setActiveSourceId(null);
   };
 
   const handleLoadMore = () => {
@@ -777,8 +783,12 @@ export default function SearchScreen() {
             {/* Gear/Source is NOT a separate control (2026-07-21 owner feedback):
                 it's filtered through the existing FILTERS button, same as it
                 always was. The measure's default gear applies automatically. */}
-            {/* Measure — the primary control, labelled by measure. */}
-            {viewMode === 'list' && useMeasurePicker && (
+            {/* Measure — the primary control, labelled by measure. Shown in
+                scatter view too: the scatter only plots Abundance vs Size, so a
+                user who left the measure on Presence/Stocking (nothing to plot)
+                needs the picker right here to switch back to Abundance rather
+                than being forced back to the list first. */}
+            {useMeasurePicker && (
               <Pressable
                 onPress={() => setShowMeasure(true)}
                 accessibilityRole="button"
@@ -890,6 +900,7 @@ export default function SearchScreen() {
           results={scatterResults}
           state={state}
           activeMeasure={activeMeasure}
+          activeSourceId={activeSourceId}
           onLakePress={(lakeId, lakeName, species) => {
             // Same row-species rule as the list (the dot CARD shows a
             // species; the tap must honor it).
@@ -901,9 +912,10 @@ export default function SearchScreen() {
       )}
 
       {/* Measure picker — the primary control (DATA_MODEL). Selecting a measure
-          adopts its default Gear/Source and sets the sort; the Source picker
-          refines it. Presence has no ranking so an incompatible sort can't
-          linger — fixes the MB "Presence Only still offers Catch Rate" bug. */}
+          adopts its default Gear/Source (most records) and sets the sort; the
+          Gear Type filter in the Filters modal refines it. Presence has no
+          ranking so an incompatible sort can't linger — fixes the MB "Presence
+          Only still offers Catch Rate" bug. */}
       <MeasurePickerModal
         visible={showMeasure}
         measures={measures}
