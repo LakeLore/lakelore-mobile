@@ -123,9 +123,6 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
   const { points, sortedStocked, dataBounds, xLabel, yLabel, ratingMode } = useMemo(() => {
     const pts: DotData[] = [];
     const namesMap = SPECIES_NAMES_BY_STATE[state] ?? ({} as Record<string, string>);
-    // Set by the generic (new-fleet) branch: whether this result set carries
-    // measured lengths (drives the x-axis choice + label).
-    let genericHasLength = false;
     // Ratings-tier fallback (no CPUE anywhere): y becomes the agency forecast
     // rating ordinal, x average size.
     let ratingMode = false;
@@ -243,23 +240,22 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
           estLength: r.average_length,
         });
       }
-    } else if (results.some(r => r.cpue != null)) {
-      // Generic branch (2026-07 all-states fleet): length-vs-CPUE when the
-      // result set carries measured lengths; otherwise survey-year-vs-CPUE so
-      // CPUE-only states still get a usable scatter (year is also never
-      // redacted in paid-state preview, unlike acres).
-      genericHasLength = results.some(r => r.cpue != null && r.average_length != null);
+    } else if (results.some(r => r.cpue != null && r.average_length != null)) {
+      // Generic branch (2026-07 all-states fleet): Abundance (CPUE, Y) vs size
+      // (avg length, X). The scatter is ONLY EVER abundance-vs-size — a row with
+      // no measured length has nothing to plot on X and is dropped. There is NO
+      // survey-year fallback: a state with CPUE but no size shows no scatter at
+      // all (the toggle is gated on a size capability in SearchScreen), so the
+      // axes can never silently become "catch rate vs survey year" (OK bug).
       for (const r of results) {
-        if (r.cpue == null) continue;
-        const x = genericHasLength ? r.average_length : r.survey_year;
-        if (x == null) continue;
+        if (r.cpue == null || r.average_length == null) continue;
         pts.push({
-          x, y: r.cpue,
+          x: r.average_length, y: r.cpue,
           stocked: r.stocked_per_100ac,
           ...lakeMeta(r),
           species: namesMap[r.species]??r.species,
           year: r.survey_year,
-          average_length: r.average_length ?? undefined,
+          average_length: r.average_length,
           total_catch: r.total_catch,
         });
       }
@@ -299,10 +295,10 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
       yMin: 0,
       yMax: ys.length ? Math.max(...ys)*1.1 : 1,
     };
-    const LEGACY_STATES = new Set(['mn', 'sd', 'nd', 'ia', 'ne', 'wi', 'mi']);
-    const xLabel = state==='mn' ? 'Avg Weight (lb)'
-      : (LEGACY_STATES.has(state) || genericHasLength || ratingMode) ? 'Avg Length (in)'
-      : 'Survey Year';
+    // X is ALWAYS size — average weight for MN (the one weight state), average
+    // length everywhere else. Never survey year: the scatter only plots
+    // abundance vs size, so there is no other X axis to label.
+    const xLabel = state === 'mn' ? 'Avg Weight (lb)' : 'Avg Length (in)';
     // The render caption is BUILT from these labels (see below), so they can't
     // drift apart. The Y axis (Abundance) is scoped to the selected Gear/Source,
     // so it carries one unit. Prefer the ACTUALLY-selected source's unit (by id);
@@ -492,7 +488,7 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
         {/* Reasoned empty state (D7): say WHY the chart is empty instead of
             leaving the user to guess. */}
         <Text style={[text.bodyS, { color: colors.inkSoft, textAlign: 'center', marginTop: 6, paddingHorizontal: space.xl }]}>
-          The chart needs records with a catch rate{' '}— switch the Measure to Abundance if it's currently on Stocking or Presence (nothing to plot there), or try another species or the list view.
+          The chart plots Abundance against size, so it needs records with both a catch rate and a measured length{' '}— switch the Measure to Abundance if it's currently on Stocking or Presence (nothing to plot there), or try another species or the list view.
         </Text>
       </View>
     );

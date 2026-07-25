@@ -769,11 +769,14 @@ export default function SearchScreen() {
             {total.toLocaleString()} {total === 1 ? 'RESULT' : 'RESULTS'}
           </Text>
           <View style={styles.viewToggle}>
-            {/* Scatter plots CPUE (or, for ratings states with size
-                estimates — GA/MO/IL — forecast rating vs average length).
-                Pure presence states have nothing to plot: list-only. */}
-            {(GENERATED_STATES[state].hasCpue ||
-              (GENERATED_STATES[state].hasRating && GENERATED_STATES[state].hasLength)) && (
+            {/* Scatter is ONLY EVER abundance (Y) vs size (X), colored by
+                stocking density — so it requires BOTH an abundance signal
+                (CPUE or forecast rating) AND a size metric (length, or weight
+                for MN). A state with abundance but no size (e.g. OK) gets no
+                Scatter toggle — otherwise the plot had nothing for its X axis
+                and silently fell back to survey year. */}
+            {((GENERATED_STATES[state].hasCpue || GENERATED_STATES[state].hasRating) &&
+              (GENERATED_STATES[state].hasLength || GENERATED_STATES[state].hasWeight)) && (
               <Segmented
                 options={['List', 'Scatter']}
                 active={viewMode2}
