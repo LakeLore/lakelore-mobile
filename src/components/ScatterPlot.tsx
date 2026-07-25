@@ -126,6 +126,10 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
     // Ratings-tier fallback (no CPUE anywhere): y becomes the agency forecast
     // rating ordinal, x average size.
     let ratingMode = false;
+    // Set by the generic branch when this state's size is WEIGHT, not length
+    // (TN/GA creel report average weight, not length — like MN). Drives the X
+    // field + label so the scatter isn't empty for a weight-only species.
+    let genericUsesWeight = false;
 
     // Lake-level fields shared across every state branch. Kept separate from
     // the per-state population so the popup can render acres/depth/county
@@ -240,22 +244,31 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
           estLength: r.average_length,
         });
       }
-    } else if (results.some(r => r.cpue != null && r.average_length != null)) {
+    } else if (results.some(r => r.cpue != null && (r.average_length != null || r.average_weight != null))) {
       // Generic branch (2026-07 all-states fleet): Abundance (CPUE, Y) vs size
-      // (avg length, X). The scatter is ONLY EVER abundance-vs-size — a row with
-      // no measured length has nothing to plot on X and is dropped. There is NO
-      // survey-year fallback: a state with CPUE but no size shows no scatter at
-      // all (the toggle is gated on a size capability in SearchScreen), so the
-      // axes can never silently become "catch rate vs survey year" (OK bug).
+      // (X). Size is average LENGTH, or average WEIGHT where the state reports
+      // weight instead of length (TN/GA creel report weight — like MN) — this
+      // mirrors the Avg Size measure, which resolves to weight when the state
+      // carries it. One size type per plot: prefer weight when the result set
+      // carries it, so a weight-only species (TN largemouth bass) isn't dropped.
+      // The scatter is ONLY EVER abundance-vs-size — a row with no size metric
+      // has nothing to plot on X and is dropped. There is NO survey-year
+      // fallback (OK bug), so the axes can never become "catch rate vs year".
+      genericUsesWeight = results.some(r => r.cpue != null && r.average_weight != null && r.average_weight > 0);
       for (const r of results) {
-        if (r.cpue == null || r.average_length == null) continue;
+        if (r.cpue == null) continue;
+        const size = genericUsesWeight ? r.average_weight : r.average_length;
+        // Drop placeholder 0 sizes (a fish is never 0 in / 0 lb) so they don't
+        // pile up on the X=0 axis.
+        if (size == null || size <= 0) continue;
         pts.push({
-          x: r.average_length, y: r.cpue,
+          x: size, y: r.cpue,
           stocked: r.stocked_per_100ac,
           ...lakeMeta(r),
           species: namesMap[r.species]??r.species,
           year: r.survey_year,
-          average_length: r.average_length,
+          average_length: genericUsesWeight ? undefined : r.average_length,
+          average_weight: genericUsesWeight ? (r.average_weight ?? undefined) : undefined,
           total_catch: r.total_catch,
         });
       }
@@ -295,10 +308,11 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
       yMin: 0,
       yMax: ys.length ? Math.max(...ys)*1.1 : 1,
     };
-    // X is ALWAYS size — average weight for MN (the one weight state), average
-    // length everywhere else. Never survey year: the scatter only plots
-    // abundance vs size, so there is no other X axis to label.
-    const xLabel = state === 'mn' ? 'Avg Weight (lb)' : 'Avg Length (in)';
+    // X is ALWAYS size — average weight for MN and any state whose size the
+    // generic branch resolved to weight (TN/GA creel), average length otherwise.
+    // Never survey year: the scatter only plots abundance vs size, so there is
+    // no other X axis to label.
+    const xLabel = (state === 'mn' || genericUsesWeight) ? 'Avg Weight (lb)' : 'Avg Length (in)';
     // The render caption is BUILT from these labels (see below), so they can't
     // drift apart. The Y axis (Abundance) is scoped to the selected Gear/Source,
     // so it carries one unit. Prefer the ACTUALLY-selected source's unit (by id);
@@ -488,7 +502,7 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
         {/* Reasoned empty state (D7): say WHY the chart is empty instead of
             leaving the user to guess. */}
         <Text style={[text.bodyS, { color: colors.inkSoft, textAlign: 'center', marginTop: 6, paddingHorizontal: space.xl }]}>
-          The chart plots Abundance against size, so it needs records with both a catch rate and a measured length{' '}— switch the Measure to Abundance if it's currently on Stocking or Presence (nothing to plot there), or try another species or the list view.
+          The chart plots Abundance against size, so it needs records with both a catch rate and a size (length or weight){' '}— switch the Measure to Abundance if it's currently on Stocking or Presence (nothing to plot there), or try another species or the list view.
         </Text>
       </View>
     );
