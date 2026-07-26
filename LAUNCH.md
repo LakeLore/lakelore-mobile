@@ -10,7 +10,7 @@ Last reviewed: 2026-07-16 (all-states launch reconciliation).
 
 - **Free tier:** Minnesota only. Full access, all features.
 - **Paid tier — "LakeLore All-States":** every other active state/province — **44 US states + 5 Canadian provinces (ON/BC/MB/SK/AB)**. 50 active total; SC/AZ/MA/DE/RI/QC are held back (registry `active:false`). AZ/MA/RI remain presence/rating-thin; **DE/SC/QC now carry measured CPUE** (from the 2026-07-22/23 data hunt) and are activation-eligible pending an owner decision — the old "no CPUE" rationale no longer applies to them.
-- **Price:** $5.99 / year, auto-renewing.
+- **Price:** $4.99 / year, auto-renewing (lowered from $5.99 on 2026-07-25, before first store submission).
 - **Free trial:** None.
 - **Provider:** RevenueCat (cross-platform abstraction over Apple StoreKit + Google Play Billing).
 - **User identity:** Anonymous device UUID (no account, no email). Cross-device restore via per-platform store account ("Restore Purchases" button).
@@ -31,8 +31,8 @@ Last reviewed: 2026-07-16 (all-states launch reconciliation).
 | ✅ | `support@lakeloreapp.com` Google Workspace alias | you | Live |
 | ✅ | iPad decision: `supportsTablet` | you | Set to `false` for v1 (iPhone-only); iPad considered for v1.x |
 | ✅ | RevenueCat account + iOS + Android apps linked | you | Real `appl_` and `goog_` keys in code |
-| ✅ | App Store Connect: iOS subscription product | you | `com.lakeloreapp.lakelore.allstates_annual` created, $5.99 USD, Ready to Submit (submits with binary) |
-| ✅ | Play Console: Android subscription product | you | `lakelore_allstates_annual` (base plan `annual`) created and Active, $5.99 USD |
+| ✅ | App Store Connect: iOS subscription product | you | `com.lakeloreapp.lakelore.allstates_annual` created, $4.99 USD (lowered from $5.99 2026-07-25), Ready to Submit (submits with binary) |
+| ✅ | Play Console: Android subscription product | you | `lakelore_allstates_annual` (base plan `annual`) created and Active, $4.99 USD (lowered from $5.99 2026-07-25) |
 | ✅ | RevenueCat entitlement + offering wired | shared | Both products attached to `LakeLore All-States` entitlement and to `$rc_annual` package in `default` (Current) offering |
 | ✅ | Server entitlement gating | me | Live in production with v2 RC API; real entitlement lookups verified |
 | ✅ | Mobile RevenueCat SDK + paywall UX | me | All UX shipped; both platform keys real |
@@ -190,7 +190,7 @@ All six items below ship together. Apple won't approve a binary that references 
 
 ### RevenueCat account + API keys
 
-**Why.** RevenueCat sits between Apple/Google billing and your app: it abstracts cross-platform purchase APIs, handles receipt validation, and exposes a single REST API + webhook that your server checks for entitlement. Free up to $2.5K monthly tracked revenue (~5,000 subscribers at $5.99/yr) — well within the free tier for v1.
+**Why.** RevenueCat sits between Apple/Google billing and your app: it abstracts cross-platform purchase APIs, handles receipt validation, and exposes a single REST API + webhook that your server checks for entitlement. Free up to $2.5K monthly tracked revenue (~6,000 subscribers at $4.99/yr) — well within the free tier for v1.
 
 **Done when.**
 - [ ] RevenueCat account created at https://app.revenuecat.com.
@@ -216,7 +216,7 @@ All six items below ship together. Apple won't approve a binary that references 
   - Reference name: `LakeLore All-States · Annual`
   - Display name: `LakeLore All-States`
   - Duration: 1 year
-  - Price tier: USD $5.99 (Apple's per-region matrix takes care of foreign pricing)
+  - Price tier: USD $4.99 (Apple's per-region matrix takes care of foreign pricing; lowered from $5.99 2026-07-25)
   - Free trial: none
   - Localized description: "Unlocks every state outside of Minnesota — Wisconsin, Michigan, North Dakota, South Dakota, Nebraska, and Iowa. Annual subscription, auto-renews."
 - [ ] Subscription submitted for review with the first build that references it.
@@ -237,7 +237,7 @@ All six items below ship together. Apple won't approve a binary that references 
   - Product ID: `lakelore_allstates_annual` (Google requires lowercase + underscores; can't share Apple's reverse-DNS form)
   - Name: `LakeLore All-States`
   - Description: same as Apple's
-  - Base plan: 1 year, USD $5.99, auto-renewing
+  - Base plan: 1 year, USD $4.99, auto-renewing (lowered from $5.99 2026-07-25)
   - Free trial: none
 
 **Owner.** You.
@@ -278,7 +278,7 @@ All six items below ship together. Apple won't approve a binary that references 
   - Tapping a non-MN state opens the paywall modal instead of entering the state.
   - MN unchanged — tap → enter.
 - [ ] Paywall modal:
-  - Headline ("Unlock the rest of the atlas"), value props (six states, all features), price ($5.99/yr, auto-renewing).
+  - Headline ("Unlock the rest of the atlas"), value props (six states, all features), price ($4.99/yr, auto-renewing).
   - Pre-purchase disclosure block (title, length, auto-renew terms, links to terms + privacy).
   - "Subscribe" button → triggers RC purchase flow → updates entitlement → dismisses modal.
   - "Restore Purchases" button → triggers RC restore → updates entitlement.

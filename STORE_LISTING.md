@@ -288,7 +288,7 @@ Adjust to taste. **Order matters** in the App Store — the first 1–2 are visi
 ### Apple Review notes (paste into App Store Connect → App Review Information)
 
 ```
-LakeLore is a free Minnesota fishing-lake reference. The optional LakeLore All-States annual subscription ($5.99/yr, auto-renewing) unlocks the other 44 US states and 5 Canadian provinces currently active in the app (50 active states/provinces total). No account is required at any tier — identity is an anonymous device-generated UUID, no email, no sign-up.
+LakeLore is a free Minnesota fishing-lake reference. The optional LakeLore All-States annual subscription ($4.99/yr, auto-renewing) unlocks the other 44 US states and 5 Canadian provinces currently active in the app (50 active states/provinces total). No account is required at any tier — identity is an anonymous device-generated UUID, no email, no sign-up.
 
 To test core functionality without subscribing:
 1. Launch the app.
@@ -319,7 +319,7 @@ Support: https://www.lakeloreapp.com/support (publishes support@lakeloreapp.com)
 ### Google Play Test Instructions (Play Console → Store presence → App content → Target audience and content)
 
 ```
-LakeLore is a free Minnesota fishing-lake reference. Optional LakeLore All-States annual subscription ($5.99/yr, auto-renewing) unlocks the other 44 US states and 5 Canadian provinces active in the app.
+LakeLore is a free Minnesota fishing-lake reference. Optional LakeLore All-States annual subscription ($4.99/yr, auto-renewing) unlocks the other 44 US states and 5 Canadian provinces active in the app.
 
 To test:
 1. Open the app — Minnesota is free, no sign-in required.
