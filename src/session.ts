@@ -14,8 +14,42 @@ const STORE_KEY = 'sessionToken.v1';
 // Refresh when less than a day of validity remains.
 const REFRESH_MARGIN_MS = 24 * 60 * 60 * 1000;
 
-let _cached: { token: string; exp: number } | null = null;
+let _cached: { token: string; exp: number } = { token: '', exp: 0 };
+let _hydrated = false;
+let _hydrating: Promise<void> | null = null;
 let _inflight: Promise<void> | null = null;
+
+// One-time disk hydrate. Only adopts the disk copy if it is NEWER than
+// whatever is in memory — so a refresh() that completed while the read was
+// in flight can no longer be clobbered by the stale disk value (the
+// 2026-07-25 T1.5 race). Refresh decisions WAIT for hydration, so a valid
+// 7-day token on disk now actually prevents the cold-launch re-mint (and
+// with it the per-launch App Attest attestation).
+function hydrate(): Promise<void> {
+  if (!_hydrating) {
+    _hydrating = AsyncStorage.getItem(STORE_KEY)
+      .then(raw => {
+        if (raw) {
+          const disk = JSON.parse(raw) as { token?: string; exp?: number };
+          if (disk?.token && (disk.exp ?? 0) > _cached.exp) {
+            _cached = { token: disk.token, exp: disk.exp ?? 0 };
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => { _hydrated = true; });
+  }
+  return _hydrating;
+}
+
+function maybeRefresh(baseUrl: string): void {
+  const fresh = _cached.token && _cached.exp - Date.now() > REFRESH_MARGIN_MS;
+  if (!fresh && !_inflight) {
+    _inflight = refresh(baseUrl)
+      .catch(() => {})
+      .finally(() => { _inflight = null; });
+  }
+}
 
 async function refresh(baseUrl: string): Promise<void> {
   const userId = await getUserId();
@@ -47,21 +81,15 @@ async function refresh(baseUrl: string): Promise<void> {
 }
 
 /** Current bearer token, or null. Kicks a background refresh when missing
- *  or near expiry — callers never wait on the network. */
+ *  or near expiry — callers never wait on the network. The refresh decision
+ *  is deferred until the disk hydrate completes, so a still-valid persisted
+ *  token short-circuits the mint instead of racing it. */
 export function getSessionToken(baseUrl: string): string | null {
-  if (_cached === null) {
-    // One-time hydrate from disk (sync miss on the very first call is fine).
-    _cached = { token: '', exp: 0 };
-    AsyncStorage.getItem(STORE_KEY)
-      .then(raw => { if (raw) _cached = JSON.parse(raw); })
-      .catch(() => {});
+  if (!_hydrated) {
+    hydrate().then(() => maybeRefresh(baseUrl));
+  } else {
+    maybeRefresh(baseUrl);
   }
   const usable = _cached.token && _cached.exp - Date.now() > 0;
-  const fresh = _cached.token && _cached.exp - Date.now() > REFRESH_MARGIN_MS;
-  if (!fresh && !_inflight) {
-    _inflight = refresh(baseUrl)
-      .catch(() => {})
-      .finally(() => { _inflight = null; });
-  }
   return usable ? _cached.token : null;
 }

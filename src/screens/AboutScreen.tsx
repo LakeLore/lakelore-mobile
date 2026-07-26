@@ -19,6 +19,7 @@ import { useEntitlement } from '../useEntitlement';
 import { restorePurchases } from '../iap';
 import { useToast } from '../Toast';
 import { ACTIVE_STATES } from '../activeStates';
+import { APP_VERSION, OTA_UPDATE_ID } from '../api';
 import { StateKey, GENERATED_STATES } from '../types';
 
 // Subscription product IDs — used to deep-link Play Store directly to the
@@ -536,6 +537,12 @@ export default function AboutScreen({ visible, state, onClose }: Props) {
 
           <Text style={[text.labelS, { color: colors.paper3, textAlign: 'center', marginTop: 32 }]}>
             © {new Date().getFullYear()} LAKELORE CO.
+          </Text>
+          <Text
+            style={[text.labelS, { color: colors.paper3, textAlign: 'center', marginTop: 6 }]}
+            accessibilityLabel={`App version ${APP_VERSION}`}
+          >
+            v{APP_VERSION}{OTA_UPDATE_ID ? ` · ${OTA_UPDATE_ID.slice(0, 8)}` : ''}
           </Text>
 
           <View style={{ height: 24 }} />

@@ -1,0 +1,20 @@
+# CI (2026-07-25, IMPROVEMENT_PLAN_2026-07-25 T3.13): this repo previously had
+# NO automated gate — `npm run ota` typechecked locally, but a native release
+# build could ship code that fails tsc (Babel strips types, so it bundles
+# fine). Runs the same gate the ota/build scripts now enforce locally.
+name: ci
+on:
+  push:
+    branches: [main, mn-species-display-names]
+  pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx jest --silent

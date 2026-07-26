@@ -28,6 +28,7 @@ import { getUserId } from './src/userId';
 import { ToastProvider } from './src/Toast';
 import { ErrorBoundary } from './src/ErrorBoundary';
 import { OfflineBanner } from './src/OfflineBanner';
+import { UpdateGate } from './src/UpdateGate';
 import { Sentry } from './src/sentry';
 import StateSelectScreen from './src/screens/StateSelectScreen';
 import SearchScreen from './src/screens/SearchScreen';
@@ -115,6 +116,7 @@ function App() {
             <ToastProvider>
               <AppInner />
               <OfflineBanner />
+              <UpdateGate />
             </ToastProvider>
           </StateProvider>
         </GestureHandlerRootView>

@@ -14,6 +14,7 @@
 // integration during development, temporarily flip ENABLE_IN_DEV below.
 
 import * as Sentry from '@sentry/react-native';
+import * as Updates from 'expo-updates';
 
 const DSN =
   'https://fa36e03b83658996ccd1d55a0c454356@o4511350965993472.ingest.us.sentry.io/4511350972940288';
@@ -30,12 +31,26 @@ export function initSentry(): void {
     dsn: DSN,
     environment: __DEV__ ? 'development' : 'production',
     enableAutoSessionTracking: true,
+    // OTA identity (2026-07-25, T1.3): dist distinguishes each OTA bundle so
+    // "crashes by OTA" is chartable and source maps line up per update.
+    // Embedded-bundle launches keep the native default (build number).
+    dist: Updates.updateId ?? undefined,
     // Performance monitoring sample rate. 10% in prod balances coverage
     // against the free-tier transaction quota (10K/month).
     tracesSampleRate: __DEV__ ? 1.0 : 0.1,
     // Native crash capture is enabled by default once the Sentry config
     // plugin is in app.json (it is). No explicit toggle needed.
   });
+  Sentry.setTag('ota_update_id', Updates.updateId ?? 'embedded');
+  // A fleet silently rolled back to the embedded bundle after a broken OTA
+  // was previously invisible — surface every emergency launch (T1.3).
+  if (Updates.isEmergencyLaunch) {
+    Sentry.setTag('emergency_launch', 'true');
+    Sentry.captureMessage('expo-updates emergency launch — rolled back to embedded bundle', {
+      level: 'warning',
+      extra: { reason: (Updates as { emergencyLaunchReason?: string | null }).emergencyLaunchReason ?? null },
+    });
+  }
   initialized = true;
 }
 

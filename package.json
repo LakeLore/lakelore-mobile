@@ -1,17 +1,17 @@
 {
   "name": "lakelore-mobile",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "main": "index.ts",
   "scripts": {
-    "ota": "tsc --noEmit && jest --silent && eas update --branch production",
+    "ota": "node -e \"const v=require('./app.json').expo.version;console.log('\\n=== OTA target runtimeVersion: '+v+' — ONLY devices on app version '+v+' receive this update ===\\n')\" && tsc --noEmit && jest --silent && eas update --branch production",
     "start": "expo start --dev-client",
     "start:expo-go": "expo start",
     "build:dev:ios": "eas build --profile development --platform ios",
     "build:dev:android": "eas build --profile development --platform android",
     "build:preview:ios": "eas build --profile preview --platform ios",
     "build:preview:android": "eas build --profile preview --platform android",
-    "build:prod:ios": "eas build --profile production --platform ios",
-    "build:prod:android": "eas build --profile production --platform android",
+    "build:prod:ios": "tsc --noEmit && jest --silent && eas build --profile production --platform ios",
+    "build:prod:android": "tsc --noEmit && jest --silent && eas build --profile production --platform android",
     "submit:ios": "eas submit --profile production --platform ios",
     "submit:android": "eas submit --profile production --platform android",
     "android": "expo run:android",
@@ -57,7 +57,7 @@
     "@expo/ngrok": "^4.1.3",
     "@types/jest": "^30.0.0",
     "@types/react": "~19.1.0",
-    "babel-preset-expo": "^55.0.16",
+    "babel-preset-expo": "~54.0.10",
     "d3-geo": "^3.1.1",
     "d3-path": "^3.1.0",
     "topojson-client": "^3.1.0",
@@ -67,7 +67,8 @@
   "jest": {
     "preset": "jest-expo",
     "testMatch": [
-      "**/__tests__/**/*.test.ts"
+      "**/__tests__/**/*.test.ts",
+      "**/__tests__/**/*.test.tsx"
     ]
   }
 }

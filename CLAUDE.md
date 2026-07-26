@@ -111,6 +111,14 @@ That bundles the current JS, uploads to EAS Updates, and the next time any insta
 - `app.json` `runtimeVersion: { policy: "appVersion" }` — runtime tracks `version`, so every native rebuild starts a fresh OTA pipeline.
 - `eas.json` profile `production.channel: "production"` — builds emit on the production channel, OTA pushes go to the same channel.
 
+**Update-durability kit (2026-07-25, IMPROVEMENT_PLAN_2026-07-25 T1 — ships with the submission build):**
+- `src/UpdateGate.tsx` — checks `GET /api/client-config` on launch/foreground; server env vars drive a dismissible upgrade nudge (`LAKELORE_MIN_APP_VERSION`) or a BLOCKING kill screen (`LAKELORE_KILLED_VERSIONS`). Failure-soft. Recipe: RUNBOOK §17.
+- `src/api.ts` sends `X-App-Version: <version>+<build>` (+ `X-Update-Id` on OTA bundles) on every request — the server's hourly `[ver]` histogram is the fleet-drain evidence for the enforcement flips; feedback payloads auto-carry `updateId`.
+- `src/sentry.ts` sets `dist` to the OTA `updateId`, tags `ota_update_id`, and reports `Updates.isEmergencyLaunch` (a fleet rolled back to the embedded bundle is no longer invisible).
+- About screen footer shows `v{version} ({build}) · {updateId8}`.
+- `src/session.ts` awaits disk hydration before deciding to re-mint (a valid persisted 7-day token now actually prevents the cold-launch mint — and with it the per-launch App Attest attestation); `src/attest.ts` additionally spaces attestation attempts ≥20 h apart as defense in depth.
+- `npm run ota` prints the target runtimeVersion first (publish-to-empty-runtime guard); `build:prod:*` now run `tsc --noEmit && jest` before EAS; `babel-preset-expo` pinned to the SDK-54 line (`~54.0.10` — the hoisted `^55` preset was transforming every bundle); `.github/workflows/ci.yml` runs the same gate on push.
+
 **When OTA is NOT enough — you need a fresh native build:**
 - Anything that changes `app.json` `version` (bumps `runtimeVersion` and orphans existing installs from new OTAs until they rebuild)
 - Adding/removing a native module (changes the binary)

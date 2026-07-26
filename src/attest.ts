@@ -28,6 +28,13 @@ export interface AttestationPayload {
 
 const COOLDOWN_KEY = 'attest.cooldown.v1';
 const COOLDOWN_MS = 24 * 60 * 60 * 1000;
+// Minimum spacing between attestation ATTEMPTS regardless of outcome
+// (2026-07-25, T1.5): the session layer is expected to attest roughly weekly
+// (7-day tokens), but any refresh-storm bug upstream (e.g. a 5xx loop on
+// /api/session) would otherwise hammer Apple's rate-limited attestation
+// service once per retry. Defense in depth, not the primary pacing.
+const ATTEMPT_KEY = 'attest.lastAttempt.v1';
+const MIN_ATTEMPT_SPACING_MS = 20 * 60 * 60 * 1000;
 
 // iOS: a FRESH hardware key per attestation. Apple attests a key once and
 // the server's checker requires signCount 0, so reusing a key buys nothing;
@@ -62,7 +69,10 @@ export async function getAttestation(challenge: string): Promise<AttestationPayl
   try {
     const raw = await AsyncStorage.getItem(COOLDOWN_KEY);
     if (raw && Date.now() - Number(raw) < COOLDOWN_MS) return null;
+    const lastAttempt = await AsyncStorage.getItem(ATTEMPT_KEY);
+    if (lastAttempt && Date.now() - Number(lastAttempt) < MIN_ATTEMPT_SPACING_MS) return null;
   } catch {}
+  AsyncStorage.setItem(ATTEMPT_KEY, String(Date.now())).catch(() => {});
   let integrity: any;
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires

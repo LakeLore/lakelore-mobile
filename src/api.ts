@@ -1,6 +1,15 @@
 import Constants from 'expo-constants';
+import * as Application from 'expo-application';
+import * as Updates from 'expo-updates';
 import { FilterState, FilterOptions, MeasureResponse, ResultsResponse, StateKey } from './types';
 import { getUserId } from './userId';
+
+// Client version identity (2026-07-25, T1.2): rides every request so the
+// server can histogram the fleet ([ver] hourly line) — the measurable
+// precondition for the REQUIRE_USER_SIG/TOKEN/ATTEST enforcement flips.
+// updateId identifies the OTA bundle (null on the embedded bundle / in dev).
+export const APP_VERSION = `${Application.nativeApplicationVersion ?? '0'}+${Application.nativeBuildVersion ?? '0'}`;
+export const OTA_UPDATE_ID: string | null = Updates.updateId ?? null;
 
 // ── Server URL configuration ───────────────────────────────────────────────────
 // Production builds always hit the Fly.io API. Dev builds derive the host
@@ -64,7 +73,9 @@ async function getOnce<T>(url: string, timeoutMs: number): Promise<T> {
     const headers: Record<string, string> = {
       'X-User-Id': userId,
       'X-User-Sig': hmacSha256Hex(userId),
+      'X-App-Version': APP_VERSION,
     };
+    if (OTA_UPDATE_ID) headers['X-Update-Id'] = OTA_UPDATE_ID;
     // Server-signed session token (see src/session.ts) — authoritative
     // identity when present; legacy headers remain the fallback.
     const token = getSessionToken(API_BASE_URL);
@@ -161,6 +172,7 @@ export interface FeedbackPayload {
   tab?: string | null;
   version?: string | null;
   build?: string | null;
+  updateId?: string | null;
 }
 
 export async function submitFeedback(payload: FeedbackPayload): Promise<void> {
@@ -171,7 +183,9 @@ export async function submitFeedback(payload: FeedbackPayload): Promise<void> {
       'Content-Type': 'application/json',
       'X-User-Id': userId,
     },
-    body: JSON.stringify(payload),
+    // updateId identifies the exact OTA bundle the report came from (T1.4);
+    // callers can override but never need to set it.
+    body: JSON.stringify({ updateId: OTA_UPDATE_ID, ...payload }),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
