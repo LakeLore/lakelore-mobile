@@ -9,6 +9,42 @@ The version numbers below match `app.json` `version`, which is also the App Stor
 
 ---
 
+## [1.1.1] — Build 24+ (submission candidate)
+
+The all-states polish + durability release. (Catch-up entry written 2026-07-26 — 1.1.0 and 1.1.1 shipped their work across 15 OTA rounds and two builds; see LAUNCH.md and the improvement plans for the full trail.)
+
+### Added
+- **Measure × Gear/Source data model** (2026-07-21): a Measure selector (Abundance / Avg Size / Stocking Impact / Presence) drives every search, with Gear/Source as the required filter under Abundance and Avg Size — built per-state from the new `/measures` endpoint, so each state exposes exactly the measures its data supports.
+- Share Lake Card (native build 21+).
+- Forecast-rating badges, `Est. length` honesty labels, `Stocked · Inferred` presence labels, per-state glossary rework.
+- Update-durability kit (2026-07-25): in-app upgrade nudge / kill-switch check, version + OTA id in About and on every request, emergency-launch reporting.
+
+### Changed
+- Price: LakeLore All-States is **$4.99/yr** (lowered from $5.99, 2026-07-25).
+- Preview mode covers lake detail too: identity stays redacted, every metric visible.
+- Offline caches now expire (results/lake payloads 30 d; entitlement hint 7 d).
+
+### Fixed
+- Species-anonymous rows and wrong-species navigation under All Species + name search; scatter-dot taps navigate to the tapped dot's species.
+- Share-card crash on pre-21 binaries (pure-JS availability probe before native require).
+- Session tokens persist across launches correctly (no more per-launch re-mint/attestation).
+
+### Store release-notes copy
+
+```
+LakeLore now covers 45 states and 5 Canadian provinces — 68,000+ lakes of agency netting surveys, stocking records, and forecasts, free to preview everywhere and free in full for Minnesota.
+
+New: pick your measure (abundance, average size, stocking impact, presence) and the exact survey gear behind it. Share any lake as a card. Smoother offline behavior and dozens of fixes.
+```
+
+(~370 chars — fits Play's 500 and Apple's 4,000.)
+
+## [1.1.0] — Build 20 (TestFlight; superseded by 1.1.1)
+
+The all-states launch build (2026-07-15): 50 active states/provinces (45 US + 5 CA), map-based US+Canada state selector → county map picker, registry-generated per-state config and species display names, preview mode across every paid state, App Attest / Play Integrity scaffolding, X-User-Sig client signatures, offline retry/backoff, Sentry. Fifteen OTA rounds of fixes shipped on this runtime; all are baked into 1.1.1's binary.
+
+---
+
 ## [1.0.1] — Unreleased
 
 Performance release: pinch-zoom and drag-to-pan on the county selector and the
