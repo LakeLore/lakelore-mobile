@@ -9,6 +9,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const INDEX_KEY = 'lakeCache.v1.index';
 const MAX_ENTRIES = 20;
+// Hard expiry (2026-07-25, T3.14): a year-old survey payload rendering with
+// only a small date label overstates freshness — past this age the entry is
+// treated as absent and the screen shows the normal offline error instead.
+const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 const keyFor = (state: string, lakeId: string | number) => `lakeCache.v1.${state}:${lakeId}`;
 
@@ -29,7 +33,10 @@ export async function putLake(state: string, lakeId: string | number, data: unkn
 export async function getLake(state: string, lakeId: string | number): Promise<{ ts: number; data: unknown } | null> {
   try {
     const raw = await AsyncStorage.getItem(keyFor(state, lakeId));
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const entry = JSON.parse(raw);
+    if (entry?.ts && Date.now() - entry.ts > MAX_AGE_MS) return null;
+    return entry;
   } catch {
     return null;
   }

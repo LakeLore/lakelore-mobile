@@ -27,6 +27,11 @@ import { fetchMyEntitlement } from './api';
 // the RC SDK + server round-trip resolves. Server is still authoritative on
 // every refresh — this only primes the initial UI.
 const ENTITLEMENT_CACHE_KEY = 'entitlement.allStates.v1';
+// v2 (2026-07-25, T3.14): the cached flag now carries a timestamp and is
+// ignored past 7 days — a lapsed subscriber cold-launching offline used to
+// see unlocked chips indefinitely (cosmetic only: the server still redacts).
+const ENTITLEMENT_CACHE_KEY_V2 = 'entitlement.allStates.v2';
+const ENTITLEMENT_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 export interface EntitlementState {
   hasAllStates: boolean;
@@ -64,7 +69,8 @@ export function useEntitlement(): EntitlementState {
       setHasAllStates(final);
       setLoading(false);
     }
-    AsyncStorage.setItem(ENTITLEMENT_CACHE_KEY, final ? '1' : '0').catch(() => {});
+    AsyncStorage.setItem(ENTITLEMENT_CACHE_KEY_V2, JSON.stringify({ v: final, ts: Date.now() })).catch(() => {});
+    AsyncStorage.removeItem(ENTITLEMENT_CACHE_KEY).catch(() => {}); // retire the v1 key
   }, []);
 
   useEffect(() => {
@@ -75,9 +81,11 @@ export function useEntitlement(): EntitlementState {
     // false too so the screen can show the correct chips immediately; the
     // background refresh below still runs and reconciles if state changed
     // (e.g. subscription lapsed while the app was closed).
-    AsyncStorage.getItem(ENTITLEMENT_CACHE_KEY).then(cached => {
+    AsyncStorage.getItem(ENTITLEMENT_CACHE_KEY_V2).then(cached => {
       if (!mountedRef.current || cached == null) return;
-      setHasAllStates(cached === '1');
+      const entry = JSON.parse(cached) as { v: boolean; ts: number };
+      if (entry?.ts && Date.now() - entry.ts > ENTITLEMENT_CACHE_MAX_AGE_MS) return; // too old to prime
+      setHasAllStates(!!entry.v);
       setLoading(false);
     }).catch(() => {});
 
