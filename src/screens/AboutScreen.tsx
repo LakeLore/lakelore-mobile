@@ -346,13 +346,15 @@ export default function AboutScreen({ visible, state, onClose }: Props) {
   const handleRestore = async () => {
     if (restoring) return;
     setRestoring(true);
-    const ok = await restorePurchases();
+    const result = await restorePurchases();
     setRestoring(false);
-    if (ok) {
+    if (result === 'restored') {
       await refresh();
       toast('Subscription restored.');
-    } else {
+    } else if (result === 'none') {
       toast('No active subscription found on this account.');
+    } else {
+      toast("Couldn't reach the store — check your connection and try again.");
     }
   };
 

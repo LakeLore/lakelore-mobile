@@ -90,8 +90,8 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
   const handleRestore = async () => {
     setRestoring(true);
     setError(null);
-    const ok = await restorePurchases();
-    if (ok) {
+    const result = await restorePurchases();
+    if (result === 'restored') {
       // Same priming rationale as handleSubscribe — restored entitlement
       // needs to land in the server cache before the caller refetches data.
       await fetchMyEntitlement().catch(() => {});
@@ -100,18 +100,22 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
       onClose();
     } else {
       setRestoring(false);
-      setError('No active subscription found on this account.');
+      setError(result === 'none'
+        ? 'No active subscription found on this account.'
+        : "Couldn't reach the store — check your connection and try again.");
     }
   };
 
   // Display price — pulled live from the store via RC, so currency formatting
-  // is correct for the user's region. While the package is still loading we
-  // intentionally don't show a placeholder price, so the pre-purchase
-  // disclosure never claims a currency/amount we can't honor at the store.
+  // is correct for the user's region. When the package can't load (RC blip,
+  // IAP not yet approved), the disclosure falls back to the STATIC USD price
+  // (2026-07-26, store red-team #11): "auto-renews for the listed price" with
+  // no amount is itself a 3.1.2 disclosure failure. The store sheet remains
+  // authoritative at purchase time and localizes the currency.
   const priceLabel = pkg?.product.priceString ?? null;
-  const priceLabelOrFallback = priceLabel ?? 'the listed price';
+  const priceLabelOrFallback = priceLabel ?? 'US$4.99';
   const paidStatesPhrase = PAID_CA > 0
-    ? `${PAID_US} more states + ${numWord(PAID_CA)} Canadian provinces`
+    ? `${PAID_US} more states + ${PAID_CA} Canadian provinces`
     : `${numWord(PAID_US)} more states`;
 
   return (
@@ -200,8 +204,14 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
             </View>
           ) : (
             <View style={styles.unavailable}>
-              <Text style={[text.bodyS, { color: colors.inkSoft, textAlign: 'center', marginBottom: 12 }]}>
+              <Text style={[text.bodyS, { color: colors.inkSoft, textAlign: 'center', marginBottom: 8 }]}>
                 Couldn&rsquo;t load the subscription.
+              </Text>
+              {/* Static disclosure so length/price/renewal terms remain visible
+                  even when the offering fails to load (2026-07-26, #11). */}
+              <Text style={[text.bodyS, { color: colors.inkSoft, textAlign: 'center', marginBottom: 12 }]}>
+                LakeLore All-States — US$4.99 / year, auto-renewing (shown in your local
+                currency at purchase).
               </Text>
               <PrimaryButton onPress={loadOffering}>Try again</PrimaryButton>
             </View>

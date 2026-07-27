@@ -40,7 +40,27 @@ export function initSentry(): void {
     tracesSampleRate: __DEV__ ? 1.0 : 0.1,
     // Native crash capture is enabled by default once the Sentry config
     // plugin is in app.json (it is). No explicit toggle needed.
+    //
+    // Privacy scrubbing (2026-07-26, store red-team #3/#5): never let the
+    // ingest store a client IP, and strip query strings from network
+    // breadcrumbs — search URLs embed the user's lake-name/species searches,
+    // which we declare as NOT collected. (Also enable "Prevent Storing of IP
+    // Addresses" in the Sentry project settings — server-side toggle.)
+    beforeSend: (event) => {
+      if (event.user) delete event.user.ip_address;
+      return event;
+    },
+    beforeBreadcrumb: (breadcrumb) => {
+      if ((breadcrumb.category === 'fetch' || breadcrumb.category === 'xhr') && breadcrumb.data?.url) {
+        breadcrumb.data.url = String(breadcrumb.data.url).split('?')[0];
+      }
+      return breadcrumb;
+    },
   });
+  // Key crash reports to the same anonymous UUID as the API/RC identity —
+  // makes the privacy policy's "keyed to the anonymous identifier" claim
+  // literally true and lets a feedback report correlate with its crash.
+  import('./userId').then(({ getUserId }) => getUserId().then(id => Sentry.setUser({ id }))).catch(() => {});
   Sentry.setTag('ota_update_id', Updates.updateId ?? 'embedded');
   // A fleet silently rolled back to the embedded bundle after a broken OTA
   // was previously invisible — surface every emergency launch (T1.3).

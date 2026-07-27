@@ -1,6 +1,6 @@
 # LakeLore — Store Listing Copy
 
-This is the source of truth for every text field in App Store Connect and Google Play Console. Edit here, then paste into the corresponding field on each platform. Last updated 2026-07-17 (all-states rewrite: description, review notes, Play data safety + test instructions).
+This is the source of truth for every text field in App Store Connect and Google Play Console. Edit here, then paste into the corresponding field on each platform. Last updated 2026-07-26 (pre-submission red-team pass: Terms-of-Use metadata row, subscription block in the description, promo-text coverage fix, feedback-form privacy declarations, drift-proof MN counts, shot-list rewrite, corrected Play console field targets).
 
 ---
 
@@ -16,7 +16,8 @@ This is the source of truth for every text field in App Store Connect and Google
 | Support URL | `https://www.lakeloreapp.com/support` | — |
 | Marketing URL | `https://www.lakeloreapp.com` | — |
 | Privacy Policy URL | `https://www.lakeloreapp.com/privacy` | — |
-| Copyright | `© 2026 LakeLore App LLC` | — |
+| Terms of Use (EULA) URL | `https://www.lakeloreapp.com/terms` — **required for auto-renewable subs (3.1.2)**: put it in ASC → App Information → License Agreement (or keep Apple's standard EULA) AND it appears in the description's SUBSCRIPTION block | — |
+| Copyright | `© 2026 LakeLore App LLC` ⚠️ owner-confirm the legal entity — the app/site footer says "LakeLore Co."; this field is a legal attestation and the two must match | — |
 | Primary category (iOS) | `Sports` (secondary: `Reference`) | — |
 | Primary category (Android) | `Sports` | — |
 | Content rating | 4+ (iOS) / Everyone (Android) | — |
@@ -52,10 +53,10 @@ Alternates if you want to A/B:
 ## Promotional text (iOS only — updateable any time)
 
 ```
-Now covering all 50 states + Canada. Free in Minnesota, no account, no ads — the netting and stocking atlas for game fish.
+Now covering 45 states and 5 Canadian provinces. Free in Minnesota, no account, no ads — the netting and stocking atlas for game fish.
 ```
 
-(122 chars. Use this for seasonal hooks: launch, ice-fishing, opener, fall walleye, etc. Updated 2026-07-15 for the all-states 1.1.0 release.)
+(134 chars. Use this for seasonal hooks: launch, ice-fishing, opener, fall walleye, etc. Corrected 2026-07-26 — the previous "all 50 states + Canada" was factually false (45 US states + 5 provinces are active; the internal "50" counts states AND provinces) and contradicted the description: Apple 2.3.1 territory.)
 
 ## Keywords (iOS, 100 chars max, comma-separated, no spaces between)
 
@@ -70,7 +71,7 @@ programmatic SEO pages instead) — for the high-volume generics `lake finder`,
 `fishing map`, `ice fishing`, `bass`. Apple indexes name/subtitle/category, so
 don't repeat those words.)
 
-> **Stale-count audit.** Lake totals shown here are pasted into App Store / Play descriptions one time per submission. Re-fetch from `/api/{state}/status` immediately before paste so the description matches live data. The in-app paywall does NOT show per-state lake counts (deliberately removed 2026-05-27 — counts felt cluttered and drift-prone for a CTA screen), so only this file needs the manual refresh.
+> **Stale-count audit.** Lake/survey/catch totals shown here are pasted into App Store / Play descriptions one time per submission. The description and review notes now use FLOOR phrasing ("9,400+ lakes") precisely so routine refreshes can't invalidate them (2026-07-26 — the exact figures drifted twice in one week); if you ever restore exact figures, re-fetch all three fields from `/api/mn/status` immediately before paste. The in-app paywall does NOT show per-state lake counts (deliberately removed 2026-05-27).
 
 Variants to swap in if rankings shift:
 
@@ -99,7 +100,7 @@ WHAT YOU CAN DO
 DATA COVERED
 
 • 45 US states and 5 Canadian provinces (Ontario, British Columbia, Manitoba, Saskatchewan, Alberta), assembled from each fish and wildlife agency's published surveys, forecasts, and stocking records.
-• Minnesota — free, no subscription: 9,490 lakes, 23,618 surveys, 396,371 catch records (MN DNR).
+• Minnesota — free, no subscription: 9,400+ lakes, 23,000+ surveys, 396,000+ catch records (MN DNR).
 • Every other state and province is included in the LakeLore All-States subscription — and browsable in preview before you subscribe.
 
 SPECIES TRACKED
@@ -114,12 +115,18 @@ WHAT IT IS NOT
 
 LakeLore is informational only. It does not grant access to any water, replace any fishing regulation, or guarantee anything about the fish you'll catch. Always consult the relevant state agency for the authoritative current rules and licensing requirements.
 
+SUBSCRIPTION
+
+LakeLore All-States — US$4.99 per year, auto-renewing. Payment is charged to your App Store account at confirmation. The subscription renews automatically unless cancelled at least 24 hours before the end of the current period; manage or cancel in your device's subscription settings.
+Terms of Use: https://www.lakeloreapp.com/terms
+Privacy Policy: https://www.lakeloreapp.com/privacy
+
 —
 
 A field guide, quietly assembled. Free to use, free to share.
 ```
 
-(About 2,100 chars. Both stores accept up to 4,000.)
+(About 2,600 chars. Both stores accept up to 4,000. The SUBSCRIPTION block satisfies Apple 3.1.2's metadata requirement — name, duration, price, auto-renew terms, and functional ToU + privacy links in the description; for Play, swap "App Store account" → "Google Play account" when pasting.)
 
 ---
 
@@ -164,7 +171,7 @@ This auto-answers Apple's export compliance prompt with "uses standard encryptio
 
 ### App Privacy questionnaire (App Store Connect → "App Privacy")
 
-With the LakeLore All-States subscription enabled, two categories must be declared:
+FOUR categories must be declared (2026-07-26 red-team pass — the feedback form and Sentry's own bundled manifest each added one):
 
 - Contact Info: ❌
 - Health & Fitness: ❌
@@ -172,20 +179,21 @@ With the LakeLore All-States subscription enabled, two categories must be declar
 - Location: ❌
 - Sensitive Info: ❌
 - Contacts: ❌
-- User Content: ❌
+- **User Content: ✅ Customer Support** — Linked to user: ❌. Used for tracking: ❌. Purpose: **App Functionality**. *(The in-app "Report data issue" feedback form: free-text message + lake/species/version context, stored keyed to the anonymous UUID. Was falsely declared ❌ until 2026-07-26.)*
 - Browsing History: ❌
-- Search History: ❌
+- Search History: ❌ *(searches ride request URLs only; Sentry breadcrumbs strip query strings as of 1.1.1 — src/sentry.ts beforeBreadcrumb)*
 - **Identifiers: ✅ User ID** — Linked to user: ❌. Used for tracking: ❌. Purpose: **App Functionality**.
 - **Purchases: ✅ Purchase History** — Linked to user: ❌. Used for tracking: ❌. Purpose: **App Functionality**.
-- Usage Data: ❌ *(server logs are 30-day rate-limit data, not user analytics — see privacy policy)*
-- **Diagnostics: ✅ Crash Data, Performance Data** — Linked to user: ❌. Used for tracking: ❌. Purpose: **App Functionality**. *(Sentry — diagnostic crash and performance reporting; declared in `app.json` `ios.privacyManifests.NSPrivacyCollectedDataTypes`.)*
+- Usage Data: ❌ *(no product analytics SDK; Sentry session/performance telemetry is declared under Diagnostics → Performance Data)*
+- **Diagnostics: ✅ Crash Data, Performance Data, Other Diagnostic Data** — Linked to user: ❌. Used for tracking: ❌. Purpose: **App Functionality**. *(Sentry — its own bundled PrivacyInfo.xcprivacy declares OtherDiagnosticData, and Apple aggregates bundled manifests at upload, so the questionnaire must match; all three are in `app.json` `ios.privacyManifests`.)*
 - Other Data: ❌
 
 The User ID is the anonymous device-generated UUID we use to look up entitlement
 state. Purchase History is the transaction ID + subscription state RevenueCat
-returns; we never receive payment method. Crash Data and Performance Data are
-captured by Sentry for diagnostic purposes only — neither is linked to a user
-profile, neither is used for tracking.
+returns; we never receive payment method. Crash/Performance/Other Diagnostic Data
+are captured by Sentry for diagnostic purposes only. "Linked to user" is ❌
+everywhere because the UUID is tied to no account, name, or email anywhere in the
+system — written rationale in case of a post-approval audit.
 
 If/when you turn on product analytics, return here and re-declare — that would
 add Usage Data ✅ (Product Interaction, App Functionality), still unlinked /
@@ -221,8 +229,10 @@ Declared data types (all: **collected**, NOT shared, NOT processed ephemerally, 
 | Personal info → **User IDs** | Anonymous device-generated UUID (`X-User-Id`) used for entitlement lookup. Not linked to a real identity. |
 | Financial info → **Purchase history** | Subscription transaction state from RevenueCat/Google. Never the payment method. |
 | App info and performance → **Crash logs** + **Diagnostics** | Sentry crash and performance reports. |
+| Messages → **Other in-app messages** | The "Report data issue" feedback form: free-text message + lake/species/version context. Collected, not shared, **OPTIONAL** (user-initiated), purpose App functionality. *(Added 2026-07-26 — was falsely omitted.)* |
+| Device or other IDs → **Device or other IDs** | Sentry's per-install installation ID (SDK-generated) + the RevenueCat anonymous app-user ID. Collected, not shared, required, App functionality. *(Added 2026-07-26.)* |
 
-Everything else (location, contacts, messages, photos, browsing, health, etc.): **not collected**.
+Everything else (location, contacts, photos, browsing, health, etc.): **not collected**. *(Messages moved OUT of this line 2026-07-26 — the feedback form is one.)*
 
 ### Government regulations
 
@@ -274,14 +284,16 @@ Real device screenshots also work — Expo Go renders the app screens identicall
 
 Aim for editorial framing: include search results that *say something*. e.g. WAE results sorted by stocking density in MN, with a stripe of high-density lakes at the top.
 
-1. **State Select** — the opening screen: the pan/zoom US + Canada atlas map with the A-Z state list below.
-2. **Search · List view** — Minnesota, Walleye, sorted by CPUE. Shows the brand on a results page.
-3. **Search · Scatter view** — same query, switched to scatter. Visual variety + makes the data look rich.
-4. **Search · Filters open** — Advanced Filters modal, partly filled in. Shows depth of features.
+*(Rewritten 2026-07-26 for the 1.1.1 UI — the old list described the pre-Measure, pre-map-selector app and a standalone glossary modal that no longer exists. Screenshots on disk are from May and MUST be recaptured on 1.1.1 before submission: Apple 2.3.3.)*
+
+1. **State Select** — the pan/zoom US + Canada atlas map with the A-Z state list below.
+2. **Search · List view** — Minnesota, Walleye, Measure = Abundance. Shows the brand on a results page.
+3. **Search · Measure picker open** — the Abundance / Avg Size / Stocking Impact / Presence selector with gear/source options. The data model IS the product; show it.
+4. **Search · Scatter view** — same query, switched to scatter. Visual variety + makes the data look rich.
 5. **Lake Detail · CPUE chart** — pick a lake with several decades of survey data and multiple gears (e.g. Lake Mille Lacs in MN, or Lake Oahe in SD). The line chart sells the longitudinal-data angle.
 6. **Lake Detail · Stocking history** — same or different lake, switched to the stocking tab, with the adults/100ac overlay visible. The single most distinctive feature.
-7. **County map picker** — shows the regional/local-knowledge angle.
-8. **Glossary modal** — proves the data is documented and credible.
+7. **Paywall** — the All-States screen with price + value props. Reviewers of subscription apps look for it; users deserve to see the ask up front.
+8. **County map picker** — shows the regional/local-knowledge angle. (Optional 9th: About & Sources with the glossary — now part of AboutScreen, reached from Search's "ⓘ About & Glossary".)
 
 Adjust to taste. **Order matters** in the App Store — the first 1–2 are visible without swiping, so put the strongest screen first.
 
@@ -293,21 +305,23 @@ LakeLore is a free Minnesota fishing-lake reference. The optional LakeLore All-S
 To test core functionality without subscribing:
 1. Launch the app.
 2. Tap Minnesota on the state map (gold fill / "FREE" chip in the list below the map).
-3. The full Minnesota dataset (9,490 lakes, 23,618 surveys, 396,371 catch records, from MN DNR public records) is browsable: search by species, county, gear, year, etc., and tap any lake to see catch-rate-over-time and stocking-history charts.
+3. A county map opens automatically — tap "Done" to search statewide, or tap one or more counties first.
+4. The full Minnesota dataset (9,400+ lakes, 23,000+ surveys, 396,000+ catch records, from MN DNR public records) is browsable: pick a species and a Measure (Abundance / Avg Size / Stocking Impact / Presence), filter by county, gear, year, etc., and tap any lake to see catch-rate-over-time and stocking-history charts.
 
 To test the subscription / paywall flow:
-1. Tap any non-Minnesota state (e.g. North Dakota). It opens in PREVIEW: every metric and chart is visible, but lake names, counties, acreage, and coordinates are withheld (server-side) until subscribed. Tapping "Unlock" in the preview banner opens the paywall modal.
-2. The paywall displays subscription title, length (1 year), price (auto-pulled from the store, currency-localized), auto-renewal terms, and links to Terms of Use + Privacy Policy as required by App Store Review guideline 3.1.2(a).
+1. Tap any non-Minnesota state (e.g. Wisconsin). It opens in PREVIEW: every metric and chart is visible, but lake names, counties, acreage, and coordinates are withheld (server-side) until subscribed. Tapping "Unlock" in the preview banner opens the paywall modal.
+2. The paywall displays subscription title, length (1 year), price (auto-pulled from the store, currency-localized; static US$4.99/yr terms shown if the store is unreachable), auto-renewal terms, and links to Terms of Use + Privacy Policy as required by App Store Review guideline 3.1.2(a).
 3. Use a sandbox Apple ID (App Store Connect → Users and Access → Sandbox) to complete a test purchase. After purchase, all paid states unlock.
-4. "Restore purchases" is available both inside the paywall and on the About & Sources screen.
-5. "Manage subscription" (visible on About & Sources after purchase) opens the native iOS subscription-management sheet via StoreKit.
+4. "Restore purchases" is available both inside the paywall and on the About & Sources screen; store/network failures show a retry message, never a false "no subscription found".
+5. "Manage subscription" (always visible on About & Sources) opens the native iOS subscription-management sheet via StoreKit.
 
 Data sources: every state and provincial fish and wildlife agency is credited on the in-app "About & Sources" screen, accessible from the State Select screen via the "ⓘ ABOUT" badge. The app is independent and not affiliated with any agency; all data is sourced from public records published by each agency.
 
 Privacy:
-- Anonymous device UUID (X-User-Id header): collected for entitlement lookup. Not linked to user identity. Not used for tracking. Declared in Privacy Manifest as NSPrivacyCollectedDataTypeUserID, purpose: App Functionality.
+- Anonymous device UUID (X-User-Id header, plus X-App-Version/X-Update-Id version headers): collected for entitlement lookup and fleet version telemetry. Not linked to user identity. Not used for tracking. Declared in Privacy Manifest as NSPrivacyCollectedDataTypeUserID, purpose: App Functionality.
 - Purchase History (RevenueCat transaction state): collected for entitlement enforcement. Not linked to identity. Not used for tracking. Purpose: App Functionality.
-- Crash + Performance Data (Sentry): collected for diagnostic purposes. Not linked to identity. Not used for tracking. Purpose: App Functionality.
+- Crash + Performance + Other Diagnostic Data (Sentry): collected for diagnostic purposes. Not linked to identity. Not used for tracking. Purpose: App Functionality. Network breadcrumbs are query-string-stripped client-side.
+- Customer Support (in-app "Report data issue" form): optional, user-initiated free-text feedback with lake/species/app-version context, keyed to the anonymous UUID. Declared as NSPrivacyCollectedDataTypeCustomerSupport, purpose: App Functionality.
 
 Privacy policy: https://www.lakeloreapp.com/privacy
 Terms of use: https://www.lakeloreapp.com/terms
@@ -316,17 +330,21 @@ Support: https://www.lakeloreapp.com/support (publishes support@lakeloreapp.com)
 
 (Update sandbox tester credentials if Apple asks; we provision them per-submission rather than committing them here.)
 
-### Google Play Test Instructions (Play Console → Store presence → App content → Target audience and content)
+### Google Play Test Instructions (Play Console → **App content → App access**; duplicate into the release's reviewer notes)
+
+*(Field corrected 2026-07-26 — the old target, "Target audience and content", is the children/age questionnaire; instructions pasted there are never seen by the reviewer.)*
 
 ```
-LakeLore is a free Minnesota fishing-lake reference. Optional LakeLore All-States annual subscription ($4.99/yr, auto-renewing) unlocks the other 44 US states and 5 Canadian provinces active in the app.
+All functionality is available without any login or special access. LakeLore is a free Minnesota fishing-lake reference. Optional LakeLore All-States annual subscription ($4.99/yr, auto-renewing) unlocks the other 44 US states and 5 Canadian provinces active in the app; those states open in PREVIEW without subscribing.
 
 To test:
 1. Open the app — Minnesota is free, no sign-in required.
-2. Tap Minnesota on the map; search any species (e.g. Walleye); tap any lake to see charts.
-3. To test the paywall: tap a non-Minnesota state. It opens in PREVIEW — all metrics and charts are visible but lake names/locations are withheld until subscribed. Tap "Unlock" in the preview banner to open the paywall (auto-renew terms + Terms / Privacy links shown). Use a license-tester Google account (Play Console → Setup → License testing) for test purchases at $0.
+2. Tap Minnesota on the map. A county map opens automatically — tap "Done" to search statewide.
+3. Search any species (e.g. Walleye); tap any lake to see charts.
+4. To test the paywall: tap a non-Minnesota state. It opens in PREVIEW — all metrics and charts are visible but lake names/locations are withheld until subscribed. Tap "Unlock" in the preview banner to open the paywall (auto-renew terms + Terms / Privacy links shown). Use a license-tester Google account (Play Console → Setup → License testing) for test purchases at $0.
+5. "Restore purchases" and "Manage subscription" are both on the About & Sources screen (ⓘ ABOUT badge on the state map, or "About & Glossary" from Search).
 
-No account / login required. Anonymous device UUID identity. The app collects no contact info, no location, no product analytics — only an anonymous identifier (for entitlement lookup), purchase state (for subscription enforcement), and crash/performance data (Sentry, diagnostic).
+No account / login required. Anonymous device UUID identity. The app collects no contact info and no location — only an anonymous identifier (entitlement lookup), purchase state (subscription enforcement), crash/performance data (Sentry, diagnostic), and optional user-initiated feedback messages ("Report data issue" form).
 
 Privacy policy: https://www.lakeloreapp.com/privacy
 Support: support@lakeloreapp.com

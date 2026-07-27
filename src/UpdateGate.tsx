@@ -52,7 +52,12 @@ async function checkClientConfig(): Promise<Verdict> {
     clearTimeout(timer);
     if (!res.ok) return { kind: 'ok' };
     const cfg: ClientConfig = await res.json();
-    if (Array.isArray(cfg.killedVersions) && cfg.killedVersions.includes(CURRENT_VERSION)) {
+    // Kill entries match either "1.1.1" (whole version) or "1.1.1+24"
+    // (one specific build — lets a bad build 25 die while the in-review
+    // build 26 on the same version survives; store red-team #15).
+    const buildTag = `${CURRENT_VERSION}+${Application.nativeBuildVersion ?? '0'}`;
+    if (Array.isArray(cfg.killedVersions)
+        && (cfg.killedVersions.includes(CURRENT_VERSION) || cfg.killedVersions.includes(buildTag))) {
       return { kind: 'killed', message: cfg.message ?? null };
     }
     if (cfg.minVersion && cmpVersions(CURRENT_VERSION, cfg.minVersion) < 0) {

@@ -28,13 +28,17 @@ git log --oneline -5
 curl -s --max-time 8 https://lake-fish-api.fly.dev/healthz
 curl -s https://lake-fish-api.fly.dev/api/mn/status | python3 -m json.tool
 
-# 4. Refresh lake counts in store description (NE drifts the most)
-for s in mn sd nd ia ne; do
-  echo -n "$s: "
-  curl -s https://lake-fish-api.fly.dev/api/$s/status \
-    | python3 -c "import json,sys;d=json.load(sys.stdin);print(d.get('lakes'))"
-done
-# Compare against STORE_LISTING.md "DATA COVERED" list. Update if any drifted.
+# 4. Verify the MN floor claims still hold (description + review notes use
+#    "9,400+/23,000+/396,000+" floor phrasing precisely so refreshes can't
+#    invalidate them — this check only fails if data ever SHRINKS below a floor)
+curl -s https://lake-fish-api.fly.dev/api/mn/status | python3 -c "
+import json,sys; d=json.load(sys.stdin)
+assert d['lakes']>=9400 and d['surveys']>=23000 and d['catches']>=396000, d
+print('MN floors OK:', d)"
+# 4b. Generated app config is current (doc-check also enforces this weekly)
+git diff --quiet src/generated/states.ts || echo "WARN: states.ts uncommitted drift"
+# 4c. Verify the paywall test state in the review notes serves (currently WI)
+curl -s https://lake-fish-api.fly.dev/api/wi/status | python3 -m json.tool | head -3
 
 # 5. Confirm marketing-site legal pages are live and canonical
 for u in / /privacy /terms /support; do
@@ -159,8 +163,8 @@ App Store Connect → My Apps → LakeLore → App Store tab.
 4. **App Review Information** (left sidebar):
    - Sign-in required: No (anonymous device UUID identity).
    - Demo account: Not applicable.
-   - **Notes for the App Reviewer** (paste from `STORE_LISTING.md` § "Apple Review notes" if present, otherwise: "LakeLore is a free Minnesota fishing-lake reference with an optional LakeLore All-States annual subscription that unlocks four additional states (ND, SD, NE, IA). No account required — identity is an anonymous on-device UUID. To test the paywall, please use a sandbox Apple ID (App Store Connect → Users and Access → Sandbox). To test core functionality without subscribing, tap Minnesota on the first screen.").
-5. **App Privacy** (separate left-sidebar item): confirm answers match `STORE_LISTING.md` § "App Privacy questionnaire" — Identifiers ✅, Purchases ✅, Diagnostics ✅, everything else ❌.
+   - **Notes for the App Reviewer** (paste from `STORE_LISTING.md` § "Apple Review notes" — that section is the ONLY source; if it is missing, STOP and restore it. A stale inline fallback here once said "four additional states" two eras after the all-states launch — never paste from memory.)
+5. **App Privacy** (separate left-sidebar item): confirm answers match `STORE_LISTING.md` § "App Privacy questionnaire" — Identifiers ✅, Purchases ✅, Diagnostics ✅ (Crash + Performance + Other Diagnostic Data), **User Content ✅ (Customer Support — the feedback form)**, everything else ❌.
 6. **Export Compliance**: already handled by `ITSAppUsesNonExemptEncryption: false` in `app.json`. No questions asked.
 7. **Submit for Review.** Expected review time: 24–72 hours for first submission.
 
@@ -168,13 +172,29 @@ App Store Connect → My Apps → LakeLore → App Store tab.
 
 ## 6. Submit to Play Store
 
-Play Console:
+**First submission only — App content checklist (2026-07-26; ALL of these gate the release and none were previously documented).** Play Console → Policy → App content:
+
+- [ ] **Privacy policy URL**: `https://www.lakeloreapp.com/privacy` (Console field, separate from the in-app link).
+- [ ] **App access**: "All functionality is available without any login or special access" + paste the test instructions from `STORE_LISTING.md` § "Google Play Test Instructions".
+- [ ] **Ads**: No (the listing markets "No ads").
+- [ ] **Content rating** questionnaire → Everyone.
+- [ ] **Target audience**: 18+ only (never any group under 13 — that forces Designed-for-Families compliance).
+- [ ] **News app**: No.
+- [ ] **Data safety**: fill from `STORE_LISTING.md` § "Data Safety form" (FIVE type rows since 2026-07-26, incl. Messages + Device/other IDs) and SUBMIT the form, not just save a draft.
+- [ ] **Government apps**: No. **Financial features**: No. **Advertising ID**: No (verify post-build: `bundletool dump manifest | grep -i ad_id` — if present, block it in app.json or flip the answer).
+- [ ] **Store listing assets**: ≥2 Android phone screenshots (1080×1920+, captured on Android — `screenshots/android-phone/` is currently EMPTY), 512×512 32-bit RGBA icon (export from `assets/icon.png` — the 1024 source is RGB, Play's field requires alpha), feature graphic (exists, correct).
+
+Also first-submission-only: the FIRST AAB must be uploaded through the Console UI (Internal testing → Create new release); `eas submit` works from the second upload onward. Then verify Billing Library ≥8 in the built AAB before the Aug 31 2026 deadline (`bundletool dump manifest`, or check the RevenueCat release notes for the pinned version).
+
+Then, per release:
 
 1. **Production** → Releases → Create new release.
 2. Upload the AAB (or promote from Internal Testing if it's already up).
-3. **Release notes**: paste `CHANGELOG.md` v1.X.Y store-release-notes block.
+3. **Release notes**: paste `CHANGELOG.md` v1.X.Y store-release-notes block (swap "App Store account" → "Google Play account" in the SUBSCRIPTION line if pasting the description).
 4. **Review release** → Save and review.
 5. **Start rollout to Production.**
+
+> ⚠️ **While any build is in review (either store): do NOT set `LAKELORE_MIN_APP_VERSION` or `LAKELORE_KILLED_VERSIONS`** on lake-fish-api — the kill screen would blank the app for the reviewer, and the store link can't offer the in-review version. Kill-list entries may target a single build as `1.1.1+24`.
 
 Expected review time: a few hours for routine submissions, up to 7 days for first submission and policy-flagged updates.
 
@@ -205,5 +225,5 @@ Update `LAUNCH.md` "Already shipped" list with the release date and version numb
 - **EAS build fails on Sentry upload**. `SENTRY_ALLOW_FAILURE: true` in eas.json should let it pass. If it doesn't, see `~/APP_OPS.md` "Open items deferred" #1.
 - **TestFlight build doesn't show up after `submit:ios`**. ASC processing varies 5–25 min. If >2 hours, log into ASC and check Activity tab for upload errors.
 - **Sandbox purchase says "Cannot connect to iTunes Store"**. You're signed into a real Apple ID. Sign out in Settings → Media & Purchases, leave it signed out, attempt purchase; sandbox prompt should appear.
-- **Play Store rejects AAB**. Most common cause is missing target-API-level. EAS handles this; if it recurs, run `eas build:inspect` on the failed build.
+- **Play Store rejects AAB / first submission fails**. Target-API-level is NOT the likely cause (Expo SDK 54 targets API 36). The real first-submission failure modes, in order: (1) the FIRST-EVER bundle must be uploaded manually via Play Console → Internal testing → Create release (the Play Developer API refuses an app with no prior release — `eas submit` works from the second upload on); (2) unfilled App content forms (see the checklist in §6); (3) missing Android phone screenshots; (4) versionCode collision — run `eas build:version:get -p android` and compare against App bundle explorer before building.
 - **"App was rejected" email from Apple**. Read the Resolution Center notes carefully — most rejections are paywall-disclosure quibbles (the in-app paywall already covers length, price, auto-renew, terms, privacy per Apple's required list). If asked to clarify the relationship with state DNRs, point them at the in-app About / Sources screen and the explicit "Independence" callout.

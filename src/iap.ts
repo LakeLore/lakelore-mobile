@@ -134,16 +134,18 @@ export async function purchasePackage(
 }
 
 /**
- * Restore a prior purchase (e.g. after reinstall on a new device). Returns
- * true if the user now has the all-states entitlement.
+ * Restore a prior purchase (e.g. after reinstall on a new device).
+ * Tri-state (2026-07-26, store red-team #12): 'error' means the store/RC was
+ * unreachable — callers must NOT present that as "no subscription found"
+ * (the classic "Restore doesn't work" rejection on a flaky network).
  */
-export async function restorePurchases(): Promise<boolean> {
-  if (!isIapConfigured()) return false;
+export async function restorePurchases(): Promise<'restored' | 'none' | 'error'> {
+  if (!isIapConfigured()) return 'error';
   try {
     const info = await Purchases.restorePurchases();
-    return !!info.entitlements.active[ALL_STATES_ENTITLEMENT];
+    return info.entitlements.active[ALL_STATES_ENTITLEMENT] ? 'restored' : 'none';
   } catch (e) {
     if (__DEV__) console.warn('[iap] restorePurchases failed:', e);
-    return false;
+    return 'error';
   }
 }
