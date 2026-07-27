@@ -17,6 +17,7 @@ import { AppState, Linking, Modal, Platform, Pressable, Text, View } from 'react
 import * as Application from 'expo-application';
 import { API_BASE_URL } from './api';
 import { colors, text, space } from './lakelore-rn/theme';
+import { cmpVersions } from './version';
 
 const STORE_URL =
   Platform.OS === 'android'
@@ -25,16 +26,6 @@ const STORE_URL =
 
 const CURRENT_VERSION = Application.nativeApplicationVersion ?? '0.0.0';
 
-// "1.2.10" vs "1.2.9" → 1. Missing segments count as 0.
-function cmpVersions(a: string, b: string): number {
-  const pa = a.split('.').map(n => parseInt(n, 10) || 0);
-  const pb = b.split('.').map(n => parseInt(n, 10) || 0);
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const d = (pa[i] ?? 0) - (pb[i] ?? 0);
-    if (d !== 0) return d < 0 ? -1 : 1;
-  }
-  return 0;
-}
 
 interface ClientConfig {
   minVersion: string | null;

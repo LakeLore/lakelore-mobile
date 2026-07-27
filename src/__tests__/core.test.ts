@@ -49,3 +49,21 @@ describe('client signature', () => {
     expect(hmacSha256Hex('test-user')).toBe('1ce404c5ac0d285d8ea8f93ffb4a19a1');
   });
 });
+
+// Kill-switch version comparison (UpdateGate) — the logic that decides
+// whether a shipped build gets nudged or blocked. A wrong comparison here
+// either blanks the app for current users or lets a killed build live.
+import { cmpVersions } from '../version';
+
+describe('cmpVersions', () => {
+  it('orders semantic versions numerically, not lexically', () => {
+    expect(cmpVersions('1.2.10', '1.2.9')).toBe(1);
+    expect(cmpVersions('1.1.1', '1.1.1')).toBe(0);
+    expect(cmpVersions('1.1.1', '1.2.0')).toBe(-1);
+  });
+  it('treats missing segments as zero', () => {
+    expect(cmpVersions('1.2', '1.2.0')).toBe(0);
+    expect(cmpVersions('1.2', '1.2.1')).toBe(-1);
+    expect(cmpVersions('2', '1.9.9')).toBe(1);
+  });
+});

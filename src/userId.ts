@@ -24,8 +24,24 @@ const STORAGE_KEY = 'lakelore.userId';
 
 let cached: string | null = null;
 
-/** Random v4 UUID. Math.random is fine here — this isn't a secret. */
+/**
+ * Random v4 UUID. Crypto-strong when the expo-crypto native module is in the
+ * binary (build 25+); Math.random fallback for OTA bundles running on older
+ * binaries (2026-07-27, store red-team aside — the old comment claimed "this
+ * isn't a secret", but the UUID is effectively a bearer credential for paid
+ * entitlement, so a guessable PRNG was a collision/guessing surface).
+ * NATIVE MODULE: probed before require, same lesson as the share card
+ * (CLAUDE.md "Important constraints") — never bare-require a codegen module
+ * on an OTA-to-older-binary path.
+ */
 function generateUuidV4(): string {
+  try {
+    if ((globalThis as { expo?: { modules?: Record<string, unknown> } }).expo?.modules?.ExpoCrypto) {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const Crypto = require('expo-crypto') as { randomUUID: () => string };
+      return Crypto.randomUUID();
+    }
+  } catch { /* fall through to the PRNG path */ }
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
     const r = (Math.random() * 16) | 0;
     const v = c === 'x' ? r : (r & 0x3) | 0x8;
