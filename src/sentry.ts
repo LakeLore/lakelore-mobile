@@ -51,8 +51,14 @@ export function initSentry(): void {
       return event;
     },
     beforeBreadcrumb: (breadcrumb) => {
-      if ((breadcrumb.category === 'fetch' || breadcrumb.category === 'xhr' || breadcrumb.category === 'http') && breadcrumb.data?.url) { // 'http' = native-origin breadcrumbs (bug-hunt #8; verify natives route through this hook on the build-25 TestFlight pass)
-        breadcrumb.data.url = String(breadcrumb.data.url).split('?')[0];
+      if ((breadcrumb.category === 'fetch' || breadcrumb.category === 'xhr' || breadcrumb.category === 'http') && breadcrumb.data) {
+        // Native-origin 'http' breadcrumbs carry the query SEPARATELY in
+        // http.query/http.fragment (round-2 A6 — stripping only the url left
+        // the search-terms leak wide open on the native path). Verify on the
+        // build-25 TestFlight pass.
+        if (breadcrumb.data.url) breadcrumb.data.url = String(breadcrumb.data.url).split('?')[0];
+        delete breadcrumb.data['http.query'];
+        delete breadcrumb.data['http.fragment'];
       }
       return breadcrumb;
     },

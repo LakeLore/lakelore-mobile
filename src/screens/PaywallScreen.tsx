@@ -278,9 +278,6 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
   );
 }
 
-function numWord(n: number): string {
-  return ['zero','one','two','three','four','five','six','seven','eight','nine'][n] ?? String(n);
-}
 
 // Contextual headline (D5): callers historically pass triggeredFrom in mixed
 // formats — a display label ("Wisconsin") or a raw state key ("wi"). Resolve

@@ -36,7 +36,7 @@ export async function getLake(state: string, lakeId: string | number): Promise<{
     if (!raw) return null;
     const entry = JSON.parse(raw);
     if (entry?.ts && Date.now() - entry.ts > MAX_AGE_MS) {
-      AsyncStorage.removeItem(keyFor(state, lakeId)).catch(() => {}); // free the LRU slot (bug-hunt #10)
+      AsyncStorage.removeItem(keyFor(state, lakeId)).catch(() => {}); // free the stored payload (index entry ages out naturally)
       return null;
     }
     return entry;

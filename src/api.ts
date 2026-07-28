@@ -192,14 +192,25 @@ export async function submitFeedback(payload: FeedbackPayload): Promise<void> {
   if (OTA_UPDATE_ID) headers['X-Update-Id'] = OTA_UPDATE_ID;
   const token = getSessionToken(API_BASE_URL);
   if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE_URL}/api/feedback`, {
-    method: 'POST',
-    signal: controller.signal,
-    headers,
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/api/feedback`, {
+      method: 'POST',
+      signal: controller.signal,
+      headers,
     // updateId identifies the exact OTA bundle the report came from (T1.4);
     // callers can override but never need to set it.
-    body: JSON.stringify({ updateId: OTA_UPDATE_ID, ...payload }),
-  }).finally(() => clearTimeout(timer));
+      body: JSON.stringify({ updateId: OTA_UPDATE_ID, ...payload }),
+    });
+  } catch (err) {
+    // Raw AbortError toasts as "Aborted" (round-2 A2) — translate.
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error('Request timed out — check your connection');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new Error(body?.error ?? `Server error (${res.status})`);
