@@ -27,7 +27,12 @@ let _inflight: Promise<void> | null = null;
 // with it the per-launch App Attest attestation).
 function hydrate(): Promise<void> {
   if (!_hydrating) {
-    _hydrating = AsyncStorage.getItem(STORE_KEY)
+    // 3 s race guard (bug-hunt #7): a never-settling native read must not
+    // permanently gate every refresh decision behind an unresolved promise.
+    _hydrating = Promise.race([
+      AsyncStorage.getItem(STORE_KEY),
+      new Promise<string | null>(resolve => setTimeout(() => resolve(null), 3000)),
+    ])
       .then(raw => {
         if (raw) {
           const disk = JSON.parse(raw) as { token?: string; exp?: number };

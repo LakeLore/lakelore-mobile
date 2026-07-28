@@ -69,7 +69,12 @@ export function useEntitlement(): EntitlementState {
       setHasAllStates(final);
       setLoading(false);
     }
-    AsyncStorage.setItem(ENTITLEMENT_CACHE_KEY_V2, JSON.stringify({ v: final, ts: Date.now() })).catch(() => {});
+    // Don't persist a false produced by a TOTAL outage (bug-hunt #11): server
+    // unreachable AND cold SDK -> final=false would overwrite a known-good
+    // true with a fresh-looking timestamp.
+    if (serverResult !== null || sdkResult === true) {
+      AsyncStorage.setItem(ENTITLEMENT_CACHE_KEY_V2, JSON.stringify({ v: final, ts: Date.now() })).catch(() => {});
+    }
     AsyncStorage.removeItem(ENTITLEMENT_CACHE_KEY).catch(() => {}); // retire the v1 key
   }, []);
 
@@ -101,7 +106,7 @@ export function useEntitlement(): EntitlementState {
         const next = !!info.entitlements.active[ALL_STATES_ENTITLEMENT];
         setHasAllStates(next);
         setLoading(false);
-        AsyncStorage.setItem(ENTITLEMENT_CACHE_KEY, next ? '1' : '0').catch(() => {});
+        AsyncStorage.setItem(ENTITLEMENT_CACHE_KEY_V2, JSON.stringify({ v: next, ts: Date.now() })).catch(() => {}); // v2 (bug-hunt #3 — the listener still wrote the retired v1 key, so a post-purchase cold launch primed LOCKED)
         // Fire-and-forget prime of the server's per-user entitlement cache.
         // Server caches per-user for 5 min; without this prime, the user can
         // buy a subscription, return to a paid-state search, and get bounced

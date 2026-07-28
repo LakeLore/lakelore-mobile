@@ -177,16 +177,29 @@ export interface FeedbackPayload {
 
 export async function submitFeedback(payload: FeedbackPayload): Promise<void> {
   const userId = await getUserId();
+  // Full header set (bug-hunt #2): a bare X-User-Id POST counted as
+  // "unsigned pre-1.1.1 fleet" in the server's drain telemetry and would 401
+  // the day LAKELORE_REQUIRE_TOKEN flips. Timeout (bug-hunt #6): a bare RN
+  // fetch can hang for minutes on dead air, wedging the Send button.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-User-Id': userId,
+    'X-User-Sig': hmacSha256Hex(userId),
+    'X-App-Version': APP_VERSION,
+  };
+  if (OTA_UPDATE_ID) headers['X-Update-Id'] = OTA_UPDATE_ID;
+  const token = getSessionToken(API_BASE_URL);
+  if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(`${API_BASE_URL}/api/feedback`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-User-Id': userId,
-    },
+    signal: controller.signal,
+    headers,
     // updateId identifies the exact OTA bundle the report came from (T1.4);
     // callers can override but never need to set it.
     body: JSON.stringify({ updateId: OTA_UPDATE_ID, ...payload }),
-  });
+  }).finally(() => clearTimeout(timer));
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new Error(body?.error ?? `Server error (${res.status})`);

@@ -39,8 +39,10 @@ async function checkClientConfig(): Promise<Verdict> {
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8_000);
-    const res = await fetch(`${API_BASE_URL}/api/client-config`, { signal: controller.signal });
-    clearTimeout(timer);
+    let res;
+    try {
+      res = await fetch(`${API_BASE_URL}/api/client-config`, { signal: controller.signal });
+    } finally { clearTimeout(timer); }
     if (!res.ok) return { kind: 'ok' };
     const cfg: ClientConfig = await res.json();
     // Kill entries match either "1.1.1" (whole version) or "1.1.1+24"
@@ -87,12 +89,17 @@ export function UpdateGate() {
   const body = verdict.message ?? defaultCopy;
 
   if (verdict.kind === 'killed') {
+    // Native Modal, not an in-tree overlay (bug-hunt #4): RN Modals present in
+    // their own native window, so an absolute View could be covered by any of
+    // the app's nine open Modals (paywall, pickers...) until the user closed
+    // them — defeating "blocking".
     return (
+      <Modal visible animationType="fade" onRequestClose={() => { /* blocking */ }}>
       <View
         style={{
-          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          flex: 1,
           backgroundColor: colors.paper, alignItems: 'center', justifyContent: 'center',
-          padding: space.xl, zIndex: 1000,
+          padding: space.xl,
         }}
         accessibilityViewIsModal
       >
@@ -112,6 +119,7 @@ export function UpdateGate() {
           <Text style={[text.labelM, { color: colors.paper }]}>UPDATE NOW</Text>
         </Pressable>
       </View>
+      </Modal>
     );
   }
 

@@ -3,7 +3,7 @@
   "version": "1.1.1",
   "main": "index.ts",
   "scripts": {
-    "ota": "node -e \"const v=require('./app.json').expo.version;console.log('\\n=== OTA target runtimeVersion: '+v+' — ONLY devices on app version '+v+' receive this update ===\\n')\" && tsc --noEmit && jest --silent && eas update --branch production",
+    "ota": "node -e \"const v=require('./app.json').expo.version;console.log('\\n=== OTA target runtimeVersion: '+v+' \u2014 ONLY devices on app version '+v+' receive this update ===\\n')\" && tsc --noEmit && jest --silent && eas update --branch production",
     "start": "expo start --dev-client",
     "start:expo-go": "expo start",
     "build:dev:ios": "eas build --profile development --platform ios",
@@ -40,8 +40,6 @@
     "expo-status-bar": "~3.0.9",
     "expo-store-review": "~9.0.9",
     "expo-updates": "~29.0.17",
-    "jest": "~29.7.0",
-    "jest-expo": "~54.0.17",
     "js-sha256": "^0.11.1",
     "react": "19.1.0",
     "react-native": "0.81.5",
@@ -62,7 +60,9 @@
     "d3-geo": "^3.1.1",
     "d3-path": "^3.1.0",
     "topojson-client": "^3.1.0",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "jest": "~29.7.0",
+    "jest-expo": "~54.0.17"
   },
   "private": true,
   "jest": {

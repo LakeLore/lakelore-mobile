@@ -51,7 +51,7 @@ export function initSentry(): void {
       return event;
     },
     beforeBreadcrumb: (breadcrumb) => {
-      if ((breadcrumb.category === 'fetch' || breadcrumb.category === 'xhr') && breadcrumb.data?.url) {
+      if ((breadcrumb.category === 'fetch' || breadcrumb.category === 'xhr' || breadcrumb.category === 'http') && breadcrumb.data?.url) { // 'http' = native-origin breadcrumbs (bug-hunt #8; verify natives route through this hook on the build-25 TestFlight pass)
         breadcrumb.data.url = String(breadcrumb.data.url).split('?')[0];
       }
       return breadcrumb;

@@ -254,7 +254,15 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
       // The scatter is ONLY EVER abundance-vs-size — a row with no size metric
       // has nothing to plot on X and is dropped. There is NO survey-year
       // fallback (OK bug), so the axes can never become "catch rate vs year".
-      genericUsesWeight = results.some(r => r.cpue != null && r.average_weight != null && r.average_weight > 0);
+      {
+      // Majority coverage, mirroring the server's /measures sizeField rule
+      // (bug-hunt #1: .some() let ONE weight row flip 21 dual-metric states
+      // to a weight axis, dropping the length-only majority and contradicting
+      // the Measure toolbar).
+      const wN = results.filter(r => r.cpue != null && (r.average_weight ?? 0) > 0).length;
+      const lN = results.filter(r => r.cpue != null && (r.average_length ?? 0) > 0).length;
+      genericUsesWeight = wN > lN;
+    }
       for (const r of results) {
         if (r.cpue == null) continue;
         const size = genericUsesWeight ? r.average_weight : r.average_length;

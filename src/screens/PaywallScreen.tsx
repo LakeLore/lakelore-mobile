@@ -116,7 +116,7 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
   const priceLabelOrFallback = priceLabel ?? 'US$4.99';
   const paidStatesPhrase = PAID_CA > 0
     ? `${PAID_US} more states + ${PAID_CA} Canadian provinces`
-    : `${numWord(PAID_US)} more states`;
+    : `${PAID_US} more states`;
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
