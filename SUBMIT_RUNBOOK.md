@@ -12,6 +12,20 @@ Keystroke-level sequence for shipping a new mobile release to the App Store and 
 
 ## 0. Pre-flight (the morning of)
 
+**0.0 — Fix-verify review loop (MANDATORY, 2026-07-28).** Before cutting ANY
+build: if there has been a multi-day change burst since the last reviewed
+state (check `git log --since="<last review date>" --oneline | wc -l` across
+mobile + server + lakelore-data — more than a handful of commits counts), run
+the fix-verify loop per `~/APP_REVIEW_PLAYBOOK.md` §1b: adversarial review of
+the accumulated diff → triage every finding (fix / defer-with-reason /
+reject-with-reason) → review the fixes themselves → exit when nothing above
+minor remains (cap 3 rounds). Rationale: per-change gates (tsc/tests/smoke)
+all passed while the 07-25→27 wave carried 40 defects as a body, including a
+data-loss bug and an unauthenticated OOM vector; the loop caught them, and
+its round 2 caught 8 more in the fixes. Record the loop's outcome (date +
+rounds + verdict) in the current improvement plan before proceeding. A build
+cut without this step is an unreviewed build.
+
 Run these checks before touching any build commands.
 
 ```bash
