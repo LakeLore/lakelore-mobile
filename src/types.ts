@@ -262,7 +262,7 @@ export interface Result {
   county: string;
   area_acres: number | null;
   survey_id: number | string;
-  survey_year: number;
+  survey_year: number | null;  // null = presence/species-list row, no survey date (server nulls the scrape year, 2026-07-28)
   species: string;
   gear: string | null;
   stocked_per_100ac: number | null;

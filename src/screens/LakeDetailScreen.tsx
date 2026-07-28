@@ -65,7 +65,7 @@ interface Lake {
 }
 interface CatchRow {
   species: string; gear: string | null; survey_id: number | string;
-  survey_year: number; report_id?: number | null; survey_date?: string | null;
+  survey_year: number | null; report_id?: number | null; survey_date?: string | null;
   survey_type?: string | null;
   cpue: number | null;
   average_weight?: number | null; total_catch?: number | null; gear_count?: number | null;
@@ -137,7 +137,7 @@ function buildYearGearSeries(rows: CatchRow[], value: (c: CatchRow) => number | 
   const byYearGear = new Map<string, number[]>();
   for (const c of rows) {
     const v = value(c);
-    if (v == null) continue;
+    if (v == null || c.survey_year == null) continue;
     const gk = c.gear ?? (c.survey_type ?? 'Unknown');
     gearSet.add(gk);
     const key = `${c.survey_year}|${gk}`;

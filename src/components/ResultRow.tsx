@@ -282,7 +282,8 @@ export default function ResultRow({ result: r, state, sortBy, showSpecies, onPre
 
   const yearLabel = (state === 'mn' || state === 'ia') && r.survey_date
     ? r.survey_date.substring(0, 10)
-    : String(r.survey_year);
+    : r.survey_year != null ? String(r.survey_year)
+    : 'no survey date';  // presence rows are species lists — the server no longer fakes a year (2026-07-28)
 
   const location = [
     // Species leads the line in un-scoped searches; dropped when the whole

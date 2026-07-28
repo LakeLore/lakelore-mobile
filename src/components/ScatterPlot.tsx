@@ -63,7 +63,7 @@ interface DotData {
   stockedEst?: number|null;
   // name is null when the server redacted it (paid-state preview) — the
   // popup card renders a blurred placeholder instead.
-  name: string|null; county: string; species: string; year: number;
+  name: string|null; county: string; species: string; year: number | null;  // null never occurs in practice (dots require metric values; presence rows carry no metrics)
   lake_id: number|string;
   survey_date?: string;
   area_acres?: number|null;
@@ -653,7 +653,7 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
               selectedDot.county ? `${selectedDot.county} Co · ${state.toUpperCase()}` : state.toUpperCase(),
               selectedDot.area_acres != null ? `${Math.round(selectedDot.area_acres).toLocaleString()} ac` : null,
               selectedDot.max_depth_feet != null ? `${Math.round(selectedDot.max_depth_feet)} ft` : null,
-              selectedDot.survey_date ?? selectedDot.year,
+              selectedDot.survey_date ?? selectedDot.year ?? '',
             ].filter(Boolean).join(' · ')}
           </Text>
           <Text style={[text.dataS, { color: colors.inkSoft, marginTop: 2, marginBottom: 8 }]}>
