@@ -41,8 +41,8 @@ export const STATE_KEYS: readonly StateKey[] = ['mn', 'sd', 'nd', 'ia', 'ne', 'w
 
 // Fleet volume across ACTIVE states, computed at generation time from the
 // canonical artifacts (paywall value copy — D5).
-export const TOTAL_ACTIVE_LAKES = 68833;
-export const TOTAL_ACTIVE_RECORDS = 1050595;
+export const TOTAL_ACTIVE_LAKES = 47682;
+export const TOTAL_ACTIVE_RECORDS = 834117;
 
 export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
   mn: {
@@ -104,7 +104,7 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     agencyUrl: 'https://outdoornebraska.gov',
     country: 'US',
     free: false,
-    active: true,
+    active: false,
     hasCpue: true, hasLength: true, hasWeight: false, hasCatch: false, hasStocking: true, hasCounties: true, hasRating: false,
     cpueKind: 'gear',
     sortOptions: [{'value':'cpue','label':'Catch / Net'},{'value':'length','label':'Avg Length'},{'value':'stocked','label':'Stck Adults / 100AC'}],
@@ -130,7 +130,7 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     agencyUrl: 'https://www.michigan.gov/dnr',
     country: 'US',
     free: false,
-    active: true,
+    active: false,
     hasCpue: true, hasLength: true, hasWeight: true, hasCatch: true, hasStocking: true, hasCounties: true, hasRating: false,
     cpueKind: 'gear',
     sortOptions: [{'value':'cpue','label':'Catch / Net'},{'value':'length','label':'Avg Length'},{'value':'weight','label':'Avg Weight'},{'value':'stocked','label':'Stck Adults / 100AC'}],
@@ -169,7 +169,7 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     agencyUrl: 'https://ksoutdoors.com',
     country: 'US',
     free: false,
-    active: true,
+    active: false,
     hasCpue: true, hasLength: true, hasWeight: false, hasCatch: false, hasStocking: true, hasCounties: true, hasRating: true,
     cpueKind: 'relative',
     sortOptions: [{'value':'cpue','label':'Rel. Catch Index'},{'value':'rating','label':'Forecast Rating'},{'value':'length','label':'Avg Length'},{'value':'stocked','label':'Stck Adults / 100AC'}],
@@ -299,7 +299,7 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     agencyUrl: 'https://fw.ky.gov',
     country: 'US',
     free: false,
-    active: true,
+    active: false,
     hasCpue: true, hasLength: true, hasWeight: false, hasCatch: false, hasStocking: true, hasCounties: true, hasRating: true,
     cpueKind: 'gear',
     sortOptions: [{'value':'cpue','label':'Catch / Net'},{'value':'rating','label':'Forecast Rating'},{'value':'length','label':'Avg Length'},{'value':'stocked','label':'Stck Adults / 100AC'}],
@@ -611,7 +611,7 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     agencyUrl: 'https://www.adfg.alaska.gov',
     country: 'US',
     free: false,
-    active: true,
+    active: false,
     hasCpue: true, hasLength: true, hasWeight: true, hasCatch: true, hasStocking: true, hasCounties: true, hasRating: false,
     cpueKind: 'gear',
     sortOptions: [{'value':'cpue','label':'Catch / Net'},{'value':'length','label':'Avg Length'},{'value':'weight','label':'Avg Weight'},{'value':'stocked','label':'Stck Adults / 100AC'}],
@@ -663,7 +663,7 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     agencyUrl: 'https://vtfishandwildlife.com',
     country: 'US',
     free: false,
-    active: true,
+    active: false,
     hasCpue: true, hasLength: true, hasWeight: true, hasCatch: true, hasStocking: true, hasCounties: true, hasRating: false,
     cpueKind: 'gear',
     sortOptions: [{'value':'cpue','label':'Catch / Net'},{'value':'length','label':'Avg Length'},{'value':'weight','label':'Avg Weight'},{'value':'stocked','label':'Stck Adults / 100AC'}],
@@ -676,7 +676,7 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     agencyUrl: 'https://www.ontario.ca/page/fishing',
     country: 'CA',
     free: false,
-    active: true,
+    active: false,
     hasCpue: true, hasLength: true, hasWeight: false, hasCatch: false, hasStocking: true, hasCounties: true, hasRating: false,
     cpueKind: 'relative',
     sortOptions: [{'value':'cpue','label':'Rel. Catch Index'},{'value':'length','label':'Avg Length'},{'value':'stocked','label':'Stck Adults / 100AC'}],
@@ -689,7 +689,7 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     agencyUrl: 'https://dlnr.hawaii.gov/dar',
     country: 'US',
     free: false,
-    active: true,
+    active: false,
     hasCpue: true, hasLength: false, hasWeight: false, hasCatch: true, hasStocking: true, hasCounties: true, hasRating: false,
     cpueKind: 'creel',
     sortOptions: [{'value':'cpue','label':'Angler Catch Rate'},{'value':'stocked','label':'Stck Adults / 100AC'}],
@@ -715,7 +715,7 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     agencyUrl: 'https://www.gofishbc.com',
     country: 'CA',
     free: false,
-    active: true,
+    active: false,
     hasCpue: true, hasLength: true, hasWeight: true, hasCatch: true, hasStocking: true, hasCounties: false, hasRating: false,
     cpueKind: 'gear',
     sortOptions: [{'value':'cpue','label':'Catch / Net'},{'value':'length','label':'Avg Length'},{'value':'weight','label':'Avg Weight'},{'value':'stocked','label':'Stck Adults / 100AC'}],
@@ -754,7 +754,7 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     agencyUrl: 'https://www.saskatchewan.ca',
     country: 'CA',
     free: false,
-    active: true,
+    active: false,
     hasCpue: false, hasLength: true, hasWeight: true, hasCatch: false, hasStocking: true, hasCounties: true, hasRating: true,
     cpueKind: null,
     sortOptions: [{'value':'rating','label':'Forecast Rating'},{'value':'length','label':'Avg Length'},{'value':'weight','label':'Avg Weight'},{'value':'stocked','label':'Stck Adults / 100AC'}],
@@ -767,7 +767,7 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     agencyUrl: 'https://mywildalberta.ca',
     country: 'CA',
     free: false,
-    active: true,
+    active: false,
     hasCpue: true, hasLength: true, hasWeight: false, hasCatch: true, hasStocking: true, hasCounties: false, hasRating: true,
     cpueKind: 'gear',
     sortOptions: [{'value':'cpue','label':'Catch / Net'},{'value':'rating','label':'Forecast Rating'},{'value':'length','label':'Avg Length'},{'value':'stocked','label':'Stck Adults / 100AC'}],

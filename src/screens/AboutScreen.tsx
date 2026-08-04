@@ -71,7 +71,25 @@ interface AgencySource {
   abbr: string;
   url: string;
   blurb: string;
+  /** Licence-mandated (or licence-requested) credit line, rendered verbatim
+   *  under the blurb. Populated from ATTRIBUTIONS. */
+  attribution?: string;
 }
+
+// ── Required attribution strings (2026-08-04 data-licensing audit) ─────────
+// These are the credit lines the source licences/terms REQUIRE or request —
+// exact wording matters for NJ (mandatory verbatim disclaimer) and MB (OpenMB
+// licence text). Keyed by state; states without a stated requirement rely on
+// the agency row itself as the credit. See ~/DATA_LICENSING_AUDIT_2026-07-28.md.
+const ATTRIBUTIONS: Partial<Record<StateKey, string>> = {
+  mn: 'Includes data contributed by the Minnesota Department of Natural Resources (MNDNR). MNDNR has not participated in this product and does not endorse it.',
+  ca: 'Includes CDFW BIOS data, © California Department of Fish and Wildlife, licensed under CC BY 4.0 (creativecommons.org/licenses/by/4.0).',
+  pa: 'Data credit: Pennsylvania Fish and Boat Commission (PFBC). LakeLore modifies PFBC data as described under "How LakeLore modifies agency data" below; those modifications are LakeLore’s own and are not approved by the PFBC.',
+  tn: 'Source: Tennessee Wildlife Resources Agency — tn.gov/twra.',
+  nj: 'This product was developed using New Jersey Department of Environmental Protection Geographic Information System digital data, but this secondary product has not been verified by NJDEP and is not state-authorized or endorsed.',
+  ok: 'Byline: Oklahoma Department of Wildlife Conservation.',
+  mb: 'Contains information from the Government of Manitoba, licensed under the OpenMB Information and Data Use Licence (Manitoba.ca/OpenMB).',
+};
 
 const ALL_AGENCIES: AgencySource[] = [
   {
@@ -137,16 +155,18 @@ const ALL_AGENCIES: AgencySource[] = [
 // registry export (agency name + homepage) with a generic blurb.
 const AGENCIES: AgencySource[] = ACTIVE_STATES.map(k => {
   const hand = ALL_AGENCIES.find(a => a.key === k);
-  if (hand) return hand;
-  const g = GENERATED_STATES[k];
-  return {
-    key: k,
-    state: g.name,
-    agency: g.agency,
-    abbr: g.agency,
-    url: g.agencyUrl,
-    blurb: `Lake survey${g.hasStocking ? ' and stocking' : ''} data published by ${g.agency}.`,
-  };
+  const base = hand ?? (() => {
+    const g = GENERATED_STATES[k];
+    return {
+      key: k,
+      state: g.name,
+      agency: g.agency,
+      abbr: g.agency,
+      url: g.agencyUrl,
+      blurb: `Lake survey${g.hasStocking ? ' and stocking' : ''} data published by ${g.agency}.`,
+    };
+  })();
+  return { ...base, attribution: ATTRIBUTIONS[k] };
 });
 
 // ── State-specific glossary blocks ────────────────────────────────────────
@@ -426,6 +446,11 @@ export default function AboutScreen({ visible, state, onClose }: Props) {
               <Text style={[text.bodyS, { color: colors.ink2, marginTop: 8 }]}>
                 {a.blurb}
               </Text>
+              {a.attribution && (
+                <Text style={[text.bodyS, { color: colors.inkSoft, marginTop: 6, fontStyle: 'italic' }]}>
+                  {a.attribution}
+                </Text>
+              )}
             </Pressable>
           ))}
 
@@ -438,6 +463,17 @@ export default function AboutScreen({ visible, state, onClose }: Props) {
             Each state runs its own protocol — gill-net mesh sizes, electrofishing
             voltage, fyke / hoop net configurations, and seasonal timing differ. The
             catch-rate numbers between states are roughly comparable but not interchangeable.
+          </Text>
+
+          <Text style={[text.bodyM, { color: colors.ink2, marginTop: 12 }]}>
+            <Text style={{ fontWeight: '600', color: colors.ink }}>How LakeLore modifies agency data.</Text>{' '}
+            LakeLore does not republish agency reports. It extracts the underlying
+            measurements and restructures them: species names are normalized to one
+            vocabulary, units are converted (metric to inches / pounds), catch rates
+            are derived where an agency publishes counts and effort separately,
+            stocking-survival estimates are computed by LakeLore&rsquo;s own model, and
+            records are joined across sources by lake. These modifications are
+            LakeLore&rsquo;s own work and are not reviewed or approved by any agency.
           </Text>
 
           <Text style={[text.bodyM, { color: colors.ink2, marginTop: 12 }]}>

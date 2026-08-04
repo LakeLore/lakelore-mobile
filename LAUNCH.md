@@ -9,7 +9,7 @@ Last reviewed: 2026-07-16 (all-states launch reconciliation).
 ## Monetization model (locked in 2026-05-07 · preview model 2026-07-08 · all-states scope 2026-07-15)
 
 - **Free tier:** Minnesota only. Full access, all features.
-- **Paid tier — "LakeLore All-States":** every other active state/province — **44 US states + 5 Canadian provinces (ON/BC/MB/SK/AB)**. 50 active total; SC/AZ/MA/DE/RI/QC are held back (registry `active:false`). AZ/MA/RI remain presence/rating-thin; **DE/SC/QC now carry measured CPUE** (from the 2026-07-22/23 data hunt) and are activation-eligible pending an owner decision — the old "no CPUE" rationale no longer applies to them.
+- **Paid tier — "LakeLore All-States":** every other active state/province — **37 US states + Manitoba**. 39 active total. **2026-08-04 LEGAL HOLDS: 11 states/provinces (AB BC ON SK AK HI KS KY MI NE VT) are `active:false` per the data-licensing audit (`~/DATA_LICENSING_AUDIT_2026-07-28.md`; owner policy: any compliance violation holds the whole state).** Active fleet is **39 (38 US + MB)**. SC/AZ/MA/DE/RI/QC additionally held back for product reasons (DE/SC activation-eligible; QC also legally restrictive via SEPAQ).
 - **Price:** $4.99 / year, auto-renewing (lowered from $5.99 on 2026-07-25, before first store submission).
 - **Free trial:** None.
 - **Provider:** RevenueCat (cross-platform abstraction over Apple StoreKit + Google Play Billing).
@@ -61,7 +61,7 @@ Last reviewed: 2026-07-16 (all-states launch reconciliation).
 > historical all-states-launch snapshot.
 >
 > **2026-07-16 status (all-states launch):** the app was **v1.1.0 (build 20), on
-> TestFlight since 2026-07-15** — 50 active states/provinces (44 US paid + 5 CA paid +
+> TestFlight since 2026-07-15** — was 50 active states/provinces at that time (now 39 after the 2026-08-04 legal holds; 37 US paid + MB paid +
 > free MN), map state selector → county picker, preview lake detail, forecast ratings
 > (schema v4/v5), offline read cache, retry/backoff, X-User-Sig. Fifteen OTA rounds
 > shipped on runtime 1.1.0 through 2026-07-16. Production server + all 56 v5 DBs are

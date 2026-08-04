@@ -53,8 +53,14 @@ Alternates if you want to A/B:
 ## Promotional text (iOS only — updateable any time)
 
 ```
-Now covering 45 states and 5 Canadian provinces. Free in Minnesota, no account, no ads — the netting and stocking atlas for game fish.
+Now covering 38 states and Manitoba. Free in Minnesota, no account, no ads — the netting and stocking atlas for game fish.
 ```
+
+> **2026-08-04 legal-hold count change:** 11 states/provinces (AB BC ON SK AK HI KS KY MI NE VT) are now
+> `active:false` per the data-licensing audit (`~/DATA_LICENSING_AUDIT_2026-07-28.md`; owner policy: any
+> compliance violation holds the whole state). Counts everywhere went 45 US + 5 CA → **38 US + Manitoba (39)**.
+> If states are un-held (permission letters / licence confirmations), update every count in this file +
+> paywall + web layout/landing/terms in the same commit.
 
 (134 chars. Use this for seasonal hooks: launch, ice-fishing, opener, fall walleye, etc. Corrected 2026-07-26 — the previous "all 50 states + Canada" was factually false (45 US states + 5 provinces are active; the internal "50" counts states AND provinces) and contradicted the description: Apple 2.3.1 territory.)
 
@@ -66,7 +72,7 @@ fishing,lake finder,fishing map,ice fishing,walleye,musky,bass,stocking,perch,cr
 
 (96 chars. Updated 2026-07-16 per IMPROVEMENT_PLAN P3.4: swapped low-volume/
 low-intent terms — `muskellunge`→`musky`, dropped `survey` and single-state
-names (the app is 50-state now; per-state discovery comes from the site's
+names (the app is 39-jurisdiction now; per-state discovery comes from the site's
 programmatic SEO pages instead) — for the high-volume generics `lake finder`,
 `fishing map`, `ice fishing`, `bass`. Apple indexes name/subtitle/category, so
 don't repeat those words.)
@@ -99,7 +105,7 @@ WHAT YOU CAN DO
 
 DATA COVERED
 
-• 45 US states and 5 Canadian provinces (Ontario, British Columbia, Manitoba, Saskatchewan, Alberta), assembled from each fish and wildlife agency's published surveys, forecasts, and stocking records.
+• 38 US states and Manitoba, assembled from each fish and wildlife agency's published surveys, forecasts, and stocking records.
 • Minnesota — free, no subscription: 9,400+ lakes, 23,000+ surveys, 396,000+ catch records (MN DNR).
 • Every other state and province is included in the LakeLore All-States subscription — and browsable in preview before you subscribe.
 
@@ -300,7 +306,7 @@ Adjust to taste. **Order matters** in the App Store — the first 1–2 are visi
 ### Apple Review notes (paste into App Store Connect → App Review Information)
 
 ```
-LakeLore is a free Minnesota fishing-lake reference. The optional LakeLore All-States annual subscription ($4.99/yr, auto-renewing) unlocks the other 44 US states and 5 Canadian provinces currently active in the app (50 active states/provinces total). No account is required at any tier — identity is an anonymous device-generated UUID, no email, no sign-up.
+LakeLore is a free Minnesota fishing-lake reference. The optional LakeLore All-States annual subscription ($4.99/yr, auto-renewing) unlocks the other 37 US states and Manitoba currently active in the app (39 active states/provinces total). No account is required at any tier — identity is an anonymous device-generated UUID, no email, no sign-up.
 
 To test core functionality without subscribing:
 1. Launch the app.
@@ -335,7 +341,7 @@ Support: https://www.lakeloreapp.com/support (publishes support@lakeloreapp.com)
 *(Field corrected 2026-07-26 — the old target, "Target audience and content", is the children/age questionnaire; instructions pasted there are never seen by the reviewer.)*
 
 ```
-All functionality is available without any login or special access. LakeLore is a free Minnesota fishing-lake reference. Optional LakeLore All-States annual subscription ($4.99/yr, auto-renewing) unlocks the other 44 US states and 5 Canadian provinces active in the app; those states open in PREVIEW without subscribing.
+All functionality is available without any login or special access. LakeLore is a free Minnesota fishing-lake reference. Optional LakeLore All-States annual subscription ($4.99/yr, auto-renewing) unlocks the other 37 US states and Manitoba active in the app; those states open in PREVIEW without subscribing.
 
 To test:
 1. Open the app — Minnesota is free, no sign-in required.

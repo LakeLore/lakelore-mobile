@@ -115,7 +115,7 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
   const priceLabel = pkg?.product.priceString ?? null;
   const priceLabelOrFallback = priceLabel ?? 'US$4.99';
   const paidStatesPhrase = PAID_CA > 0
-    ? `${PAID_US} more states + ${PAID_CA} Canadian provinces`
+    ? `${PAID_US} more states + ${PAID_CA} Canadian province${PAID_CA === 1 ? '' : 's'}`
     : `${PAID_US} more states`;
 
   return (
@@ -303,7 +303,7 @@ const PAID_CA = PAID_STATES.filter(s => GENERATED_STATES[s].country === 'CA').le
 const ACTIVE_VALUE_PROPS: { label: string; detail: string }[] = [
   { label: `${floorK(TOTAL_ACTIVE_LAKES)} lakes · ${floorK(TOTAL_ACTIVE_RECORDS)} records`,
     detail: 'Agency survey, stocking, and forecast data — counted at build time, growing every refresh' },
-  { label: `${PAID_US} more US states + ${PAID_CA} Canadian provinces`,
+  { label: `${PAID_US} more US states + ${PAID_CA} Canadian province${PAID_CA === 1 ? '' : 's'}`,
     detail: 'Every state and province LakeLore covers, in one pass' },
   { label: 'Lake names & locations revealed',
     detail: 'Preview mode shows the numbers — the pass shows you which lakes' },
