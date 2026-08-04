@@ -26,6 +26,49 @@ its round 2 caught 8 more in the fixes. Record the loop's outcome (date +
 rounds + verdict) in the current improvement plan before proceeding. A build
 cut without this step is an unreviewed build.
 
+**0.0b — Serving-contract changes ship CLIENT-FIRST (MANDATORY, 2026-08-05).**
+A *serving-contract change* is anything that alters what the API will answer
+for an input an already-installed binary can still produce:
+
+- flipping a state `active` in `~/lakelore-data/registry/states.json` (either direction)
+- removing or renaming an endpoint
+- changing a wire field list, an id format, or a status code
+- changing the entitlement gate or preview projection
+
+**Every installed binary is a client of that contract, and its state list /
+route set is baked into its JS bundle.** Deploying the server first means every
+older build is pointing at a contract that moved under it.
+
+Before deploying such a change, enumerate the live runtimes and decide
+reachability for EACH — not just the one you're testing:
+
+```bash
+# Which runtimes exist, and which can an OTA still reach?
+npx eas branch:list                       # branch -> latest runtime
+npx eas update:list --branch production --limit 40 | grep "Runtime Version" \
+  | awk '{print $NF}' | sort | uniq -c    # runtimes actually served
+
+# What is PUBLICLY live right now (not what's on TestFlight)?
+curl -sS "https://itunes.apple.com/lookup?bundleId=com.lakeloreapp.lakelore&country=us" \
+  | python3 -c "import json,sys; print(json.load(sys.stdin)['results'][0]['version'])"
+```
+
+`runtimeVersion.policy: appVersion` means **an OTA only reaches devices on that
+exact app version.** A bundle published at 1.1.1 cannot fix a 1.0.0 install. For
+each live runtime, pick one: ship a matching OTA, accept the breakage with a
+recorded reason, or use `LAKELORE_MIN_APP_VERSION` (RUNBOOK §17) — and note that
+the kill switch is useless until a newer public build exists to update *to*.
+
+> **Why this rule exists — 2026-08-04/05.** The data-licensing legal holds
+> flipped 11 states to `active:false` and the server was deployed first. Result:
+> TestFlight build 24 still listed 50 states and showed "Server error (400)" on
+> the 11 held ones (fixed same day by OTA `9e3281ae` on runtime 1.1.1). Worse,
+> the publicly-live App Store build was **v1.0** shipping the original five-state
+> cut `mn sd nd ia ne` — Nebraska is on hold, so public users got a broken state,
+> and being on **runtime 1.0.0** they were unreachable by the 1.1.1 OTA. The
+> legal objective was met; the sequencing turned a data decision into a
+> user-facing regression that a two-minute reachability check would have caught.
+
 Run these checks before touching any build commands.
 
 ```bash
@@ -240,4 +283,5 @@ Update `LAUNCH.md` "Already shipped" list with the release date and version numb
 - **TestFlight build doesn't show up after `submit:ios`**. ASC processing varies 5–25 min. If >2 hours, log into ASC and check Activity tab for upload errors.
 - **Sandbox purchase says "Cannot connect to iTunes Store"**. You're signed into a real Apple ID. Sign out in Settings → Media & Purchases, leave it signed out, attempt purchase; sandbox prompt should appear.
 - **Play Store rejects AAB / first submission fails**. Target-API-level is NOT the likely cause (Expo SDK 54 targets API 36). The real first-submission failure modes, in order: (1) the FIRST-EVER bundle must be uploaded manually via Play Console → Internal testing → Create release (the Play Developer API refuses an app with no prior release — `eas submit` works from the second upload on); (2) unfilled App content forms (see the checklist in §6); (3) missing Android phone screenshots; (4) versionCode collision — run `eas build:version:get -p android` and compare against App bundle explorer before building.
+- **Users report a state erroring that "should" work, or an endpoint 404ing after a clean deploy**. Almost always a serving-contract change shipped ahead of its client (§0.0b). Diagnose by asking which app version they're on, then compare against the runtimes an OTA can actually reach (`npx eas branch:list`). A 1.1.1 OTA does nothing for a 1.0.0 install. Fix: publish an OTA at the *matching* runtime, or accept it until the next store release supersedes that build.
 - **"App was rejected" email from Apple**. Read the Resolution Center notes carefully — most rejections are paywall-disclosure quibbles (the in-app paywall already covers length, price, auto-renew, terms, privacy per Apple's required list). If asked to clarify the relationship with state DNRs, point them at the in-app About / Sources screen and the explicit "Independence" callout.
