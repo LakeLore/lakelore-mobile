@@ -415,7 +415,7 @@ export default function AboutScreen({ visible, state, onClose }: Props) {
             </Text>
           </View>
 
-          {/* Glossary ABOVE the 50 agency rows (D3): the explanatory content
+          {/* Glossary ABOVE the agency rows (D3): the explanatory content
               users open this screen for was buried below a full page of
               credits. */}
           {state && <StateGlossarySection state={state} />}
@@ -429,7 +429,11 @@ export default function AboutScreen({ visible, state, onClose }: Props) {
               key={a.abbr}
               onPress={() => Linking.openURL(a.url)}
               accessibilityRole="link"
-              accessibilityLabel={`${a.state} — ${a.agency}`}
+              // Attribution must be in the label: accessibilityLabel suppresses
+              // child text for VoiceOver, and several credits are licence-
+              // MANDATED (NJ's verbatim disclaimer) — they must be readable by
+              // screen-reader users too (review 2026-08-05).
+              accessibilityLabel={`${a.state} — ${a.agency}${a.attribution ? `. ${a.attribution}` : ''}`}
               accessibilityHint="Opens agency website in browser"
               style={({ pressed }) => [
                 styles.agencyRow,

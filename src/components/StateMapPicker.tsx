@@ -102,7 +102,10 @@ export default function StateMapPicker({ selected, hasAllStates, entitlementLoad
       if (!nearest || nearestDist > capSq) return;
       const key = nearest.key as StateKey;
       if (!GENERATED_STATES[key].active) {
-        toastRef.current?.(`${GENERATED_STATES[key].name} — no survey data yet. It'll join the All-States Pass when its agency data lands.`);
+        // Neutral copy on purpose: inactive covers BOTH data-thin states and
+        // legally-held ones (2026-08-04) — "no survey data yet" was a false
+        // statement for states users had previously browsed (MI/ON).
+        toastRef.current?.(`${GENERATED_STATES[key].name} isn't currently available in LakeLore.`);
         return;
       }
       Haptics.selectionAsync().catch(() => {});
