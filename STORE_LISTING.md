@@ -101,7 +101,7 @@ WHAT YOU CAN DO
 • Read each lake as a field-guide page: catch-per-unit-effort over decades, broken out by gear type.
 • See the full stocking history — fry, fingerlings, yearlings, adults — with an estimated "adult fish per 100 acres" overlay derived from a survival model.
 • Compare lakes side-by-side in a scatter plot: each dot is a lake-survey, colored by stocking density.
-• Tap through to the original agency reports — MN DNR LakeFinder, SD GFP PDFs, ND Game & Fish ArcGIS, Texas Parks & Wildlife, Ontario Fish ON-Line, and dozens more.
+• Tap through to the original agency reports — MN DNR LakeFinder, SD GFP PDFs, ND Game & Fish ArcGIS, Texas Parks & Wildlife, and dozens more.
 
 DATA COVERED
 
