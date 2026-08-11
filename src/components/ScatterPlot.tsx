@@ -94,10 +94,18 @@ interface Props {
   // to label the Y axis with THAT source's unit rather than the measure's first
   // catch-per-unit source, which lies once the user switches gear.
   activeSourceId?: string | null;
+  // Scatter gear self-scoping (2026-08-11): set when the active measure carries
+  // no gear (Stocking Impact / Presence) and the caller scoped the rows to the
+  // dominant plottable gear. Renders the scope caption so the narrowing is
+  // never silent, and `scopedUnit` labels the Y axis honestly (the gear-less
+  // measure has no abundance source to name it).
+  scopedGear?: string | null;
+  scopedUnit?: string | null;
+  scopedExcluded?: number;
   onLakePress: (lakeId: number|string, lakeName: string, species?: string) => void;
 }
 
-export default function ScatterPlot({ results, state, activeMeasure, activeSourceId, onLakePress }: Props) {
+export default function ScatterPlot({ results, state, activeMeasure, activeSourceId, scopedGear, scopedUnit, scopedExcluded, onLakePress }: Props) {
   const { width } = useWindowDimensions();
 
   const PAD_L = 48, PAD_R = 16, PAD_T = 12, PAD_B = 44;
@@ -332,13 +340,18 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
       ? activeMeasure?.sources.find(s => s.id === activeSourceId && isAbundanceSource(s))
       : null;
     const src = selected ?? activeMeasure?.sources.find(isAbundanceSource);
-    const abundanceUnit = src?.unit && src.unit !== 'catch rate' ? ` (${src.unit})` : '';
+    // Self-scoped scatter (gear-less measure): the unit comes from the scoping
+    // lookup, not the active measure — whose sources describe stocking or
+    // presence, never the plotted catch rate.
+    const abundanceUnit = scopedGear && scopedUnit && scopedUnit !== 'catch rate'
+      ? ` (${scopedUnit})`
+      : src?.unit && src.unit !== 'catch rate' ? ` (${src.unit})` : '';
     const yLabel = ratingMode ? 'Forecast Rating'
       : GENERATED_STATES[state]?.cpueKind === 'relative'
         ? `Catch Index${abundanceUnit}`
         : `Catch Rate${abundanceUnit}`;
     return { points: pts, sortedStocked, dataBounds, xLabel, yLabel, ratingMode };
-  }, [results, state, activeMeasure, activeSourceId]);
+  }, [results, state, activeMeasure, activeSourceId, scopedGear, scopedUnit]);
 
   // Keep refs in sync with latest render values
   pointsRef.current = points;
@@ -544,11 +557,20 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
         {state === 'sd' ? 'Catch rate vs. est. mean length' : `${yLabel} vs. ${xLabel.replace(/ \((in|lb)\)$/, '')}`}
         {GENERATED_STATES[state]?.hasStocking ? ' · color = Stck Adults / 100AC' : ''} · tap a dot
       </Text>
+      {/* Self-scoping caption (2026-08-11): a derived gear scope must never be
+          silent — the user's measure carried no gear, so the chart chose one.
+          Reads as information, not an error; list view still shows every gear. */}
+      {scopedGear != null && (
+        <Text style={[text.bodyS, { color: colors.walleye2, marginHorizontal: space.lg, marginBottom: space.xs }]}>
+          Plotting {scopedGear} surveys — one gear type per axis
+          {(scopedExcluded ?? 0) > 0 ? ` (${scopedExcluded} result${scopedExcluded === 1 ? '' : 's'} from other gears in list view)` : ''}
+        </Text>
+      )}
 
       <GestureDetector gesture={gesture}>
         <View style={[styles.chartWrap, { width: svgW, height: svgH }]}
           accessible
-          accessibilityLabel={`Scatter plot: ${points.length} lakes, ${yLabel} versus ${xLabel}. Use the list view for a screen-reader-friendly ranking.`}>
+          accessibilityLabel={`Scatter plot: ${points.length} lakes, ${yLabel} versus ${xLabel}.${scopedGear != null ? ` Scoped to ${scopedGear} surveys.` : ''} Use the list view for a screen-reader-friendly ranking.`}>
           <Svg width={svgW} height={svgH}>
           <Rect x={PAD_L} y={PAD_T} width={plotW} height={plotH}
             fill={colors.paper2} stroke={colors.ink} strokeWidth={0.8} />

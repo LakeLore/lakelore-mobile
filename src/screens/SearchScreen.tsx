@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View, Text, TextInput, Pressable, FlatList,
   ActivityIndicator, StyleSheet,
@@ -15,6 +15,7 @@ import {
 } from '../types';
 import { isFreeState } from '../activeStates';
 import { fetchFilters, fetchMeasures, fetchResults, fetchAllResults, DbStatus, fetchStatus, SubscriptionRequiredError } from '../api';
+import { scopeScatterRows } from '../scatterScope';
 import PaywallScreen from './PaywallScreen';
 import AboutScreen from './AboutScreen';
 import ResultRow, { cpueLabelForGear } from '../components/ResultRow';
@@ -528,6 +529,28 @@ export default function SearchScreen() {
   const useMeasurePicker = measures.length > 0;
   const viewMode2 = viewMode === 'list' ? 0 : 1;
 
+  // Scatter gear self-scoping (2026-08-11, see src/scatterScope.ts): gear-less
+  // measures (Stocking Impact / Presence) query every gear, which would stack
+  // incomparable units on the scatter's Y axis and plot one dot per gear per
+  // lake. The scatter scopes ITSELF to the dominant plottable gear —
+  // presentation-layer only, `filters` is never touched, so list view keeps
+  // the measure's own (gear-less) scope exactly as before.
+  const scatterScope = useMemo(
+    () => scopeScatterRows(scatterResults, filters.gearTypes),
+    [scatterResults, filters.gearTypes],
+  );
+  // Honest Y-axis unit for a DERIVED gear: the active (gear-less) measure has
+  // no abundance source to name the unit, so look the gear up across all
+  // measures' sources (the abundance measure carries per-gear units).
+  const scatterScopedUnit = useMemo(() => {
+    if (!scatterScope.derived || !scatterScope.gear) return null;
+    for (const m of measures) {
+      const src = m.sources.find(s => s.gear === scatterScope.gear && s.unit && s.expression === 'catch-per-unit');
+      if (src) return src.unit ?? null;
+    }
+    return null;
+  }, [scatterScope.derived, scatterScope.gear, measures]);
+
   // County selector label — mirrors the state: one selection shows the county's
   // own name (like the state name), several show "Counties (n)", none = "All".
   const countyLabel =
@@ -900,10 +923,13 @@ export default function SearchScreen() {
       {/* Scatter view */}
       {searched && viewMode === 'scatter' && (
         <ScatterPlot
-          results={scatterResults}
+          results={scatterScope.rows}
           state={state}
           activeMeasure={activeMeasure}
           activeSourceId={activeSourceId}
+          scopedGear={scatterScope.derived ? scatterScope.gear : null}
+          scopedUnit={scatterScopedUnit}
+          scopedExcluded={scatterScope.excluded}
           onLakePress={(lakeId, lakeName, species) => {
             // Same row-species rule as the list (the dot CARD shows a
             // species; the tap must honor it).
