@@ -31,8 +31,8 @@ Last reviewed: 2026-07-16 (all-states launch reconciliation).
 | ✅ | `support@lakeloreapp.com` Google Workspace alias | you | Live |
 | ✅ | iPad decision: `supportsTablet` | you | Set to `false` for v1 (iPhone-only); iPad considered for v1.x |
 | ✅ | RevenueCat account + iOS + Android apps linked | you | Real `appl_` and `goog_` keys in code |
-| ✅ | App Store Connect: iOS subscription product | you | `com.lakeloreapp.lakelore.allstates_annual` created, $4.99 USD (lowered from $5.99 2026-07-25), Ready to Submit (submits with binary) |
-| ✅ | Play Console: Android subscription product | you | `lakelore_allstates_annual` (base plan `annual`) created and Active, $4.99 USD (lowered from $5.99 2026-07-25) |
+| ✅ | App Store Connect: iOS subscription product | you | `com.lakeloreapp.lakelore.allstates_annual` created, $4.99 USD (**console price actually changed 2026-08-11** — the 07-25 row wrongly recorded the console change as done when only code/docs had moved; verify the sandbox sheet shows $4.99 before submit), Ready to Submit (submits with binary) |
+| ✅ | Play Console: Android subscription product | you | `lakelore_allstates_annual` (base plan `annual`) created and Active — **price being verified in-console 2026-08-11** (the 07-25 '$4.99 done' row was wrong for Apple; treat Google's as unverified until the base-plan Countries/regions table or a license-tester sheet shows $4.99) |
 | ✅ | RevenueCat entitlement + offering wired | shared | Both products attached to `LakeLore All-States` entitlement and to `$rc_annual` package in `default` (Current) offering |
 | ✅ | Server entitlement gating | me | Live in production with v2 RC API; real entitlement lookups verified |
 | ✅ | Mobile RevenueCat SDK + paywall UX | me | All UX shipped; both platform keys real |
