@@ -35,16 +35,17 @@ const plottable = (r: Result): boolean =>
   ((r.average_length ?? 0) > 0 || (r.average_weight ?? 0) > 0);
 
 export function scopeScatterRows(rows: Result[], gearTypes: string[]): ScatterScope {
-  // A single selected gear IS the scope — the normal Abundance/Avg Size path.
-  // Passthrough, no filtering, nothing to explain on the chart.
-  if (gearTypes.length === 1) {
-    return { rows, gear: gearTypes[0], derived: false, excluded: 0 };
+  // ANY explicit gear selection IS the scope (owner decision 2026-08-12:
+  // manual multi-select plots every selected gear — the user chose them, and
+  // the multi-gear query returns each lake's latest row per gear). Passthrough.
+  if (gearTypes.length >= 1) {
+    return { rows, gear: gearTypes.length === 1 ? gearTypes[0] : null, derived: false, excluded: 0 };
   }
 
-  // 0 gears (Stocking Impact / Presence sources) or >1 (manual multi-select):
-  // derive the dominant gear by PLOTTABLE row count, so the pick is driven by
-  // what the scatter can actually draw, not by raw row counts that presence
-  // buckets would win. Tie-break alphabetically for determinism.
+  // 0 gears (Stocking Impact / Presence sources): derive the dominant gear by
+  // PLOTTABLE row count, so the pick is driven by what the scatter can
+  // actually draw, not by raw row counts that presence buckets would win.
+  // Tie-break alphabetically for determinism.
   const counts = new Map<string, number>();
   for (const r of rows) {
     if (r.gear && plottable(r)) counts.set(r.gear, (counts.get(r.gear) ?? 0) + 1);

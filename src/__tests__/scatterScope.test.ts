@@ -62,9 +62,11 @@ describe('scopeScatterRows', () => {
     expect(s.rows).toBe(untagged);
   });
 
-  it('also derives under manual multi-gear selection (>1 gears)', () => {
-    const s = scopeScatterRows([...gill(4), ...fyke(1)], ['Standard gill net', 'Fyke net']);
-    expect(s.derived).toBe(true);
-    expect(s.gear).toBe('Standard gill net');
+  it('passes through under manual multi-gear selection — the user chose them (owner 2026-08-12)', () => {
+    const rows = [...gill(4), ...fyke(1)];
+    const s = scopeScatterRows(rows, ['Standard gill net', 'Fyke net']);
+    expect(s.derived).toBe(false);
+    expect(s.gear).toBeNull(); // no single-gear claim — mixed by explicit choice
+    expect(s.rows).toBe(rows);
   });
 });

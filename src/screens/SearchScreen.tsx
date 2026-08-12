@@ -550,7 +550,11 @@ export default function SearchScreen() {
     () => scopeScatterRows(scatterResults, filters.gearTypes),
     [scatterResults, filters.gearTypes],
   );
-  const scatterNeedsDerivedGear = searched && filters.gearTypes.length !== 1;
+  // Derivation applies ONLY when NO gear is in scope (gear-less measures).
+  // Manual multi-select is an explicit user choice (owner decision 2026-08-12):
+  // plot every selected gear's rows — the multi-gear query already returns each
+  // lake's latest row PER GEAR, so the population matches the list exactly.
+  const scatterNeedsDerivedGear = searched && filters.gearTypes.length === 0;
   const [scatterFetched, setScatterFetched] = useState<{ gear: string; rows: Result[] } | null>(null);
   const scatterFetchSeq = useRef(0);
   useEffect(() => {
