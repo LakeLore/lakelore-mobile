@@ -555,32 +555,38 @@ export default function SearchScreen() {
   // plot every selected gear's rows — the multi-gear query already returns each
   // lake's latest row PER GEAR, so the population matches the list exactly.
   const scatterNeedsDerivedGear = searched && filters.gearTypes.length === 0;
-  const [scatterFetched, setScatterFetched] = useState<{ gear: string; rows: Result[] } | null>(null);
+  // Fetched scatter rows carry the scatterResults REFERENCE they were fetched
+  // for — validity is checked at render, not managed by a second effect.
+  // (v2.1, 2026-08-12, owner-caught: the original separate "reset on new
+  // search" effect ran AFTER the refetch effect in declaration order, so a
+  // measure switch that derived the SAME gear early-returned on the stale
+  // fetch and then had it wiped — no fetch ever ran, and the plot silently
+  // fell back to client-side slicing of the union set: Presence showed 18
+  // trap-net rows out of a 48-lake union.)
+  const [scatterFetched, setScatterFetched] = useState<{ gear: string; rows: Result[]; forResults: Result[] } | null>(null);
+  const scatterFetchedValid = scatterFetched != null && scatterFetched.forResults === scatterResults;
   const scatterFetchSeq = useRef(0);
   useEffect(() => {
     if (!scatterNeedsDerivedGear || viewMode !== 'scatter') return;
     const gear = defaultGearFor(options)[0] ?? scatterScope.gear;
-    if (!gear) { setScatterFetched(null); return; }
-    if (scatterFetched?.gear === gear) return; // this gear's rows already in hand
+    if (!gear) return;
+    if (scatterFetchedValid && scatterFetched.gear === gear) return; // current rows in hand
     const seq = ++scatterFetchSeq.current;
     fetchAllResults(state, { ...filters, gearTypes: [gear], stockingFirst: false, presenceUnion: false })
       .then(resp => {
         if (seq !== scatterFetchSeq.current) return; // superseded by a newer request
-        setScatterFetched({ gear, rows: resp.results });
+        setScatterFetched({ gear, rows: resp.results, forResults: scatterResults });
       })
       .catch(() => { /* offline / older server — client-side fallback plots */ });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scatterNeedsDerivedGear, viewMode, scatterResults, options, state]);
-  // Any new search/scope invalidates fetched scatter rows (the effect refires
-  // on scatterResults identity and refetches for the new scope).
-  useEffect(() => { setScatterFetched(null); }, [scatterResults]);
-  // What the plot renders: fetched gear-scoped rows when available,
+  // What the plot renders: valid fetched gear-scoped rows when available,
   // client-side-scoped rows as fallback, the raw set on the single-gear path.
   const scatterPlotRows = scatterNeedsDerivedGear
-    ? (scatterFetched?.rows ?? scatterScope.rows)
+    ? (scatterFetchedValid ? scatterFetched.rows : scatterScope.rows)
     : scatterResults;
   const scatterPlotGear = scatterNeedsDerivedGear
-    ? (scatterFetched?.gear ?? (scatterScope.derived ? scatterScope.gear : null))
+    ? (scatterFetchedValid ? scatterFetched.gear : (scatterScope.derived ? scatterScope.gear : null))
     : null;
   // Honest Y-axis unit for a DERIVED gear: the active (gear-less) measure has
   // no abundance source to name the unit, so look the gear up across all
