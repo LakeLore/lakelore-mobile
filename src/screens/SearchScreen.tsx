@@ -532,24 +532,63 @@ export default function SearchScreen() {
   // Scatter gear self-scoping (2026-08-11, see src/scatterScope.ts): gear-less
   // measures (Stocking Impact / Presence) query every gear, which would stack
   // incomparable units on the scatter's Y axis and plot one dot per gear per
-  // lake. The scatter scopes ITSELF to the dominant plottable gear —
-  // presentation-layer only, `filters` is never touched, so list view keeps
-  // the measure's own (gear-less) scope exactly as before.
+  // lake. The scatter scopes ITSELF to one gear — presentation-layer only,
+  // `filters` is never touched, so list view keeps the measure's own
+  // (gear-less) scope exactly as before.
+  //
+  // v2 (same day, owner report): scoping the fetched rows CLIENT-SIDE was
+  // wrong under mostRecentOnly — a gear-less latest-only query returns ONE
+  // row per lake (whatever gear its newest survey used), so post-hoc
+  // filtering plotted "lakes whose latest survey happened to be trap nets"
+  // (9 dots) while manually selecting trap nets showed the true population
+  // (46: each lake's latest trap-net survey). The rows the scatter needs are
+  // not in the result set at all — so the scatter REFETCHES with the derived
+  // gear applied, matching manual gear selection exactly. The gear choice is
+  // defaultGearFor — the same gear the Abundance measure would adopt — and
+  // the client-side scoper stays as the offline / older-server fallback.
   const scatterScope = useMemo(
     () => scopeScatterRows(scatterResults, filters.gearTypes),
     [scatterResults, filters.gearTypes],
   );
+  const scatterNeedsDerivedGear = searched && filters.gearTypes.length !== 1;
+  const [scatterFetched, setScatterFetched] = useState<{ gear: string; rows: Result[] } | null>(null);
+  const scatterFetchSeq = useRef(0);
+  useEffect(() => {
+    if (!scatterNeedsDerivedGear || viewMode !== 'scatter') return;
+    const gear = defaultGearFor(options)[0] ?? scatterScope.gear;
+    if (!gear) { setScatterFetched(null); return; }
+    if (scatterFetched?.gear === gear) return; // this gear's rows already in hand
+    const seq = ++scatterFetchSeq.current;
+    fetchAllResults(state, { ...filters, gearTypes: [gear], stockingFirst: false, presenceUnion: false })
+      .then(resp => {
+        if (seq !== scatterFetchSeq.current) return; // superseded by a newer request
+        setScatterFetched({ gear, rows: resp.results });
+      })
+      .catch(() => { /* offline / older server — client-side fallback plots */ });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scatterNeedsDerivedGear, viewMode, scatterResults, options, state]);
+  // Any new search/scope invalidates fetched scatter rows (the effect refires
+  // on scatterResults identity and refetches for the new scope).
+  useEffect(() => { setScatterFetched(null); }, [scatterResults]);
+  // What the plot renders: fetched gear-scoped rows when available,
+  // client-side-scoped rows as fallback, the raw set on the single-gear path.
+  const scatterPlotRows = scatterNeedsDerivedGear
+    ? (scatterFetched?.rows ?? scatterScope.rows)
+    : scatterResults;
+  const scatterPlotGear = scatterNeedsDerivedGear
+    ? (scatterFetched?.gear ?? (scatterScope.derived ? scatterScope.gear : null))
+    : null;
   // Honest Y-axis unit for a DERIVED gear: the active (gear-less) measure has
   // no abundance source to name the unit, so look the gear up across all
   // measures' sources (the abundance measure carries per-gear units).
   const scatterScopedUnit = useMemo(() => {
-    if (!scatterScope.derived || !scatterScope.gear) return null;
+    if (!scatterPlotGear) return null;
     for (const m of measures) {
-      const src = m.sources.find(s => s.gear === scatterScope.gear && s.unit && s.expression === 'catch-per-unit');
+      const src = m.sources.find(s => s.gear === scatterPlotGear && s.unit && s.expression === 'catch-per-unit');
       if (src) return src.unit ?? null;
     }
     return null;
-  }, [scatterScope.derived, scatterScope.gear, measures]);
+  }, [scatterPlotGear, measures]);
 
   // County selector label — mirrors the state: one selection shows the county's
   // own name (like the state name), several show "Counties (n)", none = "All".
@@ -785,11 +824,16 @@ export default function SearchScreen() {
         </View>
       )}
 
-      {/* Results header */}
+      {/* Results header. In scatter view with a DERIVED gear scope the count
+          reflects the scoped rows actually plotted — the owner's 2026-08-11
+          report flagged "9 dots / 33 RESULTS" as incoherent; the list total
+          returns the moment the user flips back to list view. */}
       {searched && (
         <View style={styles.resultsHeader}>
           <Text style={[text.labelL, { color: colors.inkSoft, flexShrink: 1 }]} numberOfLines={1}>
-            {total.toLocaleString()} {total === 1 ? 'RESULT' : 'RESULTS'}
+            {viewMode === 'scatter' && scatterPlotGear != null
+              ? `${scatterPlotRows.length.toLocaleString()} ${scatterPlotRows.length === 1 ? 'RESULT' : 'RESULTS'}`
+              : `${total.toLocaleString()} ${total === 1 ? 'RESULT' : 'RESULTS'}`}
           </Text>
           <View style={styles.viewToggle}>
             {/* Scatter is ONLY EVER abundance (Y) vs size (X), colored by
@@ -923,13 +967,12 @@ export default function SearchScreen() {
       {/* Scatter view */}
       {searched && viewMode === 'scatter' && (
         <ScatterPlot
-          results={scatterScope.rows}
+          results={scatterPlotRows}
           state={state}
           activeMeasure={activeMeasure}
           activeSourceId={activeSourceId}
-          scopedGear={scatterScope.derived ? scatterScope.gear : null}
+          scopedGear={scatterPlotGear}
           scopedUnit={scatterScopedUnit}
-          scopedExcluded={scatterScope.excluded}
           onLakePress={(lakeId, lakeName, species) => {
             // Same row-species rule as the list (the dot CARD shows a
             // species; the tap must honor it).

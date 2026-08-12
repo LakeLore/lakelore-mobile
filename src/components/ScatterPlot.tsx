@@ -101,11 +101,10 @@ interface Props {
   // measure has no abundance source to name it).
   scopedGear?: string | null;
   scopedUnit?: string | null;
-  scopedExcluded?: number;
   onLakePress: (lakeId: number|string, lakeName: string, species?: string) => void;
 }
 
-export default function ScatterPlot({ results, state, activeMeasure, activeSourceId, scopedGear, scopedUnit, scopedExcluded, onLakePress }: Props) {
+export default function ScatterPlot({ results, state, activeMeasure, activeSourceId, scopedGear, scopedUnit, onLakePress }: Props) {
   const { width } = useWindowDimensions();
 
   const PAD_L = 48, PAD_R = 16, PAD_T = 12, PAD_B = 44;
@@ -562,8 +561,7 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
           Reads as information, not an error; list view still shows every gear. */}
       {scopedGear != null && (
         <Text style={[text.bodyS, { color: colors.walleye2, marginHorizontal: space.lg, marginBottom: space.xs }]}>
-          Plotting {scopedGear} surveys — one gear type per axis
-          {(scopedExcluded ?? 0) > 0 ? ` (${scopedExcluded} result${scopedExcluded === 1 ? '' : 's'} from other gears in list view)` : ''}
+          Plotting {scopedGear} surveys — one gear type per axis · other gears in list view
         </Text>
       )}
 

@@ -206,6 +206,11 @@ export interface FilterOptions {
   // — the app's gear default prefers these over raw counts so synthetic
   // presence buckets never hide real survey rows.
   gearCpueCounts?: Record<string, number>;
+  // Latest-aware per-gear counts (2026-08-11): rows a single-gear query
+  // returns under mostRecentOnly = one per lake with that gear. The Filters
+  // modal shows THESE when the "Latest only" toggle is on — all-history row
+  // counts ("333") next to a latest-only list ("43") read as a bug.
+  gearLatestCounts?: Record<string, number>;
   counties: string[];
   yearRange: { min: number; max: number };
   defaultGear?: string;

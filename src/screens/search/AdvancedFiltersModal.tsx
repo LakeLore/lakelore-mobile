@@ -72,13 +72,17 @@ export function AdvancedFiltersModal({
               user can see which gear is in play for the current species
               (e.g. NE Largemouth Bass is sampled by Electrofishing only —
               surfacing that here is more informative than hiding it). */}
+          {/* Chip counts follow the "Latest only" toggle (2026-08-11): with it
+              ON they show gearLatestCounts (lakes with a latest row for that
+              gear = what the list will actually return); OFF shows all-history
+              row counts. Older servers lack gearLatestCounts — falls back. */}
           {state !== 'mn' && options?.gearTypes?.length ? (
             <MultiChipSelect
               label="Gear Type"
               options={options.gearTypes}
               selected={filters.gearTypes}
               onToggle={toggleGear}
-              counts={options.gearTypeCounts}
+              counts={filters.mostRecentOnly && options.gearLatestCounts ? options.gearLatestCounts : options.gearTypeCounts}
               showMoreThreshold={state === 'sd' ? 50 : undefined}
               labels={state === 'wi' ? WI_GEAR_LABELS : undefined}
             />
@@ -91,7 +95,7 @@ export function AdvancedFiltersModal({
               options={options.gearTypes}
               selected={filters.gearTypes}
               onToggle={toggleGear}
-              counts={options.gearTypeCounts}
+              counts={filters.mostRecentOnly && options.gearLatestCounts ? options.gearLatestCounts : options.gearTypeCounts}
               showMoreThreshold={100}
             />
           ) : null}
