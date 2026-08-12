@@ -13,19 +13,27 @@ type Props = {
   counts?: Record<string, number>;
   showMoreThreshold?: number;
   labels?: Record<string, string>;
+  // Which counts decide the primary/"show more" SPLIT (2026-08-12): defaults
+  // to `counts`, but the two roles differ — `counts` is what the chip DISPLAYS
+  // (latest-aware when the Latest-only toggle is on), while the long-tail
+  // split is a property of overall data mass and must not change with a view
+  // toggle. Displaying latest counts (43/46...) against thresholds calibrated
+  // for all-history magnitudes (MN=100) collapsed EVERY gear chip.
+  splitCounts?: Record<string, number>;
 };
 
 export function MultiChipSelect({
-  label, options, selected, onToggle, counts, showMoreThreshold, labels,
+  label, options, selected, onToggle, counts, showMoreThreshold, labels, splitCounts,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   if (!options.length) return null;
 
+  const tierCounts = splitCounts ?? counts;
   const primary = showMoreThreshold !== undefined
-    ? options.filter(o => (counts?.[o] ?? 0) >= showMoreThreshold)
+    ? options.filter(o => (tierCounts?.[o] ?? 0) >= showMoreThreshold)
     : options;
   const secondary = showMoreThreshold !== undefined
-    ? options.filter(o => (counts?.[o] ?? 0) < showMoreThreshold)
+    ? options.filter(o => (tierCounts?.[o] ?? 0) < showMoreThreshold)
     : [];
 
   const visible = expanded

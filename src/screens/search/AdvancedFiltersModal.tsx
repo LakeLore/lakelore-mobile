@@ -83,6 +83,7 @@ export function AdvancedFiltersModal({
               selected={filters.gearTypes}
               onToggle={toggleGear}
               counts={filters.mostRecentOnly && options.gearLatestCounts ? options.gearLatestCounts : options.gearTypeCounts}
+              splitCounts={options.gearTypeCounts}
               showMoreThreshold={state === 'sd' ? 50 : undefined}
               labels={state === 'wi' ? WI_GEAR_LABELS : undefined}
             />
@@ -96,6 +97,7 @@ export function AdvancedFiltersModal({
               selected={filters.gearTypes}
               onToggle={toggleGear}
               counts={filters.mostRecentOnly && options.gearLatestCounts ? options.gearLatestCounts : options.gearTypeCounts}
+              splitCounts={options.gearTypeCounts}
               showMoreThreshold={100}
             />
           ) : null}
