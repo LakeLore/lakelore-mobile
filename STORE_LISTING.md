@@ -321,7 +321,7 @@ To test the subscription / paywall flow:
 4. "Restore purchases" is available both inside the paywall and on the About & Sources screen; store/network failures show a retry message, never a false "no subscription found".
 5. "Manage subscription" (always visible on About & Sources) opens the native iOS subscription-management sheet via StoreKit.
 
-Data sources: every state and provincial fish and wildlife agency is credited on the in-app "About & Sources" screen, accessible from the State Select screen via the "ⓘ ABOUT" badge. The app is independent and not affiliated with any agency; all data is sourced from public records published by each agency.
+Data sources: every state fish and wildlife agency is credited on the in-app "About & Sources" screen, accessible from the State Select screen via the "ⓘ ABOUT" badge. The app is independent and not affiliated with any agency; all data is sourced from public records published by each agency.
 
 Privacy:
 - Anonymous device UUID (X-User-Id header, plus X-App-Version/X-Update-Id version headers): collected for entitlement lookup and fleet version telemetry. Not linked to user identity. Not used for tracking. Declared in Privacy Manifest as NSPrivacyCollectedDataTypeUserID, purpose: App Functionality.
