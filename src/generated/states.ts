@@ -41,8 +41,8 @@ export const STATE_KEYS: readonly StateKey[] = ['mn', 'sd', 'nd', 'ia', 'ne', 'w
 
 // Fleet volume across ACTIVE states, computed at generation time from the
 // canonical artifacts (paywall value copy — D5).
-export const TOTAL_ACTIVE_LAKES = 47682;
-export const TOTAL_ACTIVE_RECORDS = 834117;
+export const TOTAL_ACTIVE_LAKES = 46763;
+export const TOTAL_ACTIVE_RECORDS = 815565;
 
 export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
   mn: {
@@ -741,7 +741,7 @@ export const GENERATED_STATES: Record<StateKey, GeneratedStateConfig> = {
     agencyUrl: 'https://www.gov.mb.ca',
     country: 'CA',
     free: false,
-    active: true,
+    active: false,
     hasCpue: true, hasLength: true, hasWeight: false, hasCatch: true, hasStocking: true, hasCounties: true, hasRating: false,
     cpueKind: 'gear',
     sortOptions: [{'value':'cpue','label':'Catch / Net'},{'value':'length','label':'Avg Length'},{'value':'stocked','label':'Stck Adults / 100AC'}],

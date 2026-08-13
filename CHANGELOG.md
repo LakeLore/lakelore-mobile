@@ -32,12 +32,12 @@ The all-states polish + durability release. (Catch-up entry written 2026-07-26 �
 ### Store release-notes copy
 
 ```
-LakeLore now covers 38 states and Manitoba — 68,000+ lakes of agency netting surveys, stocking records, and forecasts, free to preview everywhere and free in full for Minnesota.
+LakeLore now covers 38 states — 67,000+ lakes of agency netting surveys, stocking records, and forecasts, free to preview everywhere and free in full for Minnesota.
 
 New: pick your measure (abundance, average size, stocking impact, presence) and the exact survey gear behind it. Share any lake as a card. Smoother offline behavior and dozens of fixes.
 ```
 
-(~360 chars — fits Play's 500 and Apple's 4,000. Counts corrected 2026-08-12 after the legal holds; keep in sync with STORE_LISTING.)
+(~360 chars — fits Play's 500 and Apple's 4,000. Counts corrected 2026-08-13 (US-only submission — MB product-held); keep in sync with STORE_LISTING.)
 
 ## [1.1.0] — Build 20 (TestFlight; superseded by 1.1.1)
 

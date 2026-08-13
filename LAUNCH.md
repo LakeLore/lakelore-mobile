@@ -9,7 +9,7 @@ Last reviewed: 2026-07-16 (all-states launch reconciliation).
 ## Monetization model (locked in 2026-05-07 · preview model 2026-07-08 · all-states scope 2026-07-15)
 
 - **Free tier:** Minnesota only. Full access, all features.
-- **Paid tier — "LakeLore All-States":** every other active state/province — **37 US states + Manitoba**. 39 active total. **2026-08-04 LEGAL HOLDS: 11 states/provinces (AB BC ON SK AK HI KS KY MI NE VT) are `active:false` per the data-licensing audit (`~/DATA_LICENSING_AUDIT_2026-07-28.md`; owner policy: any compliance violation holds the whole state).** Active fleet is **39 (38 US + MB)**. SC/AZ/MA/DE/RI/QC additionally held back for product reasons (DE/SC activation-eligible; QC also legally restrictive via SEPAQ).
+- **Paid tier — "LakeLore All-States":** every other active state — **37 US states**. 38 active total (MB product-held 2026-08-13 for the US-only submission; licence-clean, reactivation-eligible). **2026-08-04 LEGAL HOLDS: 11 states/provinces (AB BC ON SK AK HI KS KY MI NE VT) are `active:false` per the data-licensing audit (`~/DATA_LICENSING_AUDIT_2026-07-28.md`; owner policy: any compliance violation holds the whole state).** Active fleet is **39 (38 US + MB)**. SC/AZ/MA/DE/RI/QC additionally held back for product reasons (DE/SC activation-eligible; QC also legally restrictive via SEPAQ).
 - **Price:** $4.99 / year, auto-renewing (lowered from $5.99 on 2026-07-25, before first store submission).
 - **Free trial:** None.
 - **Provider:** RevenueCat (cross-platform abstraction over Apple StoreKit + Google Play Billing).
