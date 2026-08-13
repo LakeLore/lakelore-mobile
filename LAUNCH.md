@@ -51,17 +51,17 @@ Last reviewed: 2026-07-16 (all-states launch reconciliation).
 
 ## SUBMISSION STATUS — 2026-08-13 (handoff snapshot; conversation-context limit reached mid-submission)
 
-**DONE:** iOS build 27 (1.1.1, 38-state US-only) uploaded+processing · Android bundle (build-27 gen) on Internal testing · ASC version 1.1.1 created: 8 new screenshots (6.9"), promo text, description, What's New, keywords, copyright `2026 LakeLore App LLC`, review notes (US-only), sign-in No, MANUAL release, contact info · **Subscription `LakeLore All-States Annual` status = APPROVED (already reviewed — nothing to attach; version-page first-sub banner does NOT apply)** · Play App content 100% (Data safety 6 types, deletion Yes, ad-ID No, App access w/ subscription instructions) · both store prices $4.99 verified · sandbox purchase verified on build 26 · assets on Desktop: `lakelore-screenshots/` (Apple, 1320×2868), `lakelore-screenshots-play/` (Play, 1320×2640 2:1, iOS chrome cropped), `lakelore-play-icon-512.png`, `lakelore-feature-graphic.png`.
+**DONE:** iOS build 29 (1.1.1, 38-state US-only; ASC numbering — sim builds consumed 27/28) uploaded+processed · Android bundle (build-27 gen) on Internal testing · ASC version 1.1.1 created: 8 new screenshots (6.9"), promo text, description, What's New, keywords, copyright `2026 LakeLore App LLC`, review notes (US-only), sign-in No, MANUAL release, contact info · **Subscription `LakeLore All-States Annual` status = APPROVED (already reviewed — nothing to attach; version-page first-sub banner does NOT apply)** · Play App content 100% (Data safety 6 types, deletion Yes, ad-ID No, App access w/ subscription instructions) · both store prices $4.99 verified · sandbox purchase verified on build 26 · assets on Desktop: `lakelore-screenshots/` (Apple, 1320×2868), `lakelore-screenshots-play/` (Play, 1320×2640 2:1, iOS chrome cropped), `lakelore-play-icon-512.png`, `lakelore-feature-graphic.png`.
 
 **REMAINING — iOS (minutes):**
-1. ASC version page → Build section → ⊕ → select **1.1.1 (27)** (NOT 26) → Save.
+1. ASC version page → Build section → ⊕ → select **1.1.1 (29)** (NOT 26; sim builds consumed 27/28) → Save.
 2. Recommended: App Information → Age Ratings → new social-media questions → all No. Keywords: dedupe second `pike` (→ `musky`).
 3. **Add for Review.** Expect 24–72 h.
 
 **REMAINING — Play (~30 min):**
 1. Main store listing: name/short/full description (STORE_LISTING cheat sheet, US-only), icon + feature graphic from Desktop, upload the 8 from `lakelore-screenshots-play/`.
 2. App access instructions: RE-PASTE from STORE_LISTING (console copy still says "and Manitoba").
-3. Production → Create release → **promote the NEWEST bundle** (1.1.1 build-27 generation — NOT bundle 17) → release notes from CHANGELOG block ("38 states — 46,000+ lakes") → Start rollout. First review up to 7 days.
+3. Production → Create release → **promote the NEWEST bundle** (1.1.1, same generation as iOS 29 — NOT bundle 17) → release notes from CHANGELOG block ("38 states — 46,000+ lakes") → Start rollout. First review up to 7 days.
 4. Android device, once: $0 license-tester purchase (sheet must show $4.99).
 
 **DURING REVIEW (standing rules):** no OTAs to runtime 1.1.1; no `LAKELORE_MIN_APP_VERSION`/`KILLED_VERSIONS` changes; ops board pages only on real failures (`_fail-pdf-watch` al/ny weekly alarm = accepted noise). After approval: iOS is MANUAL release — press Release; then run `~/POST_LAUNCH_WATCH.md` (72 h protocol). OTA freeze lifts after both approvals.
