@@ -67,7 +67,9 @@ export default function StateSelectScreen({ onSelect }: Props) {
           {HAS_CA_ACTIVE ? 'Select a State or Province' : 'Select a State'}
         </Text>
         <Text style={[text.editorialS, { color: colors.inkSoft, marginTop: 6 }]}>
-          A field guide to fish populations in surveyed lakes across the US and Canada.
+          {HAS_CA_ACTIVE
+            ? 'A field guide to fish populations in surveyed lakes across the US and Canada.'
+            : 'A field guide to fish populations in surveyed lakes across the United States.'}
         </Text>
       </View>
 
