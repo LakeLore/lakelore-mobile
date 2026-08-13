@@ -49,6 +49,27 @@ Last reviewed: 2026-07-16 (all-states launch reconciliation).
 
 🛑 = blocker · 💳 = paywall track · ⚠️ = strongly recommended pre-launch · 🧹 = polish, post-launch fine
 
+## SUBMISSION STATUS — 2026-08-13 (handoff snapshot; conversation-context limit reached mid-submission)
+
+**DONE:** iOS build 27 (1.1.1, 38-state US-only) uploaded+processing · Android bundle (build-27 gen) on Internal testing · ASC version 1.1.1 created: 8 new screenshots (6.9"), promo text, description, What's New, keywords, copyright `2026 LakeLore App LLC`, review notes (US-only), sign-in No, MANUAL release, contact info · **Subscription `LakeLore All-States Annual` status = APPROVED (already reviewed — nothing to attach; version-page first-sub banner does NOT apply)** · Play App content 100% (Data safety 6 types, deletion Yes, ad-ID No, App access w/ subscription instructions) · both store prices $4.99 verified · sandbox purchase verified on build 26 · assets on Desktop: `lakelore-screenshots/` (Apple, 1320×2868), `lakelore-screenshots-play/` (Play, 1320×2640 2:1, iOS chrome cropped), `lakelore-play-icon-512.png`, `lakelore-feature-graphic.png`.
+
+**REMAINING — iOS (minutes):**
+1. ASC version page → Build section → ⊕ → select **1.1.1 (27)** (NOT 26) → Save.
+2. Recommended: App Information → Age Ratings → new social-media questions → all No. Keywords: dedupe second `pike` (→ `musky`).
+3. **Add for Review.** Expect 24–72 h.
+
+**REMAINING — Play (~30 min):**
+1. Main store listing: name/short/full description (STORE_LISTING cheat sheet, US-only), icon + feature graphic from Desktop, upload the 8 from `lakelore-screenshots-play/`.
+2. App access instructions: RE-PASTE from STORE_LISTING (console copy still says "and Manitoba").
+3. Production → Create release → **promote the NEWEST bundle** (1.1.1 build-27 generation — NOT bundle 17) → release notes from CHANGELOG block ("38 states — 46,000+ lakes") → Start rollout. First review up to 7 days.
+4. Android device, once: $0 license-tester purchase (sheet must show $4.99).
+
+**DURING REVIEW (standing rules):** no OTAs to runtime 1.1.1; no `LAKELORE_MIN_APP_VERSION`/`KILLED_VERSIONS` changes; ops board pages only on real failures (`_fail-pdf-watch` al/ny weekly alarm = accepted noise). After approval: iOS is MANUAL release — press Release; then run `~/POST_LAUNCH_WATCH.md` (72 h protocol). OTA freeze lifts after both approvals.
+
+**OWNER BACKLOG (unchanged, in IMPROVEMENT_PLAN_2026-07-25.md):** O2 Sentry alerts+token · O3 ASC API .p8 · O4 2FA/vault · O5 pmset · O6 Play Integrity secret+console · O8 gh secrets (FLY_API_TOKEN, RCLONE_CONF_B2 → activates cloud userdata sweep + cloud restore drill) · O10 permission letters (AB KY TX WI MN AK NY-DEC MO SK King's-Printer-ON; un-hold paths in registry legalHold notes) · O11 lawyer on ~/DATA_LICENSING_AUDIT_2026-07-28.md (lead AB/TX/KY) · O12 MI Deep Blue browser check (confirmation only; MI's PDF-corpus question independent).
+
+**ENGINEERING POST-LAUNCH (in the plan, Rounds 11–16 + carryovers):** canonical provenance column (schema bump) · UA self-ID with O10 outreach · MB reactivation (product-hold, licence-clean; recipe in registry `productHold` note) · MB paired abundance×trophy rating scatter (design pending owner) · scatter/measure-picker minors (header counts unplottable rows; "29 LAKES" spacing; MN weight undercount in fallback scoper; SubscriptionRequiredError swallowed in scatter catch; canonical trophy-sort comment) · v1.0-public NE 400 (accepted; superseded at release) · coverage-change companions (paywall/About one-liners, RC promo-entitlement goodwill playbook) · lastWebhookAt assertion · review poller (needs O3) · storage.ts centralization · fixture test + lint · IN raw space-ids · optional reports/ 90d prune · optional real-device Play screenshots swap.
+
 ## Remaining blockers, in order
 
 > **2026-07-25 status (current):** the current build is **v1.1.1 (build 24)** — an
