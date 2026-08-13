@@ -6,7 +6,12 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
 import { useAppState } from '../StateContext';
-import { StateKey } from '../types';
+import { StateKey, GENERATED_STATES } from '../types';
+
+// Title adapts to the active fleet: with zero Canadian provinces active
+// (US-only submission, 2026-08-13) "or Province" would advertise something
+// unselectable. Self-heals when a province is reactivated.
+const HAS_CA_ACTIVE = Object.values(GENERATED_STATES).some(st => st.active && st.country === 'CA');
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
 import { useEntitlement } from '../useEntitlement';
 import StateMapPicker from '../components/StateMapPicker';
@@ -59,7 +64,7 @@ export default function StateSelectScreen({ onSelect }: Props) {
       <View style={styles.intro}>
         <Text style={[text.labelL, { color: colors.walleye2 }]}>LAKELORE · ATLAS</Text>
         <Text style={[text.displayXL, { color: colors.ink, marginTop: 6 }]}>
-          Select a State or Province
+          {HAS_CA_ACTIVE ? 'Select a State or Province' : 'Select a State'}
         </Text>
         <Text style={[text.editorialS, { color: colors.inkSoft, marginTop: 6 }]}>
           A field guide to fish populations in surveyed lakes across the US and Canada.

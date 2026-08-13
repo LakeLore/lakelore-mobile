@@ -2,7 +2,8 @@ import { StateKey } from './types';
 import { STATE_KEYS, GENERATED_STATES } from './generated/states';
 
 // States active in the current app build — every registry state flagged
-// active. 2026-08-04: 39 active (38 US + Manitoba) — 11 states/provinces are
+// active. 2026-08-13: 38 active (38 US; MB product-held for the US-only
+// submission — licence-clean, reactivation-eligible) — 11 states/provinces are
 // on whole-state LEGAL HOLD (ab bc on sk ak hi ks ky mi ne vt; see
 // ~/DATA_LICENSING_AUDIT_2026-07-28.md) and sc/az/ma/de/ri/qc stay inactive
 // for product reasons. The server derives its ACTIVE_STATES from the same

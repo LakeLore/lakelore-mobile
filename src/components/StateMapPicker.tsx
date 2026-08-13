@@ -306,9 +306,11 @@ export default function StateMapPicker({ selected, hasAllStates, entitlementLoad
           <SectionLabel>United States</SectionLabel>
         </View>
         {usRows.map(listRow)}
-        <View style={styles.sectionHead}>
-          <SectionLabel>Canada</SectionLabel>
-        </View>
+        {caRows.length > 0 && (
+          <View style={styles.sectionHead}>
+            <SectionLabel>Canada</SectionLabel>
+          </View>
+        )}
         {caRows.map(listRow)}
         <View style={{ height: 48 }} />
       </ScrollView>

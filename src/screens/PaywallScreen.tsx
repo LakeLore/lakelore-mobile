@@ -137,7 +137,7 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
           <Text style={[text.displayL, styles.headline]}>
             {contextName(triggeredFrom)
               ? `Unlock ${contextName(triggeredFrom)} — and every other state.`
-              : 'Unlock every state & province.'}
+              : PAID_CA > 0 ? 'Unlock every state & province.' : 'Unlock every state.'}
           </Text>
 
           <Text style={[text.bodyL, { color: colors.ink2, marginTop: 16 }]}>
@@ -303,11 +303,15 @@ const PAID_CA = PAID_STATES.filter(s => GENERATED_STATES[s].country === 'CA').le
 const ACTIVE_VALUE_PROPS: { label: string; detail: string }[] = [
   { label: `${floorK(TOTAL_ACTIVE_LAKES)} lakes · ${floorK(TOTAL_ACTIVE_RECORDS)} records`,
     detail: 'Agency survey, stocking, and forecast data — counted at build time, growing every refresh' },
-  { label: `${PAID_US} more US states + ${PAID_CA} Canadian province${PAID_CA === 1 ? '' : 's'}`,
-    detail: 'Every state and province LakeLore covers, in one pass' },
+  { label: PAID_CA > 0
+      ? `${PAID_US} more US states + ${PAID_CA} Canadian province${PAID_CA === 1 ? '' : 's'}`
+      : `${PAID_US} more US states`,
+    detail: PAID_CA > 0
+      ? 'Every state and province LakeLore covers, in one pass'
+      : 'Every state LakeLore covers, in one pass' },
   { label: 'Lake names & locations revealed',
     detail: 'Preview mode shows the numbers — the pass shows you which lakes' },
-  { label: 'State & provincial agency survey data',
+  { label: PAID_CA > 0 ? 'State & provincial agency survey data' : 'State agency survey data',
     detail: 'Netting + electrofishing catch rates, lengths, and stocking records' },
   { label: 'Every future state included',
     detail: 'New coverage lands in the same subscription at no extra cost' },
