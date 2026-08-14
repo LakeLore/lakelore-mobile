@@ -59,9 +59,9 @@ Last reviewed: 2026-07-16 (all-states launch reconciliation).
 3. **Add for Review.** Expect 24–72 h.
 
 **REMAINING — Play (~30 min):**
-1. Main store listing: name/short/full description (STORE_LISTING cheat sheet, US-only), icon + feature graphic from Desktop, upload the 8 from `lakelore-screenshots-play/`.
-2. App access instructions: RE-PASTE from STORE_LISTING (console copy still says "and Manitoba").
-3. Production → Create release → **promote the NEWEST bundle** (1.1.1, same generation as iOS 29 — NOT bundle 17) → release notes from CHANGELOG block ("38 states — 46,000+ lakes") → Start rollout. First review up to 7 days.
+1. ⚠️ **2026-08-14: Google REJECTED the Aug-12 batch — Misleading Claims: "Missing Source Link for Government Information"** (apps serving government data must list official source URLs in the description + an easy-to-see not-a-government-entity disclaimer; evidence cited = the old June full description, which named agencies but linked nothing). **Fix is written**: STORE_LISTING.md long description rewritten 2026-08-14 with an OFFICIAL DATA SOURCES block (all 38 agency URLs, generated from registry `agencyUrl`) + "NOT A GOVERNMENT APP" disclaimer; "Free." → "Minnesota is free forever." Paste the Play variant (swap "App Store account" → "Google Play account") into Main store listing → Full description, then Submit all pending changes (single restart). **Paste the same copy into the ASC description BEFORE Add for Review** — Apple's reviewer sees the same claims, and the copy must match the store-listing source of truth.
+2. Main store listing rest: icon + feature graphic from Desktop, the 8 from `lakelore-screenshots-play/`, App access instructions RE-PASTE (console copy still said "and Manitoba"). *(Mostly done 2026-08-13/14 — verify before submitting.)*
+3. Production release with the NEWEST bundle (1.1.1, build-29 generation) — created 2026-08-14 with all countries selected; it's among the pending changes. Verify a release row appears in the pending list before submitting.
 4. Android device, once: $0 license-tester purchase (sheet must show $4.99).
 
 **DURING REVIEW (standing rules):** no OTAs to runtime 1.1.1; no `LAKELORE_MIN_APP_VERSION`/`KILLED_VERSIONS` changes; ops board pages only on real failures (`_fail-pdf-watch` al/ny weekly alarm = accepted noise). After approval: iOS is MANUAL release — press Release; then run `~/POST_LAUNCH_WATCH.md` (72 h protocol). OTA freeze lifts after both approvals.

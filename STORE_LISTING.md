@@ -1,6 +1,6 @@
 # LakeLore — Store Listing Copy
 
-This is the source of truth for every text field in App Store Connect and Google Play Console. Edit here, then paste into the corresponding field on each platform. Last updated 2026-07-26 (pre-submission red-team pass: Terms-of-Use metadata row, subscription block in the description, promo-text coverage fix, feedback-form privacy declarations, drift-proof MN counts, shot-list rewrite, corrected Play console field targets).
+This is the source of truth for every text field in App Store Connect and Google Play Console. Edit here, then paste into the corresponding field on each platform. Last updated 2026-08-14 (long description rewritten for Google's Misleading-Claims rejection: OFFICIAL DATA SOURCES block with all 38 agency URLs + NOT A GOVERNMENT APP disclaimer; "Free." → "Minnesota is free forever."). Previous pass 2026-07-26 (pre-submission red-team).
 
 ---
 
@@ -93,29 +93,68 @@ Apple expands singulars to plurals automatically; don't waste chars on `walleyes
 ```
 LakeLore is a field guide to fish populations in publicly surveyed lakes — built for anglers, conservationists, and anyone who wants to read a lake before they fish it.
 
-Decades of state DNR netting surveys, electrofishing data, and stocking records, gathered into one quiet atlas. No accounts. No ads. Free.
+Decades of state fisheries netting surveys, electrofishing data, and stocking records, gathered into one quiet atlas. No accounts. No ads. Minnesota is free forever.
+
+NOT A GOVERNMENT APP
+
+LakeLore is an independent app. It does not represent any government entity and is not affiliated with, endorsed by, or operated by any government agency. All fisheries data in LakeLore is public information republished from the official state agency sources listed below.
 
 WHAT YOU CAN DO
 
 • Search every surveyed lake by species, county, gear type, lake size, year, and stocking density.
 • Read each lake as a field-guide page: catch-per-unit-effort over decades, broken out by gear type.
-• See the full stocking history — fry, fingerlings, yearlings, adults — with an estimated "adult fish per 100 acres" overlay derived from a survival model.
-• Compare lakes side-by-side in a scatter plot: each dot is a lake-survey, colored by stocking density.
-• Tap through to the original agency reports — MN DNR LakeFinder, SD GFP PDFs, ND Game & Fish ArcGIS, Texas Parks & Wildlife, and dozens more.
+• See the full stocking history — fry, fingerlings, yearlings, adults — with an estimated 'adult fish per 100 acres' overlay derived from a survival model.
+• Compare lakes side-by-side in a scatter plot, and tap through to the original agency reports.
 
 DATA COVERED
 
 • 38 US states, assembled from each state fish and wildlife agency's published surveys, forecasts, and stocking records.
-• Minnesota — free, no subscription: 9,400+ lakes, 23,000+ surveys, 396,000+ catch records (MN DNR).
+• Minnesota — free, no subscription: 9,400+ lakes, 23,000+ surveys, 396,000+ catch records.
 • Every other state is included in the LakeLore All-States subscription — and browsable in preview before you subscribe.
 
-SPECIES TRACKED
+OFFICIAL DATA SOURCES
 
-Walleye, northern pike, muskellunge, smallmouth and largemouth bass, lake trout, brown trout, rainbow trout, brook trout, yellow perch, black and white crappie, bluegill, pumpkinseed, rock bass, channel catfish, white bass, hybrid striped bass (wiper), and many more.
+The fisheries data in LakeLore comes from these official state agency websites:
 
-WHY IT EXISTS
-
-State biologists pull nets, weigh fish, and publish the results — usually as PDFs or county-level spreadsheets buried several clicks into agency websites. LakeLore gathers all of it, normalizes the assessment methods across states, joins it to every stocking event on record, and renders it as one continuous picture of each lake.
+• Minnesota: https://www.dnr.state.mn.us
+• South Dakota: https://gfp.sd.gov
+• North Dakota: https://gf.nd.gov
+• Iowa: https://www.iowadnr.gov
+• Wisconsin: https://dnr.wisconsin.gov
+• Washington: https://wdfw.wa.gov
+• Montana: https://fwp.mt.gov
+• Missouri: https://mdc.mo.gov
+• Illinois: https://dnr.illinois.gov
+• Indiana: https://www.in.gov/dnr
+• Ohio: https://ohiodnr.gov
+• Florida: https://myfwc.com
+• Georgia: https://georgiawildlife.com
+• Alabama: https://www.outdooralabama.com
+• Tennessee: https://www.tn.gov/twra
+• North Carolina: https://www.ncwildlife.org
+• Virginia: https://dwr.virginia.gov
+• Oregon: https://myodfw.com
+• Idaho: https://idfg.idaho.gov
+• Wyoming: https://wgfd.wyo.gov
+• Utah: https://wildlife.utah.gov
+• Colorado: https://cpw.state.co.us
+• New Mexico: https://wildlife.dgf.nm.gov
+• Nevada: https://www.ndow.org
+• California: https://wildlife.ca.gov
+• Oklahoma: https://www.wildlifedepartment.com
+• Texas: https://tpwd.texas.gov
+• New York: https://dec.ny.gov
+• Pennsylvania: https://www.fishandboat.com
+• Arkansas: https://www.agfc.com
+• Louisiana: https://www.wlf.louisiana.gov
+• Maine: https://www.maine.gov/ifw
+• Connecticut: https://portal.ct.gov/deep
+• Maryland: https://dnr.maryland.gov
+• New Hampshire: https://www.wildlife.nh.gov
+• Mississippi: https://www.mdwfp.com
+• West Virginia: https://wvdnr.gov
+• New Jersey: https://dep.nj.gov/njfw
+• Lake size and location: USGS National Hydrography Dataset: https://www.usgs.gov/national-hydrography
 
 WHAT IT IS NOT
 
@@ -129,10 +168,10 @@ Privacy Policy: https://www.lakeloreapp.com/privacy
 
 —
 
-A field guide, quietly assembled. Free to use, free to share.
+A field guide, quietly assembled.
 ```
 
-(About 2,600 chars. Both stores accept up to 4,000. The SUBSCRIPTION block satisfies Apple 3.1.2's metadata requirement — name, duration, price, auto-renew terms, and functional ToU + privacy links in the description; for Play, swap "App Store account" → "Google Play account" when pasting.)
+(About 3,650 chars; both stores accept up to 4,000. Rewritten 2026-08-14 after Google Play's Misleading-Claims rejection — "Missing Source Link for Government Information": apps serving government data must list official source URLs in the description AND carry an easy-to-see not-a-government-entity disclaimer. The OFFICIAL DATA SOURCES block is generated from `~/lakelore-data/registry/states.json` active states (`agencyUrl`) — regenerate it whenever the active set changes. "Free." also softened to "Minnesota is free forever." (misleading-claims hygiene for a freemium app). SPECIES TRACKED and WHY IT EXISTS sections were cut for room. The SUBSCRIPTION block satisfies Apple 3.1.2's metadata requirement; for Play, swap "App Store account" → "Google Play account" when pasting.)
 
 ---
 

@@ -117,8 +117,12 @@ function ndStats(r: Result): Stat[] {
 function wiStats(r: Result): Stat[] {
   // Label follows the gear/cpue_kind: SE/FE electrofishing → Catch/Hour, the
   // SN nets → Catch/Net, and the synthetic normalized bucket → Norm. Catch Rate.
+  // The rating stat (WDNR LakeDetail Forecast Ratings, added 2026-07-22) is the
+  // one canonical metric this pre-fleet layout was missing — without it a
+  // rating-sorted list rendered a bare dash for every row (2026-08-14).
   return [
     { key: 'cpue',    label: cpueLabelForGear('wi', r.gear, r.cpue_kind), value: r.cpue != null ? r.cpue.toFixed(2) : null },
+    { key: 'rating',  label: 'Forecast',    value: r.rating != null ? fmtRating(r.rating) : null },
     { key: 'length',  label: lengthLabel(r),  value: r.average_length    != null ? `${r.average_length.toFixed(1)}"` : null },
     { key: 'catch',   label: 'Total catch', value: r.total_catch       != null ? r.total_catch.toLocaleString()    : null },
     stockedStat(r),
