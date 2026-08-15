@@ -49,22 +49,20 @@ Last reviewed: 2026-07-16 (all-states launch reconciliation).
 
 🛑 = blocker · 💳 = paywall track · ⚠️ = strongly recommended pre-launch · 🧹 = polish, post-launch fine
 
-## SUBMISSION STATUS — 2026-08-13 (handoff snapshot; conversation-context limit reached mid-submission)
+## SUBMISSION STATUS — 2026-08-15: BOTH STORES SUBMITTED, IN REVIEW
 
-**DONE:** iOS build 29 (1.1.1, 38-state US-only; ASC numbering — sim builds consumed 27/28) uploaded+processed · Android bundle (build-27 gen) on Internal testing · ASC version 1.1.1 created: 8 new screenshots (6.9"), promo text, description, What's New, keywords, copyright `2026 LakeLore App LLC`, review notes (US-only), sign-in No, MANUAL release, contact info · **Subscription `LakeLore All-States Annual` status = APPROVED (already reviewed — nothing to attach; version-page first-sub banner does NOT apply)** · Play App content 100% (Data safety 6 types, deletion Yes, ad-ID No, App access w/ subscription instructions) · both store prices $4.99 verified · sandbox purchase verified on build 26 · assets on Desktop: `lakelore-screenshots/` (Apple, 1320×2868), `lakelore-screenshots-play/` (Play, 1320×2640 2:1, iOS chrome cropped), `lakelore-play-icon-512.png`, `lakelore-feature-graphic.png`.
+**SUBMITTED 2026-08-15:** iOS 1.1.1 (build 29) Added for Review at ASC (expect 24–72 h) · Play "Submit changes" batch sent (production release **19 (1.1.1)** + corrected listing + app content; first-release review up to 7 days). Play's 2026-08-13 Misleading-Claims rejection ("Missing Source Link for Government Information") is addressed: the final description (owner's "#1 thing" hook + NOT A GOVERNMENT APP disclaimer + all 38 agency source URLs) is live in BOTH consoles and synced to STORE_LISTING.md (ddc5abe) + `~/Desktop/{play,asc}-description.txt`. Subscription already APPROVED. Prices $4.99 verified both stores.
 
-**REMAINING — iOS (minutes):**
-1. ASC version page → Build section → ⊕ → select **1.1.1 (29)** (NOT 26; sim builds consumed 27/28) → Save.
-2. Recommended: App Information → Age Ratings → new social-media questions → all No. Keywords: dedupe second `pike` (→ `musky`).
-3. **Add for Review.** Expect 24–72 h.
+**DURING REVIEW (standing rules):** NO OTAs to runtime 1.1.1 (the WI rating-pill fix, mobile 1d4e8ec+b97bcb2, is committed and WAITING); no `LAKELORE_MIN_APP_VERSION`/`KILLED_VERSIONS` changes; server + data deploys are fine (2026-08-14 species-identity wave shipped mid-review-prep without issue). Ops board pages only on real failures (`_fail-pdf-watch` al/ny weekly alarm = accepted noise).
 
-**REMAINING — Play (~30 min):**
-1. ⚠️ **2026-08-14: Google REJECTED the Aug-12 batch — Misleading Claims: "Missing Source Link for Government Information"** (apps serving government data must list official source URLs in the description + an easy-to-see not-a-government-entity disclaimer; evidence cited = the old June full description, which named agencies but linked nothing). **Fix is written**: STORE_LISTING.md long description rewritten 2026-08-14 with an OFFICIAL DATA SOURCES block (all 38 agency URLs, generated from registry `agencyUrl`) + "NOT A GOVERNMENT APP" disclaimer; "Free." → "Minnesota is free forever." Paste the Play variant (swap "App Store account" → "Google Play account") into Main store listing → Full description, then Submit all pending changes (single restart). **Paste the same copy into the ASC description BEFORE Add for Review** — Apple's reviewer sees the same claims, and the copy must match the store-listing source of truth.
-2. Main store listing rest: icon + feature graphic from Desktop, the 8 from `lakelore-screenshots-play/`, App access instructions RE-PASTE (console copy still said "and Manitoba"). *(Mostly done 2026-08-13/14 — verify before submitting.)*
-3. Production release with the NEWEST bundle (1.1.1, build-29 generation) — created 2026-08-14 with all countries selected; it's among the pending changes. Verify a release row appears in the pending list before submitting.
-4. Android device, once: $0 license-tester purchase (sheet must show $4.99).
+**ON APPROVAL:**
+1. iOS is MANUAL release — Apple approving does NOT publish; press **Release This Version**. Play publishes itself.
+2. When BOTH are live: publish the held OTA (`npm run ota -- --message "WI rating pill + species map regen"`).
+3. Start `~/POST_LAUNCH_WATCH.md` (72 h protocol).
 
-**DURING REVIEW (standing rules):** no OTAs to runtime 1.1.1; no `LAKELORE_MIN_APP_VERSION`/`KILLED_VERSIONS` changes; ops board pages only on real failures (`_fail-pdf-watch` al/ny weekly alarm = accepted noise). After approval: iOS is MANUAL release — press Release; then run `~/POST_LAUNCH_WATCH.md` (72 h protocol). OTA freeze lifts after both approvals.
+**IF REJECTED:** Policy status page names the reason; fix → resubmit (Play rejections are change-level, not account-level). Apple: respond in Resolution Center.
+
+**NON-BLOCKING:** Android device, once: $0 license-tester purchase on internal build 19 (sheet must show $4.99; verify unlock + Restore Purchases).
 
 **OWNER BACKLOG (unchanged, in IMPROVEMENT_PLAN_2026-07-25.md):** O2 Sentry alerts+token · O3 ASC API .p8 · O4 2FA/vault · O5 pmset · O6 Play Integrity secret+console · O8 gh secrets (FLY_API_TOKEN, RCLONE_CONF_B2 → activates cloud userdata sweep + cloud restore drill) · O10 permission letters (AB KY TX WI MN AK NY-DEC MO SK King's-Printer-ON; un-hold paths in registry legalHold notes) · O11 lawyer on ~/DATA_LICENSING_AUDIT_2026-07-28.md (lead AB/TX/KY) · O12 MI Deep Blue browser check (confirmation only; MI's PDF-corpus question independent).
 
