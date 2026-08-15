@@ -91,7 +91,7 @@ Apple expands singulars to plurals automatically; don't waste chars on `walleyes
 ## Long description (paste in both iOS Description and Android Full description)
 
 ```
-LakeLore is a field guide to fish populations in publicly surveyed lakes.
+The #1 thing you can do to maximize your fishing success is to fish bodies of water that have high quantities of the fish you are targeting. LakeLore makes this information easy to access and affordable for the average angler. It's a field guide to fish populations in publicly surveyed lakes.
 
 Decades of state fisheries netting surveys, electrofishing data, and stocking records, gathered into one atlas. No accounts. No ads. Minnesota is free.
 
@@ -162,11 +162,12 @@ LakeLore is informational only. It does not grant access to any water or replace
 SUBSCRIPTION
 
 LakeLore All-States — US$4.99 per year, auto-renewing. Payment is charged to your App Store account at confirmation. The subscription renews automatically unless cancelled at least 24 hours before the end of the current period; manage or cancel in your device's subscription settings.
+
 Terms of Use: https://www.lakeloreapp.com/terms
 Privacy Policy: https://www.lakeloreapp.com/privacy
 ```
 
-(About 3,330 chars; both stores accept up to 4,000. 2026-08-14/15 rewrite for Google Play's Misleading-Claims rejection — "Missing Source Link for Government Information": the OFFICIAL DATA SOURCES block lists every active state's agency URL (generated from registry `agencyUrl` — regenerate whenever the active set changes) and the NOT A GOVERNMENT APP disclaimer satisfies the not-a-government-entity requirement. Owner-tightened 2026-08-14 (this is the as-pasted console copy): shorter intro/bullets, no USGS line, no closing tagline. The SUBSCRIPTION block satisfies Apple 3.1.2's metadata requirement; for Play, swap "App Store account" → "Google Play account" when pasting.)
+(About 3,590 chars; both stores accept up to 4,000. THE as-pasted console copy, final 2026-08-15: owner's "#1 thing" hook opening + tightened bullets. The OFFICIAL DATA SOURCES block (all 38 agency URLs, generated from registry `agencyUrl` — regenerate whenever the active set changes) + NOT A GOVERNMENT APP disclaimer answer Google's 2026-08-13 Misleading-Claims rejection ("Missing Source Link for Government Information"). The SUBSCRIPTION block satisfies Apple 3.1.2's metadata requirement; for Play, swap "App Store account" → "Google Play account" when pasting.)
 
 ---
 
