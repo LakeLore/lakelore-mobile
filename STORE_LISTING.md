@@ -91,9 +91,9 @@ Apple expands singulars to plurals automatically; don't waste chars on `walleyes
 ## Long description (paste in both iOS Description and Android Full description)
 
 ```
-LakeLore is a field guide to fish populations in publicly surveyed lakes — built for anglers, conservationists, and anyone who wants to read a lake before they fish it.
+LakeLore is a field guide to fish populations in publicly surveyed lakes.
 
-Decades of state fisheries netting surveys, electrofishing data, and stocking records, gathered into one quiet atlas. No accounts. No ads. Minnesota is free forever.
+Decades of state fisheries netting surveys, electrofishing data, and stocking records, gathered into one atlas. No accounts. No ads. Minnesota is free.
 
 NOT A GOVERNMENT APP
 
@@ -101,15 +101,15 @@ LakeLore is an independent app. It does not represent any government entity and 
 
 WHAT YOU CAN DO
 
-• Search every surveyed lake by species, county, gear type, lake size, year, and stocking density.
-• Read each lake as a field-guide page: catch-per-unit-effort over decades, broken out by gear type.
-• See the full stocking history — fry, fingerlings, yearlings, adults — with an estimated 'adult fish per 100 acres' overlay derived from a survival model.
-• Compare lakes side-by-side in a scatter plot, and tap through to the original agency reports.
+• Search lakes by species, county, gear type, lake size, year, and stocking density.
+• View catch-per-unit-effort and average size for a given lake over time, broken out by gear type.
+• View stocking history — fry, fingerlings, yearlings, adults — with an estimated 'adult fish per 100 acres' overlay derived from a survival model.
+• Compare lakes side-by-side in a scatter plot.
 
 DATA COVERED
 
 • 38 US states, assembled from each state fish and wildlife agency's published surveys, forecasts, and stocking records.
-• Minnesota — free, no subscription: 9,400+ lakes, 23,000+ surveys, 396,000+ catch records.
+• Minnesota — free, no subscription.
 • Every other state is included in the LakeLore All-States subscription — and browsable in preview before you subscribe.
 
 OFFICIAL DATA SOURCES
@@ -158,20 +158,16 @@ The fisheries data in LakeLore comes from these official state agency websites:
 
 WHAT IT IS NOT
 
-LakeLore is informational only. It does not grant access to any water, replace any fishing regulation, or guarantee anything about the fish you'll catch. Always consult the relevant state agency for the authoritative current rules and licensing requirements.
+LakeLore is informational only. It does not grant access to any water or replace any fishing regulation. Always consult the relevant state agency for the authoritative current rules and licensing requirements.
 
 SUBSCRIPTION
 
 LakeLore All-States — US$4.99 per year, auto-renewing. Payment is charged to your App Store account at confirmation. The subscription renews automatically unless cancelled at least 24 hours before the end of the current period; manage or cancel in your device's subscription settings.
 Terms of Use: https://www.lakeloreapp.com/terms
 Privacy Policy: https://www.lakeloreapp.com/privacy
-
-—
-
-A field guide, quietly assembled.
 ```
 
-(About 3,650 chars; both stores accept up to 4,000. Rewritten 2026-08-14 after Google Play's Misleading-Claims rejection — "Missing Source Link for Government Information": apps serving government data must list official source URLs in the description AND carry an easy-to-see not-a-government-entity disclaimer. The OFFICIAL DATA SOURCES block is generated from `~/lakelore-data/registry/states.json` active states (`agencyUrl`) — regenerate it whenever the active set changes. "Free." also softened to "Minnesota is free forever." (misleading-claims hygiene for a freemium app). SPECIES TRACKED and WHY IT EXISTS sections were cut for room. The SUBSCRIPTION block satisfies Apple 3.1.2's metadata requirement; for Play, swap "App Store account" → "Google Play account" when pasting.)
+(About 3,430 chars; both stores accept up to 4,000. 2026-08-14/15 rewrite for Google Play's Misleading-Claims rejection — "Missing Source Link for Government Information": the OFFICIAL DATA SOURCES block lists every active state's agency URL (generated from registry `agencyUrl` — regenerate whenever the active set changes) and the NOT A GOVERNMENT APP disclaimer satisfies the not-a-government-entity requirement. Owner-tightened 2026-08-14 (this is the as-pasted console copy): shorter intro/bullets, no USGS line, no closing tagline. The SUBSCRIPTION block satisfies Apple 3.1.2's metadata requirement; for Play, swap "App Store account" → "Google Play account" when pasting.)
 
 ---
 
