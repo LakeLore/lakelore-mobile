@@ -154,7 +154,6 @@ The fisheries data in LakeLore comes from these official state agency websites:
 • Mississippi: https://www.mdwfp.com
 • West Virginia: https://wvdnr.gov
 • New Jersey: https://dep.nj.gov/njfw
-• Lake size and location: USGS National Hydrography Dataset: https://www.usgs.gov/national-hydrography
 
 WHAT IT IS NOT
 
@@ -167,7 +166,7 @@ Terms of Use: https://www.lakeloreapp.com/terms
 Privacy Policy: https://www.lakeloreapp.com/privacy
 ```
 
-(About 3,430 chars; both stores accept up to 4,000. 2026-08-14/15 rewrite for Google Play's Misleading-Claims rejection — "Missing Source Link for Government Information": the OFFICIAL DATA SOURCES block lists every active state's agency URL (generated from registry `agencyUrl` — regenerate whenever the active set changes) and the NOT A GOVERNMENT APP disclaimer satisfies the not-a-government-entity requirement. Owner-tightened 2026-08-14 (this is the as-pasted console copy): shorter intro/bullets, no USGS line, no closing tagline. The SUBSCRIPTION block satisfies Apple 3.1.2's metadata requirement; for Play, swap "App Store account" → "Google Play account" when pasting.)
+(About 3,330 chars; both stores accept up to 4,000. 2026-08-14/15 rewrite for Google Play's Misleading-Claims rejection — "Missing Source Link for Government Information": the OFFICIAL DATA SOURCES block lists every active state's agency URL (generated from registry `agencyUrl` — regenerate whenever the active set changes) and the NOT A GOVERNMENT APP disclaimer satisfies the not-a-government-entity requirement. Owner-tightened 2026-08-14 (this is the as-pasted console copy): shorter intro/bullets, no USGS line, no closing tagline. The SUBSCRIPTION block satisfies Apple 3.1.2's metadata requirement; for Play, swap "App Store account" → "Google Play account" when pasting.)
 
 ---
 
