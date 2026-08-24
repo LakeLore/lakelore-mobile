@@ -51,6 +51,8 @@ Last reviewed: 2026-07-16 (all-states launch reconciliation).
 
 ## SUBMISSION STATUS — 2026-08-15: BOTH STORES SUBMITTED, IN REVIEW
 
+> **UPDATE 2026-08-24: ✅ BOTH STORES LIVE, HELD OTA SHIPPED.** Play release 19 (1.1.1) approved & auto-published; iOS 1.1.1 (29) approved and owner pressed **Release This Version** same day. Review freeze LIFTED. WI-rating-pill OTA (1d4e8ec+b97bcb2) published to `production` runtime 1.1.1, both platforms: update group `f3557efb-d168-4cd4-9a0b-224864258c32` @ commit cf301aa (tsc + 16/16 tests green). `~/POST_LAUNCH_WATCH.md` 72 h protocol STARTED 2026-08-24.
+
 **SUBMITTED 2026-08-15:** iOS 1.1.1 (build 29) Added for Review at ASC (expect 24–72 h) · Play "Submit changes" batch sent (production release **19 (1.1.1)** + corrected listing + app content; first-release review up to 7 days). Play's 2026-08-13 Misleading-Claims rejection ("Missing Source Link for Government Information") is addressed: the final description (owner's "#1 thing" hook + NOT A GOVERNMENT APP disclaimer + all 38 agency source URLs) is live in BOTH consoles and synced to STORE_LISTING.md (ddc5abe) + `~/Desktop/{play,asc}-description.txt`. Subscription already APPROVED. Prices $4.99 verified both stores.
 
 **DURING REVIEW (standing rules):** NO OTAs to runtime 1.1.1 (the WI rating-pill fix, mobile 1d4e8ec+b97bcb2, is committed and WAITING); no `LAKELORE_MIN_APP_VERSION`/`KILLED_VERSIONS` changes; server + data deploys are fine (2026-08-14 species-identity wave shipped mid-review-prep without issue). Ops board pages only on real failures (`_fail-pdf-watch` al/ny weekly alarm = accepted noise).
@@ -62,7 +64,7 @@ Last reviewed: 2026-07-16 (all-states launch reconciliation).
 
 **IF REJECTED:** Policy status page names the reason; fix → resubmit (Play rejections are change-level, not account-level). Apple: respond in Resolution Center.
 
-**NON-BLOCKING:** Android device, once: $0 license-tester purchase on internal build 19 (sheet must show $4.99; verify unlock + Restore Purchases).
+**NON-BLOCKING:** ~~Android device, once: $0 license-tester purchase on internal build 19 (sheet must show $4.99; verify unlock + Restore Purchases).~~ ✅ DONE 2026-08-24 — owner verified on real device against the LIVE production listing: purchase sheet, unlock, Restore Purchases all working.
 
 **OWNER BACKLOG (unchanged, in IMPROVEMENT_PLAN_2026-07-25.md):** O2 Sentry alerts+token · O3 ASC API .p8 · O4 2FA/vault · O5 pmset · O6 Play Integrity secret+console · O8 gh secrets (FLY_API_TOKEN, RCLONE_CONF_B2 → activates cloud userdata sweep + cloud restore drill) · O10 permission letters (AB KY TX WI MN AK NY-DEC MO SK King's-Printer-ON; un-hold paths in registry legalHold notes) · O11 lawyer on ~/DATA_LICENSING_AUDIT_2026-07-28.md (lead AB/TX/KY) · O12 MI Deep Blue browser check (confirmation only; MI's PDF-corpus question independent).
 
