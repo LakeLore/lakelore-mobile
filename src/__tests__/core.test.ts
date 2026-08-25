@@ -40,6 +40,18 @@ describe('state configs', () => {
   it('free state is exactly mn', () => {
     expect(STATE_KEYS.filter(k => GENERATED_STATES[k].free)).toEqual(['mn']);
   });
+  it('every rating state keeps the rating sort (legacy overlays must not drop it)', () => {
+    // The hand-written LEGACY_STATE_CONFIGS overlay replaces a state's whole
+    // sortOptions array — WI's legacy entry silently dropped the
+    // 'rating'/'Forecast Rating' sort its generated entry carries (found
+    // 2026-08-25). This pins the invariant for every current and future
+    // rating state.
+    for (const k of STATE_KEYS) {
+      if (GENERATED_STATES[k].hasRating) {
+        expect(STATE_CONFIGS[k].sortOptions.map(o => o.value)).toContain('rating');
+      }
+    }
+  });
 });
 
 describe('client signature', () => {
