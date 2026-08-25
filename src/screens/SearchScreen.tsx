@@ -200,6 +200,11 @@ export default function SearchScreen() {
   // (and per offline-cache hydration). Scatter data is valid only when its
   // forSearch matches this stamp; pagination appends don't remint it.
   const [searchStamp, setSearchStamp] = useState<SearchStamp>(() => ({ filters: null }));
+  // Mirror of the CURRENT stamp for async callbacks (round-2 #3): a scatter
+  // fetch that started under search N must not write into search N+1's
+  // offline-cache entry when it lands late — state closures can't see the
+  // newer stamp, this ref can. Updated at every mint site below.
+  const searchStampRef = useRef(searchStamp);
   const [scatterBase, setScatterBase] = useState<ScatterBase | null>(null);
   const [scatterBaseLoading, setScatterBaseLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -324,6 +329,7 @@ export default function SearchScreen() {
           const cached = await getOfflineResults(stateKey);
           if (cached) {
             const stamp: SearchStamp = { filters: null };
+            searchStampRef.current = stamp;
             setSearchStamp(stamp);
             setResults(cached.results ?? []);
             setScatterBase({ rows: cached.scatterResults ?? [], total: cached.total ?? 0, forSearch: stamp });
@@ -356,6 +362,7 @@ export default function SearchScreen() {
         setResults(cached.results);
         // Stamp + base restore TOGETHER, so base rows fetched for this
         // session stay valid (and anything else's stay invalid).
+        searchStampRef.current = cached.searchStamp;
         setSearchStamp(cached.searchStamp);
         setScatterBase(cached.scatterBase);
         setTotal(cached.total);
@@ -372,7 +379,8 @@ export default function SearchScreen() {
         const savedCounties = persistedCounties?.[state] ?? [];
         setFilters({ ...defaultFilters(state), counties: savedCounties });
         setResults([]);
-        setSearchStamp({ filters: null });
+        searchStampRef.current = { filters: null };
+        setSearchStamp(searchStampRef.current);
         setScatterBase(null);
         setTotal(0);
         setPage(0);
@@ -412,7 +420,8 @@ export default function SearchScreen() {
       const data: ResultsResponse = await fetchResults(state, f, nextPage, PAGE_SIZE);
       if (nextPage === 0) {
         setResults(dropConsolidated(state, data.results));
-        setSearchStamp({ filters: f });
+        searchStampRef.current = { filters: f };
+        setSearchStamp(searchStampRef.current);
       } else {
         setResults(prev => [...prev, ...dropConsolidated(state, data.results)]);
       }
@@ -443,6 +452,7 @@ export default function SearchScreen() {
           const cached = await getOfflineResults(state);
           if (cached) {
             const stamp: SearchStamp = { filters: null };
+            searchStampRef.current = stamp;
             setSearchStamp(stamp);
             setResults(cached.results ?? []);
             setScatterBase({ rows: cached.scatterResults ?? [], total: cached.total ?? 0, forSearch: stamp });
@@ -531,7 +541,8 @@ export default function SearchScreen() {
     df.gearTypes = defaultGearFor(baseOpts);
     setFilters(df);
     setResults([]);
-    setSearchStamp({ filters: null });
+    searchStampRef.current = { filters: null };
+    setSearchStamp(searchStampRef.current);
     setScatterBase(null);
     setTotal(0);
     setPage(0);
@@ -618,8 +629,12 @@ export default function SearchScreen() {
         setScatterBase({ rows, total: resp.total, forSearch: searchStamp });
         setScatterBaseLoading(false);
         // Backfill the offline-cache entry the page-0 search wrote (scatter
-        // rows are no longer known at search time). Fire-and-forget.
-        mergeOfflineScatter(state, rows);
+        // rows are no longer known at search time). Fire-and-forget — but
+        // ONLY if the entry still belongs to the search this fetch ran for:
+        // a late-landing fetch must not stamp search N's scatter rows onto
+        // search N+1's cache entry (round-2 #3; the seq guard alone doesn't
+        // catch it — a new search in LIST view never bumps the seq).
+        if (searchStamp === searchStampRef.current) mergeOfflineScatter(state, rows);
       })
       .catch(err => {
         if (seq !== scatterBaseSeq.current) return;
@@ -655,21 +670,31 @@ export default function SearchScreen() {
   const scatterFetchedValid = scatterFetched != null && scatterFetched.forSearch === searchStamp;
   const [scatterFetchLoading, setScatterFetchLoading] = useState(false);
   const scatterFetchSeq = useRef(0);
+  // The derived request currently in the air (round-2 #2): the effect re-runs
+  // when the BASE fetch lands (scatterBase is a dep — it feeds the gear-vote
+  // fallback), and without this it would re-fire an identical derived query
+  // and discard the in-flight one. Cleared when the request settles.
+  const scatterFetchInFlight = useRef<{ gear: string; forSearch: SearchStamp } | null>(null);
   useEffect(() => {
     if (!scatterNeedsDerivedGear || viewMode !== 'scatter') return;
     const gear = defaultGearFor(options)[0] ?? scatterScope.gear;
     if (!gear) return;
     if (scatterFetchedValid && scatterFetched.gear === gear) return; // current rows in hand
+    if (scatterFetchInFlight.current?.gear === gear
+        && scatterFetchInFlight.current.forSearch === searchStamp) return; // identical request already in the air
     const seq = ++scatterFetchSeq.current;
+    scatterFetchInFlight.current = { gear, forSearch: searchStamp };
     setScatterFetchLoading(true);
     fetchAllResults(state, { ...(searchStamp.filters ?? filters), gearTypes: [gear], stockingFirst: false, presenceUnion: false })
       .then(resp => {
         if (seq !== scatterFetchSeq.current) return; // superseded by a newer request
+        scatterFetchInFlight.current = null;
         setScatterFetched({ gear, rows: resp.results, total: resp.total, forSearch: searchStamp });
         setScatterFetchLoading(false);
       })
       .catch(err => {
         if (seq !== scatterFetchSeq.current) return;
+        scatterFetchInFlight.current = null;
         setScatterFetchLoading(false);
         // Entitlement loss mid-session must reach the paywall, not vanish into
         // the fallback (post-launch minor: SubscriptionRequiredError was
