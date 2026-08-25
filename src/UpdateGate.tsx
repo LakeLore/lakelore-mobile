@@ -45,16 +45,22 @@ async function checkClientConfig(): Promise<Verdict> {
     } finally { clearTimeout(timer); }
     if (!res.ok) return { kind: 'ok' };
     const cfg: ClientConfig = await res.json();
+    // Server JSON is untrusted at the type level — `message` renders straight
+    // into a <Text> child, and a non-string (mis-set env var serving an
+    // object/number) would throw "Objects are not valid as a React child" at
+    // render time, in the one component that sits outside the main
+    // ErrorBoundary. Coerce here so the verdict carries string-or-null only.
+    const message = typeof cfg.message === 'string' ? cfg.message : null;
     // Kill entries match either "1.1.1" (whole version) or "1.1.1+24"
     // (one specific build — lets a bad build 25 die while the in-review
     // build 26 on the same version survives; store red-team #15).
     const buildTag = `${CURRENT_VERSION}+${Application.nativeBuildVersion ?? '0'}`;
     if (Array.isArray(cfg.killedVersions)
         && (cfg.killedVersions.includes(CURRENT_VERSION) || cfg.killedVersions.includes(buildTag))) {
-      return { kind: 'killed', message: cfg.message ?? null };
+      return { kind: 'killed', message };
     }
     if (cfg.minVersion && cmpVersions(CURRENT_VERSION, cfg.minVersion) < 0) {
-      return { kind: 'nudge', message: cfg.message ?? null };
+      return { kind: 'nudge', message };
     }
     return { kind: 'ok' };
   } catch {

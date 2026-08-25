@@ -256,14 +256,17 @@ export async function fetchResults(
   return get(`${baseUrl(state)}/results?${params}`);
 }
 
+// The server's REAL per-request row cap — it silently truncated the old 9999
+// ask anyway (2026-07-25, T3.15). Asking for the honest number keeps client
+// and server agreeing on what "all" means for the scatter; exported so the
+// scatter's truncation caption names the same number.
+export const SCATTER_ROW_CAP = 500;
+
 export async function fetchAllResults(
   state: StateKey,
   filters: FilterState,
 ): Promise<ResultsResponse> {
-  // 500 is the server's REAL per-request cap — it silently truncated the old
-  // 9999 ask anyway (2026-07-25, T3.15). Asking for the honest number keeps
-  // client and server agreeing on what "all" means for the scatter.
-  const params = buildParams(state, filters, 0, 500);
+  const params = buildParams(state, filters, 0, SCATTER_ROW_CAP);
   return get(`${baseUrl(state)}/results?${params}`, 30_000); // scatter plots may fetch many rows
 }
 

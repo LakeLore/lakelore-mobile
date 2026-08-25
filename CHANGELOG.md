@@ -9,7 +9,7 @@ The version numbers below match `app.json` `version`, which is also the App Stor
 
 ---
 
-## [1.1.1] — Build 24+ (submission candidate)
+## [1.1.1] — Build 29 (iOS) / Play release 19 — shipped 2026-08-24
 
 The all-states polish + durability release. (Catch-up entry written 2026-07-26 — 1.1.0 and 1.1.1 shipped their work across 15 OTA rounds and two builds; see LAUNCH.md and the improvement plans for the full trail.)
 

@@ -68,18 +68,9 @@ const LEGACY_STATE_CONFIGS: Partial<Record<StateKey, StateConfig>> = {
       { value: 'stocked', label: 'Stck Adults / 100AC' },
     ],
   },
-  wi: {
-    key: 'wi',
-    label: 'Wisconsin',
-    agency: 'WI DNR',
-    color: '#155e75',
-    defaultGear: '',
-    sortOptions: [
-      { value: 'cpue',    label: 'Catch / Net' },
-      { value: 'length',  label: 'Avg Length' },
-      { value: 'stocked', label: 'Stck Adults / 100AC' },
-    ],
-  },
+  // wi: removed 2026-08-25 — the generated entry is a strict superset (it
+  // carries the 'rating'/'Forecast Rating' sort the hand-written one dropped,
+  // hiding WI's 1,444-lake forecast tier from the legacy sort picker).
   mn: {
     key: 'mn',
     label: 'Minnesota',

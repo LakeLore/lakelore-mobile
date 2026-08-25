@@ -4,6 +4,7 @@ import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import Svg, { Circle, Line, Text as SvgText, Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { useSvgPanZoom, useCommittedMirror, assertWorklet } from '../hooks/useSvgPanZoom';
+import { SCATTER_ROW_CAP } from '../api';
 import BlurredLakeName from './BlurredLakeName';
 import { plottedRowPredicate, genericSizeAxisIsWeight } from '../scatterScope';
 import { Measure, Source, Result, StateKey, STATE_CONFIGS, GENERATED_STATES } from '../types';
@@ -102,10 +103,14 @@ interface Props {
   // measure has no abundance source to name it).
   scopedGear?: string | null;
   scopedUnit?: string | null;
+  // Total rows the scatter's OWN query matched (its response `total`). When it
+  // exceeds the fetch cap the chart says so — 500 dots labelled "500 RESULTS"
+  // over a 4,000-lake search silently read as the whole population.
+  totalResults?: number | null;
   onLakePress: (lakeId: number|string, lakeName: string, species?: string) => void;
 }
 
-export default function ScatterPlot({ results, state, activeMeasure, activeSourceId, scopedGear, scopedUnit, onLakePress }: Props) {
+export default function ScatterPlot({ results, state, activeMeasure, activeSourceId, scopedGear, scopedUnit, totalResults, onLakePress }: Props) {
   const { width } = useWindowDimensions();
 
   const PAD_L = 48, PAD_R = 16, PAD_T = 12, PAD_B = 44;
@@ -565,6 +570,13 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
       {scopedGear != null && (
         <Text style={[text.bodyS, { color: colors.walleye2, marginHorizontal: space.lg, marginBottom: space.xs }]}>
           Plotting {scopedGear} surveys — one gear type per axis · other gears in list view
+        </Text>
+      )}
+      {/* Truncation caption (2026-08-25): the all-results fetch caps at the
+          server's 500-row limit — when the query matched more, say so. */}
+      {totalResults != null && totalResults > SCATTER_ROW_CAP && (
+        <Text style={[text.bodyS, { color: colors.walleye2, marginHorizontal: space.lg, marginBottom: space.xs }]}>
+          Plotting the top {SCATTER_ROW_CAP} of {totalResults.toLocaleString()}
         </Text>
       )}
 

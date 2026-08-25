@@ -6,7 +6,7 @@
 // agencies?" — having a dedicated, prominent screen that answers that
 // question is the cleanest defense.
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Modal, View, Text, ScrollView, Pressable, StyleSheet, Linking,
   Platform,
@@ -17,7 +17,6 @@ import { colors, text, space, hairline } from '../lakelore-rn/theme';
 import { PaperHeader, SectionLabel } from '../lakelore-rn/components';
 import { useEntitlement } from '../useEntitlement';
 import { restorePurchases } from '../iap';
-import { useToast } from '../Toast';
 import { ACTIVE_STATES } from '../activeStates';
 import { APP_VERSION, OTA_UPDATE_ID } from '../api';
 import { StateKey, GENERATED_STATES } from '../types';
@@ -89,6 +88,11 @@ const ATTRIBUTIONS: Partial<Record<StateKey, string>> = {
   nj: 'This product was developed using New Jersey Department of Environmental Protection Geographic Information System digital data, but this secondary product has not been verified by NJDEP and is not state-authorized or endorsed.',
   ok: 'Byline: Oklahoma Department of Wildlife Conservation.',
   mb: 'Contains information from the Government of Manitoba, licensed under the OpenMB Information and Data Use Licence (Manitoba.ca/OpenMB).',
+  // Added 2026-08-25 (licensing-audit follow-through): WI's NTL-LTER leg is
+  // CC BY 4.0 (attribution required); WA/ND are courtesy credit lines.
+  wi: 'Includes data from the North Temperate Lakes Long-Term Ecological Research program (University of Wisconsin–Madison, NSF), used under CC BY 4.0.',
+  wa: 'Fish survey data from the Washington Department of Fish and Wildlife (wdfw.wa.gov).',
+  nd: 'Data from the North Dakota Game and Fish Department (gf.nd.gov).',
 };
 
 const ALL_AGENCIES: AgencySource[] = [
@@ -360,23 +364,28 @@ function GlossarySection({ title, children }: { title: string; children: React.R
 
 export default function AboutScreen({ visible, state, onClose }: Props) {
   const { hasAllStates, refresh } = useEntitlement();
-  const { toast } = useToast();
   const [restoring, setRestoring] = useState(false);
+  // Restore outcome, rendered INLINE under the Restore row (2026-08-25).
+  // Toasts render BEHIND native Modals on iOS, and this whole screen is a
+  // pageSheet Modal — the old toast()-only outcomes were invisible, so
+  // 'none'/'error' looked like the button did nothing. The sheet stays open
+  // on every outcome (including success), so all three render inline.
+  const [restoreOutcome, setRestoreOutcome] = useState<'restored' | 'none' | 'error' | null>(null);
 
   const handleRestore = async () => {
     if (restoring) return;
     setRestoring(true);
+    setRestoreOutcome(null);
     const result = await restorePurchases();
+    if (result === 'restored') await refresh();
     setRestoring(false);
-    if (result === 'restored') {
-      await refresh();
-      toast('Subscription restored.');
-    } else if (result === 'none') {
-      toast('No active subscription found on this account.');
-    } else {
-      toast("Couldn't reach the store — check your connection and try again.");
-    }
+    setRestoreOutcome(result);
   };
+
+  // A stale outcome from a previous visit shouldn't greet the next open.
+  useEffect(() => {
+    if (!visible) setRestoreOutcome(null);
+  }, [visible]);
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -565,6 +574,21 @@ export default function AboutScreen({ visible, state, onClose }: Props) {
               </Text>
               <Text style={[text.labelS, { color: colors.walleye2 }]} accessibilityElementsHidden>›</Text>
             </Pressable>
+            {/* Inline restore outcome — mirrors PaywallScreen's error banner
+                pattern; success gets the moss treatment. */}
+            {restoreOutcome && (
+              <View
+                style={[styles.restoreNote, restoreOutcome === 'restored' && styles.restoreNoteOk]}
+                accessibilityLiveRegion="polite">
+                <Text style={[text.bodyS, { color: restoreOutcome === 'restored' ? colors.moss : colors.paper }]}>
+                  {restoreOutcome === 'restored'
+                    ? 'Subscription restored — All-States Pass active.'
+                    : restoreOutcome === 'none'
+                    ? 'No active subscription found on this account.'
+                    : 'Couldn’t reach the store — check your connection and try again.'}
+                </Text>
+              </View>
+            )}
             <Pressable
               onPress={() => Linking.openURL('mailto:support@lakeloreapp.com')}
               accessibilityRole="link"
@@ -652,5 +676,17 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: hairline,
     borderBottomColor: colors.paper3,
+  },
+
+  restoreNote: {
+    marginTop: 8,
+    backgroundColor: colors.rust,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
+  },
+  restoreNoteOk: {
+    backgroundColor: colors.paper2,
+    borderWidth: hairline,
+    borderColor: colors.moss,
   },
 });

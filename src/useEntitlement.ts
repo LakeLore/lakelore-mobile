@@ -33,6 +33,14 @@ const ENTITLEMENT_CACHE_KEY = 'entitlement.allStates.v1'; // retired — see sto
 // see unlocked chips indefinitely (cosmetic only: the server still redacts).
 const ENTITLEMENT_CACHE_KEY_V2 = KEYS.entitlementCacheV2;
 const ENTITLEMENT_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+// Boot budget (2026-08-25): on a CACHE-LESS first install there is nothing to
+// prime from, and the server leg of refresh() can grind through its full
+// retry ladder (~32 s on dead air) with `loading` stuck true the whole way —
+// redaction bars with no PREVIEW/FREE chips or banner to explain them. After
+// this budget the UI settles on the preview default; the in-flight refresh
+// still lands in the background and flips the chips if the user turns out to
+// be entitled (same reconcile path a stale cache prime uses).
+const BOOT_LOADING_BUDGET_MS = 4_000;
 
 export interface EntitlementState {
   hasAllStates: boolean;
@@ -45,6 +53,11 @@ export function useEntitlement(): EntitlementState {
   const [hasAllStates, setHasAllStates] = useState(false);
   const [loading, setLoading] = useState(true);
   const mountedRef = useRef(true);
+  // True once a LIVE answer (refresh()'s server result, or an RC customer-info
+  // update) has been committed. The boot-time cache prime resolves
+  // asynchronously and used to race refresh() — last writer won, so a slow
+  // AsyncStorage read could stomp a fresh server answer with week-old state.
+  const liveAnswerRef = useRef(false);
 
   const refresh = useCallback(async () => {
     // Two checks in parallel: the on-device RC SDK (instant, but can be
@@ -66,6 +79,12 @@ export function useEntitlement(): EntitlementState {
         .catch(() => null),
     ]);
     const final = serverResult !== null ? serverResult : sdkResult;
+    // A server answer is live; so is a POSITIVE SDK answer (a valid local
+    // receipt during a total outage — round-2 #4: without this, a slow cache
+    // prime carrying a stale false could flip an entitled offline user to
+    // preview). SDK-false with no server is NOT marked — that's the outage
+    // case where the cached true is exactly the protection we want.
+    if (serverResult !== null || sdkResult === true) liveAnswerRef.current = true;
     if (mountedRef.current) {
       setHasAllStates(final);
       setLoading(false);
@@ -89,11 +108,21 @@ export function useEntitlement(): EntitlementState {
     // (e.g. subscription lapsed while the app was closed).
     AsyncStorage.getItem(ENTITLEMENT_CACHE_KEY_V2).then(cached => {
       if (!mountedRef.current || cached == null) return;
+      // A live answer (server refresh / RC listener) beat this read — the
+      // cached snapshot is the stalest thing in the room now; never let it
+      // win the race (2026-08-25).
+      if (liveAnswerRef.current) return;
       const entry = JSON.parse(cached) as { v: boolean; ts: number };
       if (entry?.ts && Date.now() - entry.ts > ENTITLEMENT_CACHE_MAX_AGE_MS) return; // too old to prime
       setHasAllStates(!!entry.v);
       setLoading(false);
     }).catch(() => {});
+
+    // Boot budget: settle `loading` even if both the cache prime (miss) and
+    // the refresh (slow network) leave it hanging — see BOOT_LOADING_BUDGET_MS.
+    const bootBudget = setTimeout(() => {
+      if (mountedRef.current) setLoading(false);
+    }, BOOT_LOADING_BUDGET_MS);
 
     refresh();
 
@@ -104,6 +133,7 @@ export function useEntitlement(): EntitlementState {
     if (isIapConfigured()) {
       const listener = (info: CustomerInfo) => {
         if (!mountedRef.current) return;
+        liveAnswerRef.current = true; // a purchase/restore event outranks any pending cache prime
         const next = !!info.entitlements.active[ALL_STATES_ENTITLEMENT];
         setHasAllStates(next);
         setLoading(false);
@@ -129,6 +159,7 @@ export function useEntitlement(): EntitlementState {
 
     return () => {
       mountedRef.current = false;
+      clearTimeout(bootBudget);
       unsubscribe?.();
       appStateSub.remove();
     };

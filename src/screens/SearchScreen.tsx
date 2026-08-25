@@ -35,7 +35,8 @@ import { AdvancedFiltersModal } from './search/AdvancedFiltersModal';
 import { SortPickerModal } from './search/SortPickerModal';
 import { MeasurePickerModal } from './search/MeasurePickerModal';
 import { StatePickerModal } from './search/StatePickerModal';
-import { KEYS, offlineCacheKey } from '../storage';
+import { KEYS } from '../storage';
+import { getOfflineResults, putOfflineResults, mergeOfflineScatter } from '../offlineCache';
 
 const PAGE_SIZE = 50;
 
@@ -137,10 +138,40 @@ function pickSource(measure: Measure, preferId?: string | null): Source | null {
   return measure.sources.find(s => s.id === measure.defaultSourceId) ?? measure.sources[0];
 }
 
+// IA's synthetic "Consolidated" rows (no survey_date) never render — filter
+// them out of every fetched result set.
+const dropConsolidated = (state: StateKey, rows: Result[]) =>
+  state === 'ia' ? rows.filter(r => r.survey_date != null) : rows;
+
+// Base scatter data — the ≤500-row fetchAllResults leg. LAZY since 2026-08-25:
+// fetched only while scatter view is showing, never blocking the list fetch
+// (it used to ride Promise.all with every page-0 search, so list results
+// blocked on the 30 s × 3-retry scatter leg even in the states whose scatter
+// toggle is gated off). Fetched rows carry the search stamp they were fetched
+// for, checked at render — the scatter v2.1 rule: staleness travels WITH the
+// data, never via paired do/undo effects.
+interface ScatterBase {
+  rows: Result[];
+  /** The scatter query's own total (for the >cap truncation caption). */
+  total: number;
+  forSearch: SearchStamp;
+}
+
+const EMPTY_RESULTS: Result[] = [];
+
+// Search identity: a fresh object per successful page-0 search (compared by
+// REFERENCE), carrying the exact filters that search ran with — the lazy
+// scatter fetch must query the same scope the list showed, not the live
+// filter state (the lake-name input mutates `filters` on every keystroke
+// without searching). null filters = an offline-cache hydration, where the
+// originating filters are unknown.
+interface SearchStamp { filters: FilterState | null }
+
 interface SearchSession {
   filters: FilterState;
   results: Result[];
-  scatterResults: Result[];
+  searchStamp: SearchStamp;
+  scatterBase: ScatterBase | null;
   total: number;
   page: number;
   searched: boolean;
@@ -165,7 +196,17 @@ export default function SearchScreen() {
   const [offlineCacheDate, setOfflineCacheDate] = useState<number | null>(null);
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [results, setResults] = useState<Result[]>([]);
-  const [scatterResults, setScatterResults] = useState<Result[]>([]);
+  // Identity of the current search — reminted per successful page-0 search
+  // (and per offline-cache hydration). Scatter data is valid only when its
+  // forSearch matches this stamp; pagination appends don't remint it.
+  const [searchStamp, setSearchStamp] = useState<SearchStamp>(() => ({ filters: null }));
+  // Mirror of the CURRENT stamp for async callbacks (round-2 #3): a scatter
+  // fetch that started under search N must not write into search N+1's
+  // offline-cache entry when it lands late — state closures can't see the
+  // newer stamp, this ref can. Updated at every mint site below.
+  const searchStampRef = useRef(searchStamp);
+  const [scatterBase, setScatterBase] = useState<ScatterBase | null>(null);
+  const [scatterBaseLoading, setScatterBaseLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -283,20 +324,22 @@ export default function SearchScreen() {
         // signal (IMPROVEMENT_PLAN_2026-07-17 D1).
         const isNetwork = err instanceof Error && /reach server|timed out/.test(err.message);
         if (isNetwork) {
-          try {
-            const raw = await AsyncStorage.getItem(offlineCacheKey(stateKey));
-            if (raw) {
-              const cached = JSON.parse(raw);
-              setResults(cached.results ?? []);
-              setScatterResults(cached.scatterResults ?? []);
-              setTotal(cached.total ?? 0);
-              setPage(0);
-              setSearched(true);
-              setOfflineCacheDate(cached.ts ?? null);
-              setLoadingOptions(false);
-              return;
-            }
-          } catch { /* fall through to the error banner */ }
+          // getOfflineResults enforces the 30 d expiry and never throws —
+          // a stale/absent entry falls through to the error banner.
+          const cached = await getOfflineResults(stateKey);
+          if (cached) {
+            const stamp: SearchStamp = { filters: null };
+            searchStampRef.current = stamp;
+            setSearchStamp(stamp);
+            setResults(cached.results ?? []);
+            setScatterBase({ rows: cached.scatterResults ?? [], total: cached.total ?? 0, forSearch: stamp });
+            setTotal(cached.total ?? 0);
+            setPage(0);
+            setSearched(true);
+            setOfflineCacheDate(cached.ts ?? null);
+            setLoadingOptions(false);
+            return;
+          }
         }
         setError(err instanceof Error ? err.message : 'Could not load filters');
       }
@@ -308,7 +351,7 @@ export default function SearchScreen() {
   useEffect(() => {
     if (prevStateRef.current !== state) {
       sessionCache.current[prevStateRef.current as StateKey] = {
-        filters, results, scatterResults, total, page, searched, viewMode,
+        filters, results, searchStamp, scatterBase, total, page, searched, viewMode,
         measures, activeMeasureId, activeSourceId,
       };
       prevStateRef.current = state;
@@ -317,7 +360,11 @@ export default function SearchScreen() {
       if (cached) {
         setFilters(cached.filters);
         setResults(cached.results);
-        setScatterResults(cached.scatterResults);
+        // Stamp + base restore TOGETHER, so base rows fetched for this
+        // session stay valid (and anything else's stay invalid).
+        searchStampRef.current = cached.searchStamp;
+        setSearchStamp(cached.searchStamp);
+        setScatterBase(cached.scatterBase);
         setTotal(cached.total);
         setPage(cached.page);
         setSearched(cached.searched);
@@ -332,7 +379,9 @@ export default function SearchScreen() {
         const savedCounties = persistedCounties?.[state] ?? [];
         setFilters({ ...defaultFilters(state), counties: savedCounties });
         setResults([]);
-        setScatterResults([]);
+        searchStampRef.current = { filters: null };
+        setSearchStamp(searchStampRef.current);
+        setScatterBase(null);
         setTotal(0);
         setPage(0);
         setSearched(false);
@@ -359,31 +408,36 @@ export default function SearchScreen() {
     setLoading(true);
     setSearched(true);
     try {
-      const [data, allData]: [ResultsResponse, ResultsResponse | null] = await Promise.all([
-        fetchResults(state, f, nextPage, PAGE_SIZE),
-        nextPage === 0 ? fetchAllResults(state, f) : Promise.resolve(null),
-      ]);
-      const dropConsolidated = (rows: Result[]) =>
-        state === 'ia' ? rows.filter(r => r.survey_date != null) : rows;
+      // A stale error banner over fresh results read as "still broken" —
+      // clear it the moment a new attempt starts (2026-08-25).
+      setError(null);
+      // ONLY the list page here. The fetchAllResults scatter leg is LAZY
+      // (2026-08-25): it used to ride a Promise.all on every page-0 search,
+      // blocking list results on the 30 s × 3-retry scatter fetch even in
+      // list view and in the states whose scatter toggle is gated off. The
+      // [viewMode === 'scatter'] effect below owns it now; a fresh
+      // searchStamp is what invalidates the old scatter rows.
+      const data: ResultsResponse = await fetchResults(state, f, nextPage, PAGE_SIZE);
       if (nextPage === 0) {
-        setResults(dropConsolidated(data.results));
+        setResults(dropConsolidated(state, data.results));
+        searchStampRef.current = { filters: f };
+        setSearchStamp(searchStampRef.current);
       } else {
-        setResults(prev => [...prev, ...dropConsolidated(data.results)]);
+        setResults(prev => [...prev, ...dropConsolidated(state, data.results)]);
       }
       setTotal(data.total);
       setPage(nextPage);
-      if (allData) setScatterResults(dropConsolidated(allData.results));
       setOfflineCacheDate(null);
       // Offline read cache (IMPROVEMENT_PLAN P3.6): persist the last
       // successful first-page search per state so the app shows SOMETHING
-      // at the lake with no signal. Fire-and-forget.
+      // at the lake with no signal. Fire-and-forget; scatter rows backfill
+      // via mergeOfflineScatter when the lazy fetch lands.
       if (nextPage === 0) {
-        AsyncStorage.setItem(offlineCacheKey(state), JSON.stringify({
-          ts: Date.now(),
-          results: dropConsolidated(data.results),
-          scatterResults: allData ? dropConsolidated(allData.results) : [],
+        putOfflineResults(state, {
+          results: dropConsolidated(state, data.results),
+          scatterResults: [],
           total: data.total,
-        })).catch(() => {});
+        });
       }
     } catch (err: unknown) {
       if (err instanceof SubscriptionRequiredError) {
@@ -393,19 +447,21 @@ export default function SearchScreen() {
         // state (stale beats blank at the lake), banner shows the age.
         const isNetwork = err instanceof Error && /reach server|timed out/.test(err.message);
         if (isNetwork && nextPage === 0) {
-          try {
-            const raw = await AsyncStorage.getItem(offlineCacheKey(state));
-            if (raw) {
-              const cached = JSON.parse(raw);
-              setResults(cached.results ?? []);
-              setScatterResults(cached.scatterResults ?? []);
-              setTotal(cached.total ?? 0);
-              setPage(0);
-              setOfflineCacheDate(cached.ts ?? null);
-              setLoading(false);
-              return;
-            }
-          } catch { /* fall through to the error banner */ }
+          // 30 d expiry enforced inside getOfflineResults (it never throws);
+          // stale/absent falls through to the error banner.
+          const cached = await getOfflineResults(state);
+          if (cached) {
+            const stamp: SearchStamp = { filters: null };
+            searchStampRef.current = stamp;
+            setSearchStamp(stamp);
+            setResults(cached.results ?? []);
+            setScatterBase({ rows: cached.scatterResults ?? [], total: cached.total ?? 0, forSearch: stamp });
+            setTotal(cached.total ?? 0);
+            setPage(0);
+            setOfflineCacheDate(cached.ts ?? null);
+            setLoading(false);
+            return;
+          }
         }
         setError(err instanceof Error ? err.message : 'Search failed');
       }
@@ -485,7 +541,9 @@ export default function SearchScreen() {
     df.gearTypes = defaultGearFor(baseOpts);
     setFilters(df);
     setResults([]);
-    setScatterResults([]);
+    searchStampRef.current = { filters: null };
+    setSearchStamp(searchStampRef.current);
+    setScatterBase(null);
     setTotal(0);
     setPage(0);
     setSearched(false);
@@ -547,38 +605,97 @@ export default function SearchScreen() {
   // gear applied, matching manual gear selection exactly. The gear choice is
   // defaultGearFor — the same gear the Abundance measure would adopt — and
   // the client-side scoper stays as the offline / older-server fallback.
+  // Base scatter rows in hand for the CURRENT search — the stamp check is the
+  // render-time validity rule (v2.1): rows fetched for an older search never
+  // plot, with no reset effect needed.
+  const scatterBaseValid = scatterBase != null && scatterBase.forSearch === searchStamp;
+  const scatterBaseRows = scatterBaseValid ? scatterBase.rows : EMPTY_RESULTS;
+
+  // Lazy base fetch (2026-08-25): fires only while scatter view is showing
+  // and the in-hand rows aren't the current search's. Runs in BOTH scatter
+  // modes — on the derived-gear path the base set is the offline/older-server
+  // fallback (scatterScope) and the source of the derived-gear vote.
+  const scatterBaseSeq = useRef(0);
+  useEffect(() => {
+    if (viewMode !== 'scatter' || !searched || scatterBaseValid) return;
+    const seq = ++scatterBaseSeq.current;
+    setScatterBaseLoading(true);
+    // The stamp's filters are the exact scope the list search ran with; the
+    // live `filters` fallback covers offline-cache hydrations only.
+    fetchAllResults(state, searchStamp.filters ?? filters)
+      .then(resp => {
+        if (seq !== scatterBaseSeq.current) return; // superseded by a newer request
+        const rows = dropConsolidated(state, resp.results);
+        setScatterBase({ rows, total: resp.total, forSearch: searchStamp });
+        setScatterBaseLoading(false);
+        // Backfill the offline-cache entry the page-0 search wrote (scatter
+        // rows are no longer known at search time). Fire-and-forget — but
+        // ONLY if the entry still belongs to the search this fetch ran for:
+        // a late-landing fetch must not stamp search N's scatter rows onto
+        // search N+1's cache entry (round-2 #3; the seq guard alone doesn't
+        // catch it — a new search in LIST view never bumps the seq).
+        if (searchStamp === searchStampRef.current) mergeOfflineScatter(state, rows);
+      })
+      .catch(err => {
+        if (seq !== scatterBaseSeq.current) return;
+        setScatterBaseLoading(false);
+        // Entitlement loss must reach the paywall, same as the derived fetch.
+        if (err instanceof SubscriptionRequiredError) { setPaywallTriggered(err.state); return; }
+        /* offline: the plot shows its reasoned empty state; the list is untouched */
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, searched, scatterBaseValid, searchStamp, state]);
+
   const scatterScope = useMemo(
-    () => scopeScatterRows(scatterResults, filters.gearTypes, state),
-    [scatterResults, filters.gearTypes, state],
+    () => scopeScatterRows(scatterBaseRows, filters.gearTypes, state),
+    [scatterBaseRows, filters.gearTypes, state],
   );
   // Derivation applies ONLY when NO gear is in scope (gear-less measures).
   // Manual multi-select is an explicit user choice (owner decision 2026-08-12):
   // plot every selected gear's rows — the multi-gear query already returns each
   // lake's latest row PER GEAR, so the population matches the list exactly.
   const scatterNeedsDerivedGear = searched && filters.gearTypes.length === 0;
-  // Fetched scatter rows carry the scatterResults REFERENCE they were fetched
-  // for — validity is checked at render, not managed by a second effect.
+  // Fetched scatter rows carry the search STAMP they were fetched for —
+  // validity is checked at render, not managed by a second effect.
   // (v2.1, 2026-08-12, owner-caught: the original separate "reset on new
   // search" effect ran AFTER the refetch effect in declaration order, so a
   // measure switch that derived the SAME gear early-returned on the stale
   // fetch and then had it wiped — no fetch ever ran, and the plot silently
   // fell back to client-side slicing of the union set: Presence showed 18
-  // trap-net rows out of a 48-lake union.)
-  const [scatterFetched, setScatterFetched] = useState<{ gear: string; rows: Result[]; forResults: Result[] } | null>(null);
-  const scatterFetchedValid = scatterFetched != null && scatterFetched.forResults === scatterResults;
+  // trap-net rows out of a 48-lake union. 2026-08-25: the carried reference
+  // became `searchStamp` — the base set is now itself lazy, so its array
+  // identity no longer marks "a new search"; pagination and the base fetch
+  // landing leave the stamp untouched, exactly as the old semantics had it.)
+  const [scatterFetched, setScatterFetched] = useState<{ gear: string; rows: Result[]; total: number; forSearch: SearchStamp } | null>(null);
+  const scatterFetchedValid = scatterFetched != null && scatterFetched.forSearch === searchStamp;
+  const [scatterFetchLoading, setScatterFetchLoading] = useState(false);
   const scatterFetchSeq = useRef(0);
+  // The derived request currently in the air (round-2 #2): the effect re-runs
+  // when the BASE fetch lands (scatterBase is a dep — it feeds the gear-vote
+  // fallback), and without this it would re-fire an identical derived query
+  // and discard the in-flight one. Cleared when the request settles.
+  const scatterFetchInFlight = useRef<{ gear: string; forSearch: SearchStamp } | null>(null);
   useEffect(() => {
     if (!scatterNeedsDerivedGear || viewMode !== 'scatter') return;
     const gear = defaultGearFor(options)[0] ?? scatterScope.gear;
     if (!gear) return;
     if (scatterFetchedValid && scatterFetched.gear === gear) return; // current rows in hand
+    if (scatterFetchInFlight.current?.gear === gear
+        && scatterFetchInFlight.current.forSearch === searchStamp) return; // identical request already in the air
     const seq = ++scatterFetchSeq.current;
-    fetchAllResults(state, { ...filters, gearTypes: [gear], stockingFirst: false, presenceUnion: false })
+    scatterFetchInFlight.current = { gear, forSearch: searchStamp };
+    setScatterFetchLoading(true);
+    fetchAllResults(state, { ...(searchStamp.filters ?? filters), gearTypes: [gear], stockingFirst: false, presenceUnion: false })
       .then(resp => {
         if (seq !== scatterFetchSeq.current) return; // superseded by a newer request
-        setScatterFetched({ gear, rows: resp.results, forResults: scatterResults });
+        scatterFetchInFlight.current = null;
+        setScatterFetched({ gear, rows: resp.results, total: resp.total, forSearch: searchStamp });
+        setScatterFetchLoading(false);
       })
       .catch(err => {
+        if (seq !== scatterFetchSeq.current) return;
+        scatterFetchInFlight.current = null;
+        setScatterFetchLoading(false);
         // Entitlement loss mid-session must reach the paywall, not vanish into
         // the fallback (post-launch minor: SubscriptionRequiredError was
         // swallowed here, silently plotting the client-side slice instead).
@@ -586,15 +703,28 @@ export default function SearchScreen() {
         /* offline / older server — client-side fallback plots */
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scatterNeedsDerivedGear, viewMode, scatterResults, options, state]);
+  }, [scatterNeedsDerivedGear, viewMode, searchStamp, scatterBase, options, state]);
   // What the plot renders: valid fetched gear-scoped rows when available,
   // client-side-scoped rows as fallback, the raw set on the single-gear path.
   const scatterPlotRows = scatterNeedsDerivedGear
     ? (scatterFetchedValid ? scatterFetched.rows : scatterScope.rows)
-    : scatterResults;
+    : scatterBaseRows;
   const scatterPlotGear = scatterNeedsDerivedGear
     ? (scatterFetchedValid ? scatterFetched.gear : (scatterScope.derived ? scatterScope.gear : null))
     : null;
+  // The lazy fetch that would produce this mode's rows is still in flight and
+  // nothing valid is in hand yet — show the loading state instead of a
+  // misleading "No plottable data" flash.
+  const scatterFetchPending = scatterNeedsDerivedGear
+    ? (!scatterFetchedValid && (scatterFetchLoading || scatterBaseLoading))
+    : (!scatterBaseValid && scatterBaseLoading);
+  // Truncation caption source (2026-08-25): the scatter query's OWN total —
+  // the derived-gear refetch changes the population, so the list total would
+  // lie there. On the base path the scatter query shares the list's filters,
+  // so its total matches the header's.
+  const scatterQueryTotal = scatterNeedsDerivedGear
+    ? (scatterFetchedValid ? scatterFetched.total : null)
+    : (scatterBaseValid ? scatterBase.total : null);
   // Honest Y-axis unit for a DERIVED gear: the active (gear-less) measure has
   // no abundance source to name the unit, so look the gear up across all
   // measures' sources (the abundance measure carries per-gear units).
@@ -856,7 +986,7 @@ export default function SearchScreen() {
         <View style={styles.resultsHeader}>
           <Text style={[text.labelL, { color: colors.inkSoft, flexShrink: 1 }]} numberOfLines={1}>
             {viewMode === 'scatter'
-              ? `${scatterPlottedCount.toLocaleString()} ${scatterPlottedCount === 1 ? 'RESULT' : 'RESULTS'}`
+              ? (scatterFetchPending ? '…' : `${scatterPlottedCount.toLocaleString()} ${scatterPlottedCount === 1 ? 'RESULT' : 'RESULTS'}`)
               : `${total.toLocaleString()} ${total === 1 ? 'RESULT' : 'RESULTS'}`}
           </Text>
           <View style={styles.viewToggle}>
@@ -988,8 +1118,15 @@ export default function SearchScreen() {
         />
       )}
 
-      {/* Scatter view */}
-      {searched && viewMode === 'scatter' && (
+      {/* Scatter view. The lazy all-results fetch shows the standard loading
+          treatment while in flight (2026-08-25) — the rows aren't in hand at
+          view-switch time any more. */}
+      {searched && viewMode === 'scatter' && scatterFetchPending && (
+        <View style={styles.emptyState}>
+          <ActivityIndicator color={colors.ink} />
+        </View>
+      )}
+      {searched && viewMode === 'scatter' && !scatterFetchPending && (
         <ScatterPlot
           results={scatterPlotRows}
           state={state}
@@ -997,6 +1134,7 @@ export default function SearchScreen() {
           activeSourceId={activeSourceId}
           scopedGear={scatterPlotGear}
           scopedUnit={scatterScopedUnit}
+          totalResults={scatterQueryTotal}
           onLakePress={(lakeId, lakeName, species) => {
             // Same row-species rule as the list (the dot CARD shows a
             // species; the tap must honor it).

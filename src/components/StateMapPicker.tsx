@@ -293,7 +293,9 @@ export default function StateMapPicker({ selected, hasAllStates, entitlementLoad
           <View style={[styles.legendSwatch, { backgroundColor: colors.paper, borderWidth: hairline, borderColor: colors.paper3 }]} />
           <Text style={[text.labelS, { color: colors.inkSoft }]}>ALL-STATES PASS</Text>
           <View style={[styles.legendSwatch, { backgroundColor: colors.paper2 }]} />
-          <Text style={[text.labelS, { color: colors.inkSoft }]}>NO DATA YET</Text>
+          {/* "NOT AVAILABLE", not "NO DATA YET" — inactive covers legally-held
+              states with plenty of data (matches the tap toast's neutral copy). */}
+          <Text style={[text.labelS, { color: colors.inkSoft }]}>NOT AVAILABLE</Text>
         </View>
         {/* The map is the primary surface, and it previously said nothing
             about free-with-redaction browsing (D5) — the pass gates lake
