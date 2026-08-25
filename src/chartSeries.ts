@@ -17,26 +17,27 @@ export function buildYearGearSeries<R extends SeriesCatchRow>(
   value: (c: R) => number | null | undefined,
 ) {
   const gearSet = new Set<string>();
-  const byYearGear = new Map<string, number[]>();
+  // Nested Map (year → gear → values), not a `${year}|${gear}` composite key —
+  // a gear label containing '|' used to split apart on the way back out and
+  // silently merge into whatever gear name preceded the first pipe.
+  const byYearGear = new Map<number, Map<string, number[]>>();
   for (const c of rows) {
     const v = value(c);
     if (v == null || c.survey_year == null) continue;
     const gk = c.gear ?? (c.survey_type ?? 'Unknown');
     gearSet.add(gk);
-    const key = `${c.survey_year}|${gk}`;
-    if (!byYearGear.has(key)) byYearGear.set(key, []);
-    byYearGear.get(key)!.push(v);
+    let byGear = byYearGear.get(c.survey_year);
+    if (!byGear) { byGear = new Map(); byYearGear.set(c.survey_year, byGear); }
+    if (!byGear.has(gk)) byGear.set(gk, []);
+    byGear.get(gk)!.push(v);
   }
   const gearKeys = [...gearSet].sort();
   const yearMap = new Map<number, Record<string, number | null>>();
-  for (const [key, vals] of byYearGear) {
-    const [yr, gk] = key.split('|');
-    const year = Number(yr);
-    if (!yearMap.has(year)) yearMap.set(year, { year });
-    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-    const entry = yearMap.get(year)!;
-    if (entry[gk] == null) entry[gk] = avg;
-    else entry[gk] = ((entry[gk] as number) + avg) / 2;
+  for (const [year, byGear] of byYearGear) {
+    for (const [gk, vals] of byGear) {
+      if (!yearMap.has(year)) yearMap.set(year, { year });
+      yearMap.get(year)![gk] = vals.reduce((a, b) => a + b, 0) / vals.length;
+    }
   }
   const chartData = [...yearMap.values()]
     .map(e => { const r: Record<string, number | null> = { year: e.year as number }; for (const g of gearKeys) r[g] = e[g] ?? null; return r; })
