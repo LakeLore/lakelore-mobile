@@ -45,7 +45,9 @@ describe('state configs', () => {
     // sortOptions array — WI's legacy entry silently dropped the
     // 'rating'/'Forecast Rating' sort its generated entry carries (found
     // 2026-08-25). This pins the invariant for every current and future
-    // rating state.
+    // rating state. The some() check keeps the loop from going vacuously
+    // green if a registry regen ever dropped hasRating everywhere.
+    expect(STATE_KEYS.some(k => GENERATED_STATES[k].hasRating)).toBe(true);
     for (const k of STATE_KEYS) {
       if (GENERATED_STATES[k].hasRating) {
         expect(STATE_CONFIGS[k].sortOptions.map(o => o.value)).toContain('rating');

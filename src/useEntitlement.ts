@@ -79,7 +79,12 @@ export function useEntitlement(): EntitlementState {
         .catch(() => null),
     ]);
     const final = serverResult !== null ? serverResult : sdkResult;
-    if (serverResult !== null) liveAnswerRef.current = true;
+    // A server answer is live; so is a POSITIVE SDK answer (a valid local
+    // receipt during a total outage — round-2 #4: without this, a slow cache
+    // prime carrying a stale false could flip an entitled offline user to
+    // preview). SDK-false with no server is NOT marked — that's the outage
+    // case where the cached true is exactly the protection we want.
+    if (serverResult !== null || sdkResult === true) liveAnswerRef.current = true;
     if (mountedRef.current) {
       setHasAllStates(final);
       setLoading(false);
