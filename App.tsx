@@ -120,11 +120,16 @@ function App() {
             <ToastProvider>
               <AppInner />
               <OfflineBanner />
-              <UpdateGate />
             </ToastProvider>
           </StateProvider>
         </GestureHandlerRootView>
       </ErrorBoundary>
+      {/* UpdateGate sits OUTSIDE ErrorBoundary (2026-08-25): a JS crash swaps
+          the boundary's subtree for the crash screen, and the kill switch must
+          survive exactly that scenario — a broken build is when we most need
+          to reach the fleet. It renders native Modals (order-safe as a
+          sibling) and depends on no context provider inside the boundary. */}
+      <UpdateGate />
     </SafeAreaProvider>
   );
 }
