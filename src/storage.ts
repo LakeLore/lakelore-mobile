@@ -25,6 +25,7 @@ export const KEYS = {
   entitlementCacheV2: 'entitlement.allStates.v2',
   countySelection: 'countySelection.v1',
   lakeCacheIndex: 'lakeCache.v1.index',
+  offlineCacheIndex: 'offlineCache.v1.index',
   schemaVersion: 'storage.schemaVersion',
 } as const;
 
