@@ -1112,22 +1112,29 @@ export default function SearchScreen() {
           // Source: clear the relative/stocking/presence scope so /results
           // doesn't AND an incompatible cpueKind/stockingFirst/presenceUnion into
           // an empty set, and sync the toolbar Source to the matching gear.
+          //
+          // Map to a single Source only when EXACTLY one gear is selected. The
+          // user may manually pick several gears; with 0 or >1 there is no one
+          // source, so clear activeSourceId and let the toolbar/scatter fall
+          // back to a neutral (measure) label instead of claiming one gear.
+          const g = updates.gearTypes?.length === 1 ? updates.gearTypes[0] : null;
+          const match = g && activeMeasure
+            ? activeMeasure.sources.find(s => s.gear === g)
+            : null;
           setFilters(prev => {
-            const next = { ...prev, ...updates };
+            let next = { ...prev, ...updates };
             if (updates.gearTypes) { next.cpueKind = ''; next.stockingFirst = false; next.presenceUnion = false; }
+            // Adopt the matched source's FULL semantics — sort included — the
+            // same way the Measure picker does (2026-08-25, owner-found on WI:
+            // Filters-selecting the 'Forecast Rating' bucket kept sortBy 'cpue',
+            // so 1,444 rating rows rendered null CATCH/NET headlines in
+            // arbitrary order; the source's sort is 'rating'). Symmetric in
+            // reverse too: rating-sorted -> pick an EF gear -> cpue sort.
+            // Multi-gear stays passthrough (no single source, sort untouched).
+            if (match && activeMeasure) next = applyMeasureSource(activeMeasure, match, next);
             return next;
           });
-          if (updates.gearTypes) {
-            // Map to a single Source only when EXACTLY one gear is selected. The
-            // user may manually pick several gears; with 0 or >1 there is no one
-            // source, so clear activeSourceId and let the toolbar/scatter fall
-            // back to a neutral (measure) label instead of claiming one gear.
-            const g = updates.gearTypes.length === 1 ? updates.gearTypes[0] : null;
-            const match = g && activeMeasure
-              ? activeMeasure.sources.find(s => s.gear === g)
-              : null;
-            setActiveSourceId(match ? match.id : null);
-          }
+          if (updates.gearTypes) setActiveSourceId(match ? match.id : null);
         }}
         onClose={() => setShowAdvanced(false)}
         onApply={() => { setShowAdvanced(false); handleSearch(0); }}
