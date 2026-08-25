@@ -17,6 +17,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import { KEYS } from './storage';
 
 export interface AttestationPayload {
   platform: 'ios' | 'android';
@@ -26,14 +27,14 @@ export interface AttestationPayload {
   token?: string;
 }
 
-const COOLDOWN_KEY = 'attest.cooldown.v1';
+const COOLDOWN_KEY = KEYS.attestCooldown;
 const COOLDOWN_MS = 24 * 60 * 60 * 1000;
 // Minimum spacing between attestation ATTEMPTS regardless of outcome
 // (2026-07-25, T1.5): the session layer is expected to attest roughly weekly
 // (7-day tokens), but any refresh-storm bug upstream (e.g. a 5xx loop on
 // /api/session) would otherwise hammer Apple's rate-limited attestation
 // service once per retry. Defense in depth, not the primary pacing.
-const ATTEMPT_KEY = 'attest.lastAttempt.v1';
+const ATTEMPT_KEY = KEYS.attestLastAttempt;
 const MIN_ATTEMPT_SPACING_MS = 20 * 60 * 60 * 1000;
 
 // iOS: a FRESH hardware key per attestation. Apple attests a key once and

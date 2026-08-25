@@ -14,9 +14,10 @@
 //     lesson in CLAUDE.md)
 //   - every failure is swallowed: a ratings prompt must never break anything
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { KEYS } from './storage';
 
-const VIEWS_KEY = 'ratings.lakeViews.v1';
-const ASKED_KEY = 'ratings.lastAsk.v1';
+const VIEWS_KEY = KEYS.ratingsLakeViews;
+const ASKED_KEY = KEYS.ratingsLastAsk;
 const MIN_VIEWS = 5;
 const MIN_DAYS_BETWEEN = 90;
 

@@ -26,15 +26,64 @@ export interface ScatterScope {
   excluded: number;
 }
 
-// A row the scatter could actually plot: an abundance signal (cpue, or a
-// rating ordinal in ratings-tier states) AND a size metric. Mirrors the
-// dot-building rules in ScatterPlot — presence rows fail this on both counts,
-// which is exactly why Presence's all-gear query needs the derivation.
-const plottable = (r: Result): boolean =>
-  (r.cpue != null || r.rating_ordinal != null) &&
-  ((r.average_length ?? 0) > 0 || (r.average_weight ?? 0) > 0);
+// ── Which rows the scatter will actually DRAW ───────────────────────────────
+//
+// Single source of truth shared by ScatterPlot's dot builder, the results
+// header's scatter-view count, and the fallback scoper's dominance vote —
+// mirroring ScatterPlot's per-state branch structure exactly. Kept here (pure
+// module) so tests and the scoper don't import the RN component.
+//
+// The 2026-08 post-launch fix this consolidates: MN plots weight-less rows at
+// x=0 by design (cpue alone suffices), but the scoper's old heuristic required
+// a positive size metric, undercounting MN in the dominance vote.
 
-export function scopeScatterRows(rows: Result[], gearTypes: string[]): ScatterScope {
+/** Majority vote for the generic branch's size axis (weight vs length) —
+ * mirrors the server's /measures sizeField rule. */
+export function genericSizeAxisIsWeight(results: Result[]): boolean {
+  const wN = results.filter(r => r.cpue != null && (r.average_weight ?? 0) > 0).length;
+  const lN = results.filter(r => r.cpue != null && (r.average_length ?? 0) > 0).length;
+  return wN > lN;
+}
+
+export function plottedRowPredicate(
+  state: string | null,
+  results: Result[],
+): (r: Result) => boolean {
+  switch (state) {
+    case 'mn':
+      // MN: weight defaults to 0 on the plot — cpue alone qualifies.
+      return r => r.cpue != null;
+    case 'ia':
+      return r => r.survey_date != null && r.cpue != null && r.average_length != null;
+    case 'nd':
+    case 'ne':
+    case 'mi':
+    case 'wi':
+    case 'sd':
+      return r => r.cpue != null && r.average_length != null;
+    default: {
+      // Generic abundance-vs-size branch when any row carries cpue + a size;
+      // ratings-tier fallback (rating ordinal × length) otherwise.
+      if (results.some(r => r.cpue != null && (r.average_length != null || r.average_weight != null))) {
+        const usesWeight = genericSizeAxisIsWeight(results);
+        return r => {
+          if (r.cpue == null) return false;
+          const size = usesWeight ? r.average_weight : r.average_length;
+          return size != null && size > 0;
+        };
+      }
+      return r => r.rating_ordinal != null && r.average_length != null;
+    }
+  }
+}
+
+export function scopeScatterRows(
+  rows: Result[],
+  gearTypes: string[],
+  state: string | null = null,
+): ScatterScope {
+  // Dominance is voted by what the scatter can actually draw for THIS state.
+  const plottable = plottedRowPredicate(state, rows);
   // ANY explicit gear selection IS the scope (owner decision 2026-08-12:
   // manual multi-select plots every selected gear — the user chose them, and
   // the multi-gear query returns each lake's latest row per gear). Passthrough.

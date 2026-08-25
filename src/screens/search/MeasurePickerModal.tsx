@@ -79,7 +79,10 @@ export function MeasurePickerModal({
                   }
                 }}
               >
-                <View style={{ flexShrink: 1 }}>
+                {/* flex:1 + paddingRight keeps a wrapping blurb clear of the
+                    right column ("…no survey on29 LAKESrecord", post-launch
+                    minor); flexShrink:0 stops the count label compressing. */}
+                <View style={{ flex: 1, paddingRight: space.md }}>
                   <Text style={[text.bodyL, { color: active ? colors.walleye2 : colors.ink }]}>
                     {m.label}{arrow ? ` ${arrow}` : ''}
                   </Text>
@@ -87,7 +90,7 @@ export function MeasurePickerModal({
                     {BLURB[m.id] ?? coverage(m)}
                   </Text>
                 </View>
-                <Text style={[text.labelM, { color: active ? colors.walleye2 : colors.inkSoft }]}>
+                <Text style={[text.labelM, { color: active ? colors.walleye2 : colors.inkSoft, flexShrink: 0 }]}>
                   {active ? (sortable ? '✓ tap to flip' : '✓') : coverage(m)}
                 </Text>
               </Pressable>

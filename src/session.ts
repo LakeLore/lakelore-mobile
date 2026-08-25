@@ -9,8 +9,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getUserId } from './userId';
 import { hmacSha256Hex } from './userSig';
 import { getAttestation } from './attest';
+import { KEYS } from './storage';
 
-const STORE_KEY = 'sessionToken.v1';
+const STORE_KEY = KEYS.sessionToken;
 // Refresh when less than a day of validity remains.
 const REFRESH_MARGIN_MS = 24 * 60 * 60 * 1000;
 

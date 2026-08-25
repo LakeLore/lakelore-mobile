@@ -25,6 +25,7 @@ import {
 import { StateProvider, useAppState } from './src/StateContext';
 import { initIAP } from './src/iap';
 import { getUserId } from './src/userId';
+import { migrateStorage } from './src/storage';
 import { ToastProvider } from './src/Toast';
 import { ErrorBoundary } from './src/ErrorBoundary';
 import { OfflineBanner } from './src/OfflineBanner';
@@ -102,6 +103,9 @@ function App() {
       const userId = await getUserId();
       await initIAP(userId);
     })();
+    // Storage hygiene (T3.14): stamp the schema version + reclaim retired
+    // keys. Fire-and-forget — must never delay or block boot.
+    migrateStorage();
   }, []);
 
   if (!fontsLoaded) {

@@ -1,4 +1,4 @@
-import { scopeScatterRows } from '../scatterScope';
+import { scopeScatterRows, plottedRowPredicate } from '../scatterScope';
 import { Result } from '../types';
 
 // Minimal plottable/unplottable row builders — only the fields the scoper reads.
@@ -68,5 +68,43 @@ describe('scopeScatterRows', () => {
     expect(s.derived).toBe(false);
     expect(s.gear).toBeNull(); // no single-gear claim — mixed by explicit choice
     expect(s.rows).toBe(rows);
+  });
+
+  it('MN: cpue-only rows count as plottable (weight defaults to 0 on the plot) — the undercount fix', () => {
+    // 3 gill-net rows with cpue but NO weight (MN plots them at x=0) vs 2
+    // trap-net rows with cpue+weight. The old size-required heuristic voted
+    // 0 vs 2 and picked trap nets; the state-aware predicate votes 3 vs 2.
+    const gillNoWeight = Array.from({ length: 3 }, (_, i) =>
+      row({ lake_id: `gw${i}`, gear: 'Standard gill nets', cpue: 8 }));
+    const trapWithWeight = Array.from({ length: 2 }, (_, i) =>
+      row({ lake_id: `tw${i}`, gear: 'Standard trap nets', cpue: 4, average_weight: 1.2 }));
+    const s = scopeScatterRows([...gillNoWeight, ...trapWithWeight], [], 'mn');
+    expect(s.gear).toBe('Standard gill nets');
+    expect(s.rows).toHaveLength(3);
+  });
+
+  it('WI: cpue-only rows are NOT plottable (length required, no x=0 default)', () => {
+    const noLength = row({ gear: 'A', cpue: 9 });
+    const withLength = row({ lake_id: 2, gear: 'B', cpue: 3, average_length: 11 });
+    const s = scopeScatterRows([noLength, withLength], [], 'wi');
+    expect(s.gear).toBe('B');
+    expect(s.rows).toHaveLength(1);
+  });
+});
+
+describe('plottedRowPredicate', () => {
+  it('generic branch follows the majority size axis (weight-majority drops length-only rows)', () => {
+    const w = (id: number) => row({ lake_id: id, cpue: 1, average_weight: 2 });
+    const l = row({ lake_id: 99, cpue: 1, average_length: 12 });
+    const results = [w(1), w(2), l];
+    const plots = plottedRowPredicate('tn', results);
+    expect(plots(w(1))).toBe(true);
+    expect(plots(l)).toBe(false); // weight is the axis; a length-only row has no x
+  });
+
+  it('IA additionally requires survey_date (matches the plot branch)', () => {
+    const plots = plottedRowPredicate('ia', []);
+    expect(plots(row({ cpue: 1, average_length: 10 }))).toBe(false);
+    expect(plots(row({ cpue: 1, average_length: 10, survey_date: '2024-08-01' }))).toBe(true);
   });
 });

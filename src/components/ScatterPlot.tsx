@@ -5,6 +5,7 @@ import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import Svg, { Circle, Line, Text as SvgText, Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { useSvgPanZoom, useCommittedMirror, assertWorklet } from '../hooks/useSvgPanZoom';
 import BlurredLakeName from './BlurredLakeName';
+import { plottedRowPredicate, genericSizeAxisIsWeight } from '../scatterScope';
 import { Measure, Source, Result, StateKey, STATE_CONFIGS, GENERATED_STATES } from '../types';
 import { SPECIES_NAMES_BY_STATE } from '../generated/species';
 import { colors, text, space, hairline, fonts } from '../lakelore-rn/theme';
@@ -130,6 +131,11 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
   const { points, sortedStocked, dataBounds, xLabel, yLabel, ratingMode } = useMemo(() => {
     const pts: DotData[] = [];
     const namesMap = SPECIES_NAMES_BY_STATE[state] ?? ({} as Record<string, string>);
+    // Row-qualifies rule shared with the header count + fallback scoper
+    // (src/scatterScope.ts) — the branches below MUST use it as their guard so
+    // "N RESULTS" always equals the dots drawn. Payload fields still use `!`
+    // where the predicate guarantees presence.
+    const plots = plottedRowPredicate(state, results);
     // Ratings-tier fallback (no CPUE anywhere): y becomes the agency forecast
     // rating ordinal, x average size.
     let ratingMode = false;
@@ -163,9 +169,9 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
 
     if (state==='mn') {
       for (const r of results) {
-        if (r.cpue==null) continue;
+        if (!plots(r)) continue;
         pts.push({
-          x: r.average_weight??0, y: r.cpue,
+          x: r.average_weight??0, y: r.cpue!,
           stocked: r.stocked_per_100ac,
           ...lakeMeta(r),
           species: namesMap[r.species]??r.species,
@@ -177,9 +183,9 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
       }
     } else if (state==='nd') {
       for (const r of results) {
-        if (r.cpue==null || r.average_length==null) continue;
+        if (!plots(r)) continue;
         pts.push({
-          x: r.average_length, y: r.cpue,
+          x: r.average_length!, y: r.cpue!,
           stocked: r.stocked_per_100ac,
           ...lakeMeta(r),
           species: namesMap[r.species]??r.species,
@@ -189,9 +195,9 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
       }
     } else if (state==='ia') {
       for (const r of results) {
-        if (r.survey_date == null || r.cpue == null || r.average_length == null) continue;
+        if (!plots(r)) continue;
         pts.push({
-          x: r.average_length, y: r.cpue,
+          x: r.average_length!, y: r.cpue!,
           stocked: r.stocked_per_100ac,
           ...lakeMeta(r),
           species: r.species,
@@ -203,9 +209,9 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
       }
     } else if (state === 'ne') {
       for (const r of results) {
-        if (r.cpue == null || r.average_length == null) continue;
+        if (!plots(r)) continue;
         pts.push({
-          x: r.average_length, y: r.cpue,
+          x: r.average_length!, y: r.cpue!,
           stocked: r.stocked_per_100ac,
           ...lakeMeta(r),
           species: r.species,
@@ -215,9 +221,9 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
       }
     } else if (state === 'mi') {
       for (const r of results) {
-        if (r.cpue == null || r.average_length == null) continue;
+        if (!plots(r)) continue;
         pts.push({
-          x: r.average_length, y: r.cpue,
+          x: r.average_length!, y: r.cpue!,
           stocked: r.stocked_per_100ac,
           ...lakeMeta(r),
           species: r.species,
@@ -228,9 +234,9 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
       }
     } else if (state === 'wi') {
       for (const r of results) {
-        if (r.cpue == null || r.average_length == null) continue;
+        if (!plots(r)) continue;
         pts.push({
-          x: r.average_length, y: r.cpue,
+          x: r.average_length!, y: r.cpue!,
           stocked: r.stocked_per_100ac,
           ...lakeMeta(r),
           species: r.species,
@@ -241,14 +247,14 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
     } else if (state === 'sd') {
       // SD: server already returns the PSD-derived avg length as average_length.
       for (const r of results) {
-        if (r.cpue==null || r.average_length==null) continue;
+        if (!plots(r)) continue;
         pts.push({
-          x: r.average_length, y: r.cpue,
+          x: r.average_length!, y: r.cpue!,
           stocked: r.stocked_per_100ac,
           ...lakeMeta(r),
           species: namesMap[r.species]??r.species,
           year: r.survey_year,
-          estLength: r.average_length,
+          estLength: r.average_length!,
         });
       }
     } else if (results.some(r => r.cpue != null && (r.average_length != null || r.average_weight != null))) {
@@ -266,18 +272,15 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
       // (bug-hunt #1: .some() let ONE weight row flip 21 dual-metric states
       // to a weight axis, dropping the length-only majority and contradicting
       // the Measure toolbar).
-      const wN = results.filter(r => r.cpue != null && (r.average_weight ?? 0) > 0).length;
-      const lN = results.filter(r => r.cpue != null && (r.average_length ?? 0) > 0).length;
-      genericUsesWeight = wN > lN;
+      genericUsesWeight = genericSizeAxisIsWeight(results);
     }
       for (const r of results) {
-        if (r.cpue == null) continue;
-        const size = genericUsesWeight ? r.average_weight : r.average_length;
-        // Drop placeholder 0 sizes (a fish is never 0 in / 0 lb) so they don't
-        // pile up on the X=0 axis.
-        if (size == null || size <= 0) continue;
+        // Placeholder 0 sizes (a fish is never 0 in / 0 lb) fail the shared
+        // predicate, so they don't pile up on the X=0 axis.
+        if (!plots(r)) continue;
+        const size = (genericUsesWeight ? r.average_weight : r.average_length)!;
         pts.push({
-          x: size, y: r.cpue,
+          x: size, y: r.cpue!,
           stocked: r.stocked_per_100ac,
           ...lakeMeta(r),
           species: namesMap[r.species]??r.species,
@@ -292,10 +295,10 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
       // FORECAST RATING (y, state-local ordinal) with average size (x) on
       // rows that carry both.
       for (const r of results) {
-        if (r.rating_ordinal == null || r.average_length == null) continue;
+        if (!plots(r)) continue;
         ratingMode = true;
         pts.push({
-          x: r.average_length, y: r.rating_ordinal,
+          x: r.average_length!, y: r.rating_ordinal!,
           stocked: r.stocked_per_100ac,
           ...lakeMeta(r),
           species: namesMap[r.species]??r.species,
@@ -522,7 +525,7 @@ export default function ScatterPlot({ results, state, activeMeasure, activeSourc
         {/* Reasoned empty state (D7): say WHY the chart is empty instead of
             leaving the user to guess. */}
         <Text style={[text.bodyS, { color: colors.inkSoft, textAlign: 'center', marginTop: 6, paddingHorizontal: space.xl }]}>
-          The chart plots Abundance against size, so it needs records with both a catch rate and a size (length or weight){' '}— switch the Measure to Abundance if it's currently on Stocking or Presence (nothing to plot there), or try another species or the list view.
+          The chart plots Abundance against size, so it needs records with both a catch rate and a size (length or weight){' '}— switch the Measure to Abundance if it{'\u2019'}s currently on Stocking or Presence (nothing to plot there), or try another species or the list view.
         </Text>
       </View>
     );

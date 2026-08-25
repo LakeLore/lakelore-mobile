@@ -24,6 +24,7 @@ const GAME_FISH_CODES = new Set([
   'SAU','SAR','RBT','BNT','BKT','LAK','LKS','CCF','WHB','STH','TLC','RKB','PMK',
 ]);
 import type { RootStackParamList } from '../navigation';
+import { buildYearGearSeries } from '../chartSeries';
 
 type RouteT = RouteProp<RootStackParamList, 'LakeDetail'>;
 
@@ -129,38 +130,8 @@ function niceTicks(min: number, max: number, count = 5): number[] {
 
 function fmtK(v: number) { return v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v); }
 
-// Shared year×gear line-series builder for the Catch and Avg Size tabs: one
-// line per gear, values averaged when a year has multiple surveys with the
-// same gear.
-function buildYearGearSeries(rows: CatchRow[], value: (c: CatchRow) => number | null | undefined) {
-  const gearSet = new Set<string>();
-  const byYearGear = new Map<string, number[]>();
-  for (const c of rows) {
-    const v = value(c);
-    if (v == null || c.survey_year == null) continue;
-    const gk = c.gear ?? (c.survey_type ?? 'Unknown');
-    gearSet.add(gk);
-    const key = `${c.survey_year}|${gk}`;
-    if (!byYearGear.has(key)) byYearGear.set(key, []);
-    byYearGear.get(key)!.push(v);
-  }
-  const gearKeys = [...gearSet].sort();
-  const yearMap = new Map<number, Record<string,number|null>>();
-  for (const [key, vals] of byYearGear) {
-    const [yr, gk] = key.split('|');
-    const year = Number(yr);
-    if (!yearMap.has(year)) yearMap.set(year, { year });
-    const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
-    const entry = yearMap.get(year)!;
-    if (entry[gk] == null) entry[gk] = avg;
-    else entry[gk] = ((entry[gk] as number) + avg) / 2;
-  }
-  const chartData = [...yearMap.values()]
-    .map(e => { const r: Record<string,number|null> = { year: e.year as number }; for (const g of gearKeys) r[g] = e[g] ?? null; return r; })
-    .sort((a,b) => (a.year as number) - (b.year as number));
-  const activeKeys = gearKeys.filter(g => chartData.some(r => r[g] != null));
-  return { chartData, gearKeys: activeKeys };
-}
+// Year×gear line-series builder — extracted to src/chartSeries.ts (T3.15)
+// so the wire-contract fixture test exercises the exact production code.
 
 // Catch-tab caption phrase, honest about what this state's cpue IS (keyed off
 // the generated cpueKind). Replaces the pre-all-states-launch hardcoded
@@ -1251,7 +1222,7 @@ export default function LakeDetailScreen() {
             <ScrollView contentContainerStyle={{ padding: space.xl }}>
               <Text style={[text.bodyM, { color: colors.ink2 }]}>
                 What looks wrong with {lake.name ?? 'this lake'}? Be as specific as you can
-                (species, year, value you expected vs. what's shown).
+                (species, year, value you expected vs. what{'\u2019'}s shown).
               </Text>
               <Text style={[text.labelS, { color: colors.inkSoft, marginTop: space.lg }]}>
                 CONTEXT (auto-attached)

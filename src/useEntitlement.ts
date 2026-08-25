@@ -21,16 +21,17 @@ import {
   isIapConfigured,
 } from './iap';
 import { fetchMyEntitlement } from './api';
+import { KEYS } from './storage';
 
 // Cache the last-known entitlement so subsequent app launches render the
 // correct lock/unlock chips immediately, instead of flashing "locked" while
 // the RC SDK + server round-trip resolves. Server is still authoritative on
 // every refresh — this only primes the initial UI.
-const ENTITLEMENT_CACHE_KEY = 'entitlement.allStates.v1';
+const ENTITLEMENT_CACHE_KEY = 'entitlement.allStates.v1'; // retired — see storage.ts OBSOLETE_KEYS
 // v2 (2026-07-25, T3.14): the cached flag now carries a timestamp and is
 // ignored past 7 days — a lapsed subscriber cold-launching offline used to
 // see unlocked chips indefinitely (cosmetic only: the server still redacts).
-const ENTITLEMENT_CACHE_KEY_V2 = 'entitlement.allStates.v2';
+const ENTITLEMENT_CACHE_KEY_V2 = KEYS.entitlementCacheV2;
 const ENTITLEMENT_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 export interface EntitlementState {

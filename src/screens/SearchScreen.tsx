@@ -15,7 +15,7 @@ import {
 } from '../types';
 import { isFreeState } from '../activeStates';
 import { fetchFilters, fetchMeasures, fetchResults, fetchAllResults, DbStatus, fetchStatus, SubscriptionRequiredError } from '../api';
-import { scopeScatterRows } from '../scatterScope';
+import { scopeScatterRows, plottedRowPredicate } from '../scatterScope';
 import PaywallScreen from './PaywallScreen';
 import AboutScreen from './AboutScreen';
 import ResultRow, { cpueLabelForGear } from '../components/ResultRow';
@@ -35,6 +35,7 @@ import { AdvancedFiltersModal } from './search/AdvancedFiltersModal';
 import { SortPickerModal } from './search/SortPickerModal';
 import { MeasurePickerModal } from './search/MeasurePickerModal';
 import { StatePickerModal } from './search/StatePickerModal';
+import { KEYS, offlineCacheKey } from '../storage';
 
 const PAGE_SIZE = 50;
 
@@ -44,7 +45,7 @@ const PAGE_SIZE = 50;
 // filters.counties on mount and on state change so the user's last filter
 // scope survives a cold launch. Updated when the user confirms a selection
 // in the County map picker.
-const COUNTY_SELECTION_KEY = 'countySelection.v1';
+const COUNTY_SELECTION_KEY = KEYS.countySelection;
 
 // Stripe colors: generated per-state palette, with the original launch
 // states keeping their hand-picked stripes.
@@ -283,7 +284,7 @@ export default function SearchScreen() {
         const isNetwork = err instanceof Error && /reach server|timed out/.test(err.message);
         if (isNetwork) {
           try {
-            const raw = await AsyncStorage.getItem(`offlineCache.v1.${stateKey}`);
+            const raw = await AsyncStorage.getItem(offlineCacheKey(stateKey));
             if (raw) {
               const cached = JSON.parse(raw);
               setResults(cached.results ?? []);
@@ -377,7 +378,7 @@ export default function SearchScreen() {
       // successful first-page search per state so the app shows SOMETHING
       // at the lake with no signal. Fire-and-forget.
       if (nextPage === 0) {
-        AsyncStorage.setItem(`offlineCache.v1.${state}`, JSON.stringify({
+        AsyncStorage.setItem(offlineCacheKey(state), JSON.stringify({
           ts: Date.now(),
           results: dropConsolidated(data.results),
           scatterResults: allData ? dropConsolidated(allData.results) : [],
@@ -393,7 +394,7 @@ export default function SearchScreen() {
         const isNetwork = err instanceof Error && /reach server|timed out/.test(err.message);
         if (isNetwork && nextPage === 0) {
           try {
-            const raw = await AsyncStorage.getItem(`offlineCache.v1.${state}`);
+            const raw = await AsyncStorage.getItem(offlineCacheKey(state));
             if (raw) {
               const cached = JSON.parse(raw);
               setResults(cached.results ?? []);
@@ -547,8 +548,8 @@ export default function SearchScreen() {
   // defaultGearFor — the same gear the Abundance measure would adopt — and
   // the client-side scoper stays as the offline / older-server fallback.
   const scatterScope = useMemo(
-    () => scopeScatterRows(scatterResults, filters.gearTypes),
-    [scatterResults, filters.gearTypes],
+    () => scopeScatterRows(scatterResults, filters.gearTypes, state),
+    [scatterResults, filters.gearTypes, state],
   );
   // Derivation applies ONLY when NO gear is in scope (gear-less measures).
   // Manual multi-select is an explicit user choice (owner decision 2026-08-12):
@@ -577,7 +578,13 @@ export default function SearchScreen() {
         if (seq !== scatterFetchSeq.current) return; // superseded by a newer request
         setScatterFetched({ gear, rows: resp.results, forResults: scatterResults });
       })
-      .catch(() => { /* offline / older server — client-side fallback plots */ });
+      .catch(err => {
+        // Entitlement loss mid-session must reach the paywall, not vanish into
+        // the fallback (post-launch minor: SubscriptionRequiredError was
+        // swallowed here, silently plotting the client-side slice instead).
+        if (err instanceof SubscriptionRequiredError) { setPaywallTriggered(err.state); return; }
+        /* offline / older server — client-side fallback plots */
+      });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scatterNeedsDerivedGear, viewMode, scatterResults, options, state]);
   // What the plot renders: valid fetched gear-scoped rows when available,
@@ -591,6 +598,11 @@ export default function SearchScreen() {
   // Honest Y-axis unit for a DERIVED gear: the active (gear-less) measure has
   // no abundance source to name the unit, so look the gear up across all
   // measures' sources (the abundance measure carries per-gear units).
+  // What the scatter-view header reports: dots, not rows (see header comment).
+  const scatterPlottedCount = useMemo(
+    () => scatterPlotRows.filter(plottedRowPredicate(state, scatterPlotRows)).length,
+    [state, scatterPlotRows],
+  );
   const scatterScopedUnit = useMemo(() => {
     if (!scatterPlotGear) return null;
     for (const m of measures) {
@@ -834,15 +846,17 @@ export default function SearchScreen() {
         </View>
       )}
 
-      {/* Results header. In scatter view with a DERIVED gear scope the count
-          reflects the scoped rows actually plotted — the owner's 2026-08-11
-          report flagged "9 dots / 33 RESULTS" as incoherent; the list total
+      {/* Results header. In scatter view the count is the rows the plot
+          actually DRAWS (shared predicate with ScatterPlot's dot builder) —
+          the owner's 2026-08-11 report flagged "9 dots / 33 RESULTS" as
+          incoherent, and a post-launch minor caught the scoped count still
+          including unplottable rows (no size metric → no dot). The list total
           returns the moment the user flips back to list view. */}
       {searched && (
         <View style={styles.resultsHeader}>
           <Text style={[text.labelL, { color: colors.inkSoft, flexShrink: 1 }]} numberOfLines={1}>
-            {viewMode === 'scatter' && scatterPlotGear != null
-              ? `${scatterPlotRows.length.toLocaleString()} ${scatterPlotRows.length === 1 ? 'RESULT' : 'RESULTS'}`
+            {viewMode === 'scatter'
+              ? `${scatterPlottedCount.toLocaleString()} ${scatterPlottedCount === 1 ? 'RESULT' : 'RESULTS'}`
               : `${total.toLocaleString()} ${total === 1 ? 'RESULT' : 'RESULTS'}`}
           </Text>
           <View style={styles.viewToggle}>

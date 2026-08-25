@@ -19,8 +19,9 @@
 // account system; out of scope for v1.
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { KEYS } from './storage';
 
-const STORAGE_KEY = 'lakelore.userId';
+const STORAGE_KEY = KEYS.userId;
 
 let cached: string | null = null;
 

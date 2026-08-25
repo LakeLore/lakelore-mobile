@@ -6,15 +6,16 @@
 // the water with no signal. Best-effort: every failure here is swallowed —
 // the cache must never break the online path.
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { KEYS, lakeCacheKey } from './storage';
 
-const INDEX_KEY = 'lakeCache.v1.index';
+const INDEX_KEY = KEYS.lakeCacheIndex;
 const MAX_ENTRIES = 20;
 // Hard expiry (2026-07-25, T3.14): a year-old survey payload rendering with
 // only a small date label overstates freshness — past this age the entry is
 // treated as absent and the screen shows the normal offline error instead.
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
-const keyFor = (state: string, lakeId: string | number) => `lakeCache.v1.${state}:${lakeId}`;
+const keyFor = lakeCacheKey;
 
 export async function putLake(state: string, lakeId: string | number, data: unknown): Promise<void> {
   try {
