@@ -431,6 +431,11 @@ export default function LakeDetailScreen() {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackSending, setFeedbackSending] = useState(false);
+  // Validation/send errors render INLINE in the feedback sheet — toasts sit
+  // BEHIND native Modals on iOS, so toasting from the open sheet showed
+  // nothing (2026-08-25). The success toast is fine: it fires after
+  // setFeedbackOpen(false).
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const { toast } = useToast();
 
   const applyLake = React.useCallback((ld: LakeData) => {
@@ -920,7 +925,7 @@ export default function LakeDetailScreen() {
               </Pressable>
             )}
             <Pressable
-              onPress={() => { setFeedbackText(''); setFeedbackOpen(true); }}
+              onPress={() => { setFeedbackText(''); setFeedbackError(null); setFeedbackOpen(true); }}
               accessibilityRole="button"
               accessibilityLabel="Report data issue">
               <Text style={[text.labelM, { color: colors.inkSoft }]}>Report data issue</Text>
@@ -1238,17 +1243,23 @@ export default function LakeDetailScreen() {
                 placeholderTextColor={colors.inkSoft}
                 multiline
                 value={feedbackText}
-                onChangeText={setFeedbackText}
+                onChangeText={t => { setFeedbackText(t); setFeedbackError(null); }}
                 maxLength={2000}
                 editable={!feedbackSending}
               />
+              {feedbackError && (
+                <View style={styles.feedbackError} accessibilityLiveRegion="polite">
+                  <Text style={[text.bodyS, { color: colors.paper }]}>{feedbackError}</Text>
+                </View>
+              )}
               <Pressable
                 onPress={async () => {
                   if (feedbackSending) return;
                   if (feedbackText.trim().length === 0) {
-                    toast('Add a description before sending.');
+                    setFeedbackError('Add a description before sending.');
                     return;
                   }
+                  setFeedbackError(null);
                   setFeedbackSending(true);
                   try {
                     await submitFeedback({
@@ -1262,9 +1273,9 @@ export default function LakeDetailScreen() {
                       build: Application.nativeBuildVersion ?? null,
                     });
                     setFeedbackOpen(false);
-                    toast('Thanks — sent.');
+                    toast('Thanks — sent.'); // sheet is closed — toast is visible again
                   } catch (e) {
-                    toast(e instanceof Error ? e.message : 'Could not send. Try again.');
+                    setFeedbackError(e instanceof Error ? e.message : 'Could not send. Try again.');
                   } finally {
                     setFeedbackSending(false);
                   }
@@ -1355,6 +1366,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 6,
     alignItems: 'center',
+  },
+  feedbackError: {
+    marginTop: space.md,
+    backgroundColor: colors.rust,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
+    borderRadius: 6,
   },
 
   shareTitle: {
