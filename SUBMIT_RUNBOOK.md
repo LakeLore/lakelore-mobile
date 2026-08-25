@@ -192,7 +192,7 @@ If anything fails, fix and re-build before submitting to App Review.
 
 ## 4. Test the Android build before submitting
 
-The Android `submit.production.android.releaseStatus` is `draft` (per `eas.json`), so the AAB lands as a draft in Internal Testing. You need to publish it manually.
+The Android submit target is `track: "production"` with `releaseStatus: "draft"` (per `eas.json`, changed 2026-08-25 post-launch — the app is live, so a hotfix AAB should land as a Production draft, not detour through Internal Testing). Nothing goes live until you review and roll out the draft manually.
 
 ```bash
 npm run submit:android
@@ -200,7 +200,7 @@ npm run submit:android
 
 Then in Play Console:
 
-1. Internal Testing → Releases → click into the draft → review → Save → Review release → Start rollout.
+1. Production → Releases → click into the draft → review → Save → Review release → Start rollout. (For a pre-release test cycle instead, submit with `eas submit -p android --profile production` after temporarily setting the track back to `internal`, or promote from the Production draft's testing tracks.)
 2. Wait ~5 min for Play to process.
 3. On your test Android device (added as a license tester in Play Console → Setup → License testing), install the build.
 4. Run the same smoke tests as iOS plus:

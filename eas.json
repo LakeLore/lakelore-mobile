@@ -62,7 +62,7 @@
       },
       "android": {
         "serviceAccountKeyPath": "/Users/andrewtop/Documents/lakelore-keys/lakelore-play-872e8a9ea73b.json",
-        "track": "internal",
+        "track": "production",
         "releaseStatus": "draft"
       }
     }
