@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import type { PurchasesPackage } from 'react-native-purchases';
+import { PACKAGE_TYPE, type PurchasesPackage } from 'react-native-purchases';
 import {
   isIapConfigured,
   getOffering,
@@ -49,7 +49,15 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
     setError(null);
     setLoadingPkg(true);
     const offering = await getOffering();
-    const annual = offering?.annual ?? offering?.availablePackages?.[0] ?? null;
+    // Prefer a genuinely ANNUAL package: the pricing card and disclosures all
+    // say "auto-renews each year", so a bare [0] fallback could bind a
+    // monthly/other package under annual copy if the RC offering ever grows a
+    // second package. [0] stays only as the last resort (its own priceString
+    // still renders, so the price at least matches the package).
+    const annual = offering?.annual
+      ?? offering?.availablePackages?.find(p => p.packageType === PACKAGE_TYPE.ANNUAL)
+      ?? offering?.availablePackages?.[0]
+      ?? null;
     setPkg(annual);
     setLoadingPkg(false);
   }, []);
@@ -137,7 +145,7 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
           <Text style={[text.displayL, styles.headline]}>
             {contextName(triggeredFrom)
               ? `Unlock ${contextName(triggeredFrom)} — and every other state.`
-              : PAID_CA > 0 ? 'Unlock every state & province.' : 'Unlock every state.'}
+              : PAID_CA > 0 ? 'Unlock every state & province.' : 'Unlock every covered state.'}
           </Text>
 
           <Text style={[text.bodyL, { color: colors.ink2, marginTop: 16 }]}>
