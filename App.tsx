@@ -39,6 +39,21 @@ import { colors } from './src/lakelore-rn/theme';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+// Render-null micro-boundary for UpdateGate (round-2 review, 2026-08-25).
+// The gate sits OUTSIDE the main ErrorBoundary so the kill switch survives an
+// app crash — but that also puts any bug in the gate itself at the app root,
+// where an uncaught render throw would take down a HEALTHY app. The gate is
+// failure-soft by design (any config hiccup means 'ok'), so its render
+// failure mode is the same: disappear quietly, report to Sentry.
+class UpdateGateBoundary extends React.Component<{ children: React.ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch(error: unknown) {
+    try { Sentry.captureException(error); } catch { /* best-effort */ }
+  }
+  render() { return this.state.failed ? null : this.props.children; }
+}
+
 const NavTheme = {
   ...DefaultTheme,
   colors: {
@@ -128,8 +143,12 @@ function App() {
           the boundary's subtree for the crash screen, and the kill switch must
           survive exactly that scenario — a broken build is when we most need
           to reach the fleet. It renders native Modals (order-safe as a
-          sibling) and depends on no context provider inside the boundary. */}
-      <UpdateGate />
+          sibling) and depends on no context provider inside the boundary. Its
+          own micro-boundary renders null on a gate bug so the trade never
+          runs the other way (round-2 #1). */}
+      <UpdateGateBoundary>
+        <UpdateGate />
+      </UpdateGateBoundary>
     </SafeAreaProvider>
   );
 }
