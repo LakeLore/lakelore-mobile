@@ -1154,20 +1154,11 @@ export default function SearchScreen() {
         visible={showMeasure}
         measures={measures}
         activeMeasureId={activeMeasureId}
-        activeTier={activeMeasure?.sources.find(s => s.id === activeSourceId)?.tier ?? null}
         sortDir={filters.sortDir}
         onClose={() => setShowMeasure(false)}
-        onChange={(measure, sortDir, tier) => {
+        onChange={(measure, sortDir) => {
           // Keep the current source if this measure still has it, else default.
-          // A tier sub-row tap (Trophy Abundance) picks that tier's biggest
-          // source — sources arrive sorted by records, so find() is the best,
-          // preferring the currently selected gear when it carries the tier.
-          const currentGear = measure.sources.find(s => s.id === activeSourceId)?.gear;
-          const source = tier
-            ? (measure.sources.find(s => s.tier === tier && s.gear === currentGear)
-               ?? measure.sources.find(s => s.tier === tier)
-               ?? pickSource(measure, activeSourceId))
-            : pickSource(measure, activeSourceId);
+          const source = pickSource(measure, activeSourceId);
           setActiveMeasureId(measure.id);
           setActiveSourceId(source?.id ?? null);
           const updated = applyMeasureSource(measure, source, filters, sortDir);
@@ -1265,13 +1256,8 @@ export default function SearchScreen() {
           // source, so clear activeSourceId and let the toolbar/scatter fall
           // back to a neutral (measure) label instead of claiming one gear.
           const g = updates.gearTypes?.length === 1 ? updates.gearTypes[0] : null;
-          // Trophy Abundance carries TWO sources per gear (one per tier) —
-          // keep the active tier when switching gears in Filters, so picking
-          // a net doesn't silently flip Trophy-class back to Big fish.
-          const currentTier = activeMeasure?.sources.find(s => s.id === activeSourceId)?.tier;
           const match = g && activeMeasure
-            ? (activeMeasure.sources.find(s => s.gear === g && (currentTier ? s.tier === currentTier : true))
-               ?? activeMeasure.sources.find(s => s.gear === g))
+            ? activeMeasure.sources.find(s => s.gear === g)
             : null;
           setFilters(prev => {
             let next = { ...prev, ...updates };

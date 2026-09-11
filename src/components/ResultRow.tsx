@@ -49,10 +49,8 @@ function metricDefinition(key: string, label: string): string | null {
     return 'Fish caught per net set (gill, trap, or fyke net) in the agency survey. Higher = more abundant.';
   }
   switch (key) {
-    case 'cpue_preferred':
-      return 'Catch rate counting only big fish — at or above the species’ “preferred” length class (e.g. 20″ walleye, 15″ largemouth) — on the same survey effort as the overall catch rate.';
     case 'cpue_memorable':
-      return 'Catch rate counting only trophy-class fish — at or above the species’ “memorable” length class (e.g. 25″ walleye, 20″ largemouth). The strongest signal of a genuine trophy water.';
+      return 'Catch rate counting only true trophy fish — at or above the species’ trophy length class (e.g. 25″ walleye, 20″ largemouth) — on the same survey effort as the overall catch rate.';
     case 'stocked':
       return label === 'Stck Adults (est)'
         ? 'Estimated stocked fish surviving to adulthood — an absolute count, because this lake has no recorded acreage for a per-acre rate. Based on the last 10 years of stocking.'
@@ -89,18 +87,18 @@ const stockedStat = (r: Result): Stat =>
     : { key: 'stocked', label: 'Stck Adults (est)',
         value: Math.round(r.stocked_adults_est).toLocaleString() };
 
-// Trophy Abundance pills (schema v8): tier catch rates in the row's gear unit.
-// Label mirrors the cpue label's unit half ("Catch / Net" -> "Trophy+ / Net")
-// so the tier value reads in the same unit family as the overall rate.
-function trophyLabel(state: StateKey, r: Result, tier: 'Big Fish' | 'Trophy'): string {
+// Trophy Abundance pill (schema v8; single memorable tier since 2026-09-11):
+// the true-trophy catch rate in the row's gear unit. Label mirrors the cpue
+// label's unit half ("Catch / Net" -> "Trophy / Net") so the value reads in
+// the same unit family as the overall rate.
+function trophyLabel(state: StateKey, r: Result): string {
   const base = cpueLabelForGear(state, r.gear, r.cpue_kind);
   const m = base.match(/\/\s*(.+)$/);
-  return m ? `${tier} / ${m[1]}` : `${tier} Rate`;
+  return m ? `Trophy / ${m[1]}` : 'Trophy Rate';
 }
 function trophyStats(r: Result, state: StateKey): Stat[] {
   return [
-    { key: 'cpue_memorable', label: trophyLabel(state, r, 'Trophy'),   value: fmtCpue(r.cpue_memorable) },
-    { key: 'cpue_preferred', label: trophyLabel(state, r, 'Big Fish'), value: fmtCpue(r.cpue_preferred) },
+    { key: 'cpue_memorable', label: trophyLabel(state, r), value: fmtCpue(r.cpue_memorable) },
   ];
 }
 
@@ -291,9 +289,7 @@ export default function ResultRow({ result: r, state, sortBy, showSpecies, onPre
   const sortLabel = sortBy === 'cpue'
     ? cpueLabelForGear(state, r.gear, r.cpue_kind)
     : sortBy === 'cpue_memorable'
-    ? trophyLabel(state, r, 'Trophy')
-    : sortBy === 'cpue_preferred'
-    ? trophyLabel(state, r, 'Big Fish')
+    ? trophyLabel(state, r)
     : sortBy === 'stocked'
     ? (r.stocked_per_100ac != null ? 'Stck Adults / 100AC' : 'Stck Adults (est)')
     : (STATE_CONFIGS[state].sortOptions.find(o => o.value === sortBy)?.label ?? sortBy);
