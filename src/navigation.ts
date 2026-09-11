@@ -2,6 +2,7 @@ import { StateKey } from './types';
 
 export type RootStackParamList = {
   Search: undefined;
+  Ask: undefined;
   LakeDetail: {
     lakeId: number | string;
     lakeName: string;

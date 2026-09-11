@@ -10,6 +10,7 @@
     "build:dev:android": "eas build --profile development --platform android",
     "build:preview:ios": "eas build --profile preview --platform ios",
     "build:preview:android": "eas build --profile preview --platform android",
+    "build:staging:ios": "tsc --noEmit && jest --silent && eas build --profile staging --platform ios --auto-submit-with-profile production",
     "build:prod:ios": "tsc --noEmit && jest --silent && eas build --profile production --platform ios",
     "build:prod:android": "tsc --noEmit && jest --silent && eas build --profile production --platform android",
     "submit:ios": "eas submit --profile production --platform ios",

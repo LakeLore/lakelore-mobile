@@ -23,6 +23,17 @@ const PROD_API_BASE = 'https://lake-fish-api.fly.dev';
 const DEV_API_FALLBACK = 'http://192.168.1.8:3100';
 const DEV_API_PORT = 3100;
 
+// Release-build server override (2026-09-11): the `staging` EAS profile bakes
+// EXPO_PUBLIC_API_BASE=https://lake-fish-api-staging.fly.dev in at build time
+// so a TestFlight build can exercise unreleased server code + data. Production
+// builds set nothing and keep PROD_API_BASE. Only https origins are honored —
+// a typo in eas.json can't silently point a store build at plain http.
+function resolveReleaseApiBase(): string {
+  const override = process.env.EXPO_PUBLIC_API_BASE;
+  if (override && /^https:\/\/[a-z0-9.-]+$/i.test(override)) return override;
+  return PROD_API_BASE;
+}
+
 function resolveDevApiBase(): string {
   // Constants.expoConfig.hostUri looks like "192.168.1.8:8081" in dev.
   const hostUri = Constants.expoConfig?.hostUri;
@@ -32,7 +43,8 @@ function resolveDevApiBase(): string {
   return `http://${host}:${DEV_API_PORT}`;
 }
 
-export const API_BASE_URL: string = __DEV__ ? resolveDevApiBase() : PROD_API_BASE;
+export const API_BASE_URL: string = __DEV__ ? resolveDevApiBase() : resolveReleaseApiBase();
+export const IS_PROD_API: boolean = API_BASE_URL === PROD_API_BASE;
 
 function baseUrl(state: StateKey) {
   return `${API_BASE_URL}/api/${state}`;
@@ -215,6 +227,86 @@ export async function submitFeedback(payload: FeedbackPayload): Promise<void> {
     const body = await res.json().catch(() => null);
     throw new Error(body?.error ?? `Server error (${res.status})`);
   }
+}
+
+// ── Ask LakeLore (POST /api/:state/ask, 2026-09-10) ──────────────────────────
+// Stateless chat: the client sends the whole conversation each turn (plain
+// strings, assistant turns WITHOUT lake markers) and gets back the answer with
+// [[lake_id|Name]] markers plus the lake rows those markers reference.
+
+export interface AskMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface AskLake {
+  lake_id: string;
+  lake_name: string | null;
+  county?: string | null;
+  acres?: number | null;
+  max_depth_ft?: number | null;
+  species?: string;         // display name
+  species_native?: string;  // wire value — what LakeDetail's route wants
+  survey_year?: number | null;
+  gear?: string | null;
+  cpue?: number | null;
+  total_catch?: number | null;
+  avg_weight_lb?: number | null;
+  avg_length_in?: number | null;
+  rating?: string | null;
+  stocked_adults_per_100ac?: number | null;
+  stocked_adults_est?: number | null;
+}
+
+export interface AskResponse {
+  answer: string;       // with [[lake_id|Name]] markers
+  answer_text: string;  // markers replaced by names — send this back as history
+  lakes: AskLake[];
+  usage?: { model?: string; ms?: number; tool_calls?: number };
+}
+
+export async function askLakes(state: StateKey, messages: AskMessage[]): Promise<AskResponse> {
+  const userId = await getUserId();
+  const controller = new AbortController();
+  // An ask runs a multi-step model loop server-side; 60 s is generous but the
+  // typical answer lands well under 20 s.
+  const timer = setTimeout(() => controller.abort(), 60_000);
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-User-Id': userId,
+    'X-User-Sig': hmacSha256Hex(userId),
+    'X-App-Version': APP_VERSION,
+  };
+  if (OTA_UPDATE_ID) headers['X-Update-Id'] = OTA_UPDATE_ID;
+  const token = getSessionToken(API_BASE_URL);
+  if (token) headers.Authorization = `Bearer ${token}`;
+  let res: Response;
+  try {
+    res = await fetch(`${baseUrl(state)}/ask`, {
+      method: 'POST',
+      signal: controller.signal,
+      headers,
+      body: JSON.stringify({ messages }),
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error('The assistant took too long — try a narrower question.');
+    }
+    if (err instanceof TypeError && err.message.includes('Network request failed')) {
+      throw new Error('Could not reach server — check your network connection');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+  if (res.status === 402) throw new SubscriptionRequiredError(state);
+  if (res.status === 429) throw new Error('You’ve asked a lot this hour — try again a little later.');
+  if (res.status === 503) throw new Error('The assistant isn’t available right now.');
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message ?? body?.error ?? `Server error (${res.status})`);
+  }
+  return res.json() as Promise<AskResponse>;
 }
 
 export async function fetchFilters(

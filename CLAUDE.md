@@ -26,6 +26,8 @@ React Native + Expo app shipped to App Store + Google Play. iPhone-only for v1 (
 
 **Species display names**: `src/generated/species.ts` (generated from the lakelore-data species registry) is the single lookup for all 56 states via `speciesDisplayName()` in `src/types.ts`; the legacy hand-maintained maps remain only as fallback for a few MN/ND/WI codes the registry doesn't alias.
 
+4. `AskScreen` (2026-09-10, **dev-only** — `src/askFeature.ts` gates the "✦ Ask" chip in SearchScreen's filter row to `__DEV__` until the server route ships in production) — a chat over `POST /api/:state/ask` (`askLakes` in `src/api.ts`): the angler types what they want, the server-side Claude agent searches the same survey data, and the answer comes back with `[[lake_id|Name]]` markers (`src/askMarkers.ts`) rendered as tappable names + `LakeRow` cards that open `LakeDetail` (route param `species` = the row's `species_native`). Conversation is in-memory per visit; every turn resends the full plain-text history because the server is stateless. 402 opens the paywall; 429/503 render as an inline assistant note. Not yet tested on a device — TestFlight is the test path (simulator is unreliable here).
+
 Plus three modals: `PaywallScreen`, `AboutScreen` (sources + agency credits, accessible from State Select), and a Glossary inside SearchScreen.
 
 **Navigation** (`App.tsx`): single `StateProvider` + native stack navigator. State selection is gated *before* the navigator mounts.
@@ -69,7 +71,15 @@ npm run build:prod:ios
 # Submit to stores
 npm run submit:ios             # uploads latest production build to TestFlight
 npm run submit:android         # uploads latest production AAB to Play Internal Testing
+
+# Staging → TestFlight (2026-09-11): `staging` profile extends production but bakes in
+# EXPO_PUBLIC_API_BASE=https://lake-fish-api-staging.fly.dev + EXPO_PUBLIC_ASK_ENABLED=1
+# and uses its own `staging` update channel (never receives production OTAs).
+# Auto-submits THAT build with the production submit profile. RUNBOOK §19.
+npm run build:staging:ios
 ```
+
+`src/api.ts` honors `EXPO_PUBLIC_API_BASE` in release builds only when it is an https origin; production profiles set nothing and stay on `lake-fish-api.fly.dev`. `submit:ios` submits the LATEST build of any profile — after a staging build, use the explicit build id (`eas submit --id …`) for a production submission, and pick the production build explicitly in App Store Connect.
 
 EAS config: `eas.json`. Project ID + owner in `app.json` `extra.eas`. Owner `ndrwtp` (personal Expo account).
 

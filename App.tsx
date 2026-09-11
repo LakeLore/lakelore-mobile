@@ -34,6 +34,7 @@ import { Sentry } from './src/sentry';
 import StateSelectScreen from './src/screens/StateSelectScreen';
 import SearchScreen from './src/screens/SearchScreen';
 import LakeDetailScreen from './src/screens/LakeDetailScreen';
+import AskScreen from './src/screens/AskScreen';
 import type { RootStackParamList } from './src/navigation';
 import { colors } from './src/lakelore-rn/theme';
 
@@ -89,6 +90,7 @@ function AppInner() {
       >
         <Stack.Screen name="Search" component={SearchScreen} />
         <Stack.Screen name="LakeDetail" component={LakeDetailScreen} />
+        <Stack.Screen name="Ask" component={AskScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

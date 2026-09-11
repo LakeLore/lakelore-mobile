@@ -36,6 +36,7 @@ import { SortPickerModal } from './search/SortPickerModal';
 import { MeasurePickerModal } from './search/MeasurePickerModal';
 import { StatePickerModal } from './search/StatePickerModal';
 import { KEYS } from '../storage';
+import { ASK_FEATURE_ENABLED } from '../askFeature';
 import { getOfflineResults, putOfflineResults, mergeOfflineScatter } from '../offlineCache';
 
 const PAGE_SIZE = 50;
@@ -843,6 +844,13 @@ export default function SearchScreen() {
         >
           Filters
         </Chip>
+        {/* Ask LakeLore — natural-language search over the same data
+            (dev-only until the server route ships; src/askFeature.ts). */}
+        {ASK_FEATURE_ENABLED && (
+          <Chip onPress={() => navigation.navigate('Ask')}>
+            ✦ Ask
+          </Chip>
+        )}
         <View style={styles.toggleWrap}>
           <Text style={[text.labelM, { color: colors.inkSoft, marginRight: 6 }]}>Latest Only</Text>
           <Pressable
