@@ -213,7 +213,10 @@ export interface FilterOptions {
 // a Gear Type / Source — the required filter nested under Abundance & Avg Size.
 // The app builds both controls from the /measures manifest. Each Source carries
 // the exact params to send to /results.
-export type MeasureId = 'abundance' | 'size' | 'stocking' | 'presence';
+export type MeasureId = 'abundance' | 'size' | 'stocking' | 'trophy' | 'presence';
+// Trophy Abundance tiers (schema v8): Gabelhouse length classes backing the
+// trophy catch-rate columns — 'preferred' (big fish) / 'memorable' (trophy-class).
+export type TrophyTier = 'preferred' | 'memorable';
 export type SourceExpression =
   | 'catch-per-unit' | 'ranking' | 'normalized' | 'size' | 'stocking' | 'presence';
 
@@ -232,6 +235,10 @@ export interface Source {
   lakes: number;
   measuredRecords?: number;
   densityRecords?: number;
+  // Trophy Abundance sources only: which Gabelhouse tier this source sorts by
+  // (two sources per gear — the tier is picked in the Measure picker's
+  // sub-rows, the gear in the Filters gear chips).
+  tier?: TrophyTier;
 }
 
 export interface Measure {
@@ -295,6 +302,12 @@ export interface Result {
   n_qp?: number | null;
   n_pm?: number | null;
   n_m?: number | null;
+  // Trophy Abundance (schema v8): catch rate of fish at/above the species'
+  // Gabelhouse preferred/memorable length, in the row's cpue unit.
+  // trophy_derivation: 'measured' | 'published' | 'psd_scaled' | 'apportioned'.
+  cpue_preferred?: number | null;
+  cpue_memorable?: number | null;
+  trophy_derivation?: string | null;
   report_id?: number | null;
   max_depth_feet?: number | null;
   // MN fields

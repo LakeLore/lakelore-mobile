@@ -10,7 +10,7 @@ import {
   Modal, View, Pressable, Text, ScrollView, StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Measure } from '../../types';
+import { Measure, TrophyTier } from '../../types';
 import { colors, text, space, hairline } from '../../lakelore-rn/theme';
 import { PaperHeader } from '../../lakelore-rn/components';
 
@@ -18,9 +18,12 @@ type Props = {
   visible: boolean;
   measures: Measure[];
   activeMeasureId: string | null;
+  // Tier of the active source (Trophy Abundance only) — checkmarks the sub-row.
+  activeTier?: TrophyTier | null;
   sortDir: 'asc' | 'desc';
   onClose: () => void;
-  onChange: (measure: Measure, sortDir: 'asc' | 'desc') => void;
+  // tier is set when a Trophy Abundance tier sub-row was tapped.
+  onChange: (measure: Measure, sortDir: 'asc' | 'desc', tier?: TrophyTier) => void;
 };
 
 // One-line explanation shown under each measure so switching feels legible.
@@ -28,15 +31,25 @@ const BLURB: Record<string, string> = {
   abundance: 'How many fish — change the survey method under Gear Type in Filters.',
   size: 'How big the fish run, on average.',
   stocking: 'Stocking impact — includes lakes with no survey on record.',
+  trophy: 'Catch rate of big fish only — how often surveys turn up fish above the trophy size classes.',
   presence: 'Every species recorded present. No ranking — the complete list.',
 };
+
+// Trophy tier sub-rows (schema v8): a Trophy Abundance measure carries two
+// sources per gear (one per Gabelhouse tier), so the tier needs its own
+// control — the gear chips in Filters can't distinguish them.
+const TIER_LABEL: Record<TrophyTier, { title: string; blurb: string }> = {
+  memorable: { title: 'Trophy-class', blurb: 'Fish at or above the "memorable" length — e.g. a 25″ walleye or 20″ largemouth.' },
+  preferred: { title: 'Big fish', blurb: 'Fish at or above the "preferred" length — e.g. a 20″ walleye or 15″ largemouth.' },
+};
+const TIER_ORDER: TrophyTier[] = ['memorable', 'preferred'];
 
 function coverage(m: Measure): string {
   return `${m.lakes.toLocaleString()} lake${m.lakes === 1 ? '' : 's'}`;
 }
 
 export function MeasurePickerModal({
-  visible, measures, activeMeasureId, sortDir, onClose, onChange,
+  visible, measures, activeMeasureId, activeTier, sortDir, onClose, onChange,
 }: Props) {
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -56,9 +69,10 @@ export function MeasurePickerModal({
             // A measure is sortable unless it's the Presence union (no ranking).
             const sortable = m.id !== 'presence';
             const arrow = !sortable ? '' : active ? (sortDir === 'desc' ? '↓' : '↑') : '↓';
+            const tiers = TIER_ORDER.filter(t => m.sources.some(s => s.tier === t));
             return (
+              <View key={m.id}>
               <Pressable
-                key={m.id}
                 style={({ pressed }) => [
                   styles.option,
                   { backgroundColor: pressed || active ? colors.paper2 : 'transparent' },
@@ -94,6 +108,36 @@ export function MeasurePickerModal({
                   {active ? (sortable ? '✓ tap to flip' : '✓') : coverage(m)}
                 </Text>
               </Pressable>
+              {tiers.map(t => {
+                const tierActive = active && activeTier === t;
+                const best = m.sources.find(s => s.tier === t);
+                const lakes = best ? `${best.lakes.toLocaleString()} lake${best.lakes === 1 ? '' : 's'}` : '';
+                return (
+                  <Pressable
+                    key={t}
+                    style={({ pressed }) => [
+                      styles.option, styles.tierOption,
+                      { backgroundColor: pressed || tierActive ? colors.paper2 : 'transparent' },
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${TIER_LABEL[t].title} tier, ${lakes}`}
+                    onPress={() => { onChange(m, 'desc', t); onClose(); }}
+                  >
+                    <View style={{ flex: 1, paddingRight: space.md }}>
+                      <Text style={[text.bodyL, { color: tierActive ? colors.walleye2 : colors.ink }]}>
+                        {TIER_LABEL[t].title}
+                      </Text>
+                      <Text style={[text.labelM, { color: colors.inkSoft, marginTop: 2 }]}>
+                        {TIER_LABEL[t].blurb}
+                      </Text>
+                    </View>
+                    <Text style={[text.labelM, { color: tierActive ? colors.walleye2 : colors.inkSoft, flexShrink: 0 }]}>
+                      {tierActive ? '✓' : lakes}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+              </View>
             );
           })}
           <View style={{ height: 40 }} />
@@ -112,5 +156,10 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderBottomWidth: hairline,
     borderBottomColor: colors.paper3,
+  },
+  // Trophy tier sub-rows: indented under their measure, slightly tighter.
+  tierOption: {
+    paddingLeft: space.xl * 2,
+    paddingVertical: 11,
   },
 });
