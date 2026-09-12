@@ -70,7 +70,21 @@ export class SubscriptionRequiredError extends Error {
 // logs mismatches today and will eventually require it, raising the bar on
 // spoofed X-User-Id headers. Must match LAKELORE_USER_SIG_KEY server-side.
 import { hmacSha256Hex } from './userSig';
-import { getSessionToken } from './session';
+import { getSessionToken, invalidateSessionToken } from './session';
+
+// A 401 while we presented a bearer token means the SERVER no longer accepts
+// that token (rotated secret, different server, revoked) — never a user-facing
+// condition. Drop the token and signal a retry; the next attempt goes out on
+// the legacy identity headers while a fresh token mints in the background.
+class StaleSessionError extends Error {
+  constructor() { super('stale session token'); this.name = 'StaleSessionError'; }
+}
+function handleUnauthorized(res: Response, hadToken: boolean): void {
+  if (res.status === 401 && hadToken) {
+    invalidateSessionToken(API_BASE_URL);
+    throw new StaleSessionError();
+  }
+}
 
 // Transient failures (cell blips, brief 5xx) get two quiet retries with
 // backoff before surfacing an error banner (IMPROVEMENT_PLAN 1.15).
@@ -103,6 +117,7 @@ async function getOnce<T>(url: string, timeoutMs: number): Promise<T> {
       throw new SubscriptionRequiredError((body?.state as StateKey) ?? extractStateFromUrl(url));
     }
     if (res.status === 429) throw new Error('Slow down a moment — too many requests. Try again shortly.');
+    handleUnauthorized(res, !!token);
     if (!res.ok) throw new Error(`Server error (${res.status})`);
     return res.json() as Promise<T>;
   } finally {
@@ -112,6 +127,7 @@ async function getOnce<T>(url: string, timeoutMs: number): Promise<T> {
 
 function isRetryable(err: unknown): boolean {
   if (err instanceof SubscriptionRequiredError) return false;
+  if (err instanceof StaleSessionError) return true;
   if (err instanceof Error && err.name === 'AbortError') return true;
   if (err instanceof TypeError && err.message.includes('Network request failed')) return true;
   if (err instanceof Error && /Server error \(5\d\d\)/.test(err.message)) return true;
@@ -131,6 +147,7 @@ async function get<T>(url: string, timeoutMs = 10_000): Promise<T> {
   }
   const err = lastErr;
   if (err instanceof SubscriptionRequiredError) throw err;
+  if (err instanceof StaleSessionError) throw new Error('Session refused by the server — try again in a moment');
   if (err instanceof Error && err.name === 'AbortError') {
     throw new Error('Request timed out — check your connection');
   }
@@ -223,6 +240,10 @@ export async function submitFeedback(payload: FeedbackPayload): Promise<void> {
   } finally {
     clearTimeout(timer);
   }
+  if (res.status === 401 && token) {
+    invalidateSessionToken(API_BASE_URL);
+    throw new Error('Session refreshed — please send again.');
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new Error(body?.error ?? `Server error (${res.status})`);
@@ -300,6 +321,10 @@ export async function askLakes(state: StateKey, messages: AskMessage[]): Promise
     clearTimeout(timer);
   }
   if (res.status === 402) throw new SubscriptionRequiredError(state);
+  if (res.status === 401 && token) {
+    invalidateSessionToken(API_BASE_URL);
+    throw new Error('Session refreshed — send that again.');
+  }
   if (res.status === 429) throw new Error('You’ve asked a lot this hour — try again a little later.');
   if (res.status === 503) throw new Error('The assistant isn’t available right now.');
   if (!res.ok) {

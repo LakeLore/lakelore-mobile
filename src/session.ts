@@ -15,7 +15,13 @@ const STORE_KEY = KEYS.sessionToken;
 // Refresh when less than a day of validity remains.
 const REFRESH_MARGIN_MS = 24 * 60 * 60 * 1000;
 
-let _cached: { token: string; exp: number } = { token: '', exp: 0 };
+// `base` = the server that minted the token (2026-09-12). Tokens are signed
+// with a per-server secret, so a token minted by production is garbage to
+// staging (and vice versa) — every request 401s until it expires, up to 7
+// days, with no recovery path. A token whose base doesn't match the server
+// we're talking to is discarded and re-minted. Legacy disk records have no
+// `base`; they're treated as foreign once, which costs one re-mint.
+let _cached: { token: string; exp: number; base: string } = { token: '', exp: 0, base: '' };
 let _hydrated = false;
 let _hydrating: Promise<void> | null = null;
 let _inflight: Promise<void> | null = null;
@@ -36,9 +42,9 @@ function hydrate(): Promise<void> {
     ])
       .then(raw => {
         if (raw) {
-          const disk = JSON.parse(raw) as { token?: string; exp?: number };
+          const disk = JSON.parse(raw) as { token?: string; exp?: number; base?: string };
           if (disk?.token && (disk.exp ?? 0) > _cached.exp) {
-            _cached = { token: disk.token, exp: disk.exp ?? 0 };
+            _cached = { token: disk.token, exp: disk.exp ?? 0, base: disk.base ?? '' };
           }
         }
       })
@@ -49,7 +55,8 @@ function hydrate(): Promise<void> {
 }
 
 function maybeRefresh(baseUrl: string): void {
-  const fresh = _cached.token && _cached.exp - Date.now() > REFRESH_MARGIN_MS;
+  const fresh = _cached.token && _cached.base === baseUrl
+    && _cached.exp - Date.now() > REFRESH_MARGIN_MS;
   if (!fresh && !_inflight) {
     _inflight = refresh(baseUrl)
       .catch(() => {})
@@ -82,8 +89,19 @@ async function refresh(baseUrl: string): Promise<void> {
   if (!res.ok) throw new Error(`session ${res.status}`);
   const body = await res.json();
   if (!body?.token) throw new Error('session: no token');
-  _cached = { token: body.token, exp: Date.now() + (body.expiresIn ?? 0) * 1000 };
+  _cached = { token: body.token, exp: Date.now() + (body.expiresIn ?? 0) * 1000, base: baseUrl };
   AsyncStorage.setItem(STORE_KEY, JSON.stringify(_cached)).catch(() => {});
+}
+
+/** The server rejected our bearer token (401). Drop it — memory and disk —
+ *  and mint a fresh one in the background. Callers retry on the legacy
+ *  headers meanwhile (the server still accepts those until enforcement
+ *  flips), so a rotated JWT secret or a server switch costs one retry, not
+ *  seven days of 401s (2026-09-12: the staging build hit exactly that). */
+export function invalidateSessionToken(baseUrl: string): void {
+  _cached = { token: '', exp: 0, base: '' };
+  AsyncStorage.removeItem(STORE_KEY).catch(() => {});
+  maybeRefresh(baseUrl);
 }
 
 /** Current bearer token, or null. Kicks a background refresh when missing
@@ -96,6 +114,6 @@ export function getSessionToken(baseUrl: string): string | null {
   } else {
     maybeRefresh(baseUrl);
   }
-  const usable = _cached.token && _cached.exp - Date.now() > 0;
+  const usable = _cached.token && _cached.base === baseUrl && _cached.exp - Date.now() > 0;
   return usable ? _cached.token : null;
 }
