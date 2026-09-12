@@ -129,6 +129,8 @@ That bundles the current JS, uploads to EAS Updates, and the next time any insta
 - `src/session.ts` awaits disk hydration before deciding to re-mint (a valid persisted 7-day token now actually prevents the cold-launch mint — and with it the per-launch App Attest attestation); `src/attest.ts` additionally spaces attestation attempts ≥20 h apart as defense in depth.
 - `npm run ota` prints the target runtimeVersion first (publish-to-empty-runtime guard); `build:prod:*` now run `tsc --noEmit && jest` before EAS; `babel-preset-expo` pinned to the SDK-54 line (`~54.0.10` — the hoisted `^55` preset was transforming every bundle); `.github/workflows/ci.yml` runs the same gate on push.
 
+**Version state (2026-09-12):** `app.json` is at **1.1.2** (bumped for the staging TestFlight build — Apple refuses new uploads for the released 1.1.1). The live App Store fleet is still on runtime **1.1.1** (build 29). Consequence: `npm run ota` now targets runtime 1.1.2, which no customer has — an OTA for the live fleet must be published explicitly with `eas update --branch production --runtime-version 1.1.1`. 1.1.2 becomes the next store release (Ask + Trophy) whenever the owner submits it.
+
 **When OTA is NOT enough — you need a fresh native build:**
 - Anything that changes `app.json` `version` (bumps `runtimeVersion` and orphans existing installs from new OTAs until they rebuild)
 - Adding/removing a native module (changes the binary)
