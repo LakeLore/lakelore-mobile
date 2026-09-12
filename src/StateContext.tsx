@@ -12,6 +12,7 @@ interface StateContextValue {
    *  restored. App.tsx skips the state-select screen on restored launches
    *  (2026-07-15 feedback: open to the last selected state, like counties). */
   hadPersistedState: boolean | null;
+  hasState: boolean;
   /** Set by every EXPLICIT setState (state map / in-search switcher) and
    *  consumed by SearchScreen to auto-open the county picker. Restored
    *  launches never set it, so cold launches land straight on results. */
@@ -41,18 +42,25 @@ export function StateProvider({ children }: { children: React.ReactNode }) {
       .catch(() => setHadPersistedState(false));
   }, []);
 
+  // True once the user has a state — restored from disk OR picked this
+  // session. The launch chooser and the chat's "Rankings" button use it to
+  // decide between Search and StateSelect (2026-09-12).
+  const [pickedThisSession, setPickedThisSession] = useState(false);
+
   const setState = useCallback((s: StateKey) => {
     AsyncStorage.setItem(KEYS.selectedState, s);
     setStateKey(s);
     setPendingCountyPick(true);
+    setPickedThisSession(true);
   }, []);
+  const hasState = hadPersistedState === true || pickedThisSession;
 
   const consumeCountyPick = useCallback(() => setPendingCountyPick(false), []);
 
   return (
     <StateContext.Provider value={{
       state, stateConfig: STATE_CONFIGS[state], setState,
-      hadPersistedState, pendingCountyPick, consumeCountyPick,
+      hadPersistedState, hasState, pendingCountyPick, consumeCountyPick,
     }}>
       {children}
     </StateContext.Provider>

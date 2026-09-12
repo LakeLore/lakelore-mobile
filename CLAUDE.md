@@ -30,7 +30,7 @@ React Native + Expo app shipped to App Store + Google Play. iPhone-only for v1 (
 
 Plus three modals: `PaywallScreen`, `AboutScreen` (sources + agency credits, accessible from State Select), and a Glossary inside SearchScreen.
 
-**Navigation** (`App.tsx`): single `StateProvider` + native stack navigator. State selection is gated *before* the navigator mounts.
+**Navigation** (`App.tsx`): single `StateProvider` + native stack navigator. **2026-09-12:** `StateSelect` is now a stack route (`StateSelectRoute` wrapper → `replace('Search')` on pick) instead of a gate rendered outside the navigator. With the Ask feature on, the initial route is `Home` — a launch chooser shown on EVERY open (owner request): "Give me recommendations" → `replace('Ask')`, "I'll review the lake rankings myself" → `replace(hasState ? 'Search' : 'StateSelect')` (`hasState` in StateContext = persisted OR picked this session). With the feature off, the initial route is `Search`/`StateSelect` exactly as before. Cross-links: SearchScreen has a floating "✦ Ask" button bottom-right (`askFab`, replaces the 09-10 chip); AskScreen's header has a "Rankings ›" button (goBack when pushed from Search, else replace to Search/StateSelect) and its back arrow only shows when there is somewhere to go back to.
 
 **State management**: lightweight. `StateContext` (which state is selected, persisted in AsyncStorage). `useEntitlement()` hook tracks subscription status. Per-screen useState for everything else; session cache in `SearchScreen` retains scroll/results when switching states.
 

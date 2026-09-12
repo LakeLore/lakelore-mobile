@@ -844,13 +844,6 @@ export default function SearchScreen() {
         >
           Filters
         </Chip>
-        {/* Ask LakeLore — natural-language search over the same data
-            (dev-only until the server route ships; src/askFeature.ts). */}
-        {ASK_FEATURE_ENABLED && (
-          <Chip onPress={() => navigation.navigate('Ask')}>
-            ✦ Ask
-          </Chip>
-        )}
         <View style={styles.toggleWrap}>
           <Text style={[text.labelM, { color: colors.inkSoft, marginRight: 6 }]}>Latest Only</Text>
           <Pressable
@@ -935,6 +928,21 @@ export default function SearchScreen() {
             <Text style={[text.labelM, { color: colors.ink }]}>Unlock</Text>
           </Pressable>
         </View>
+      )}
+
+      {/* Ask LakeLore — floating door to the chat (owner request 2026-09-12:
+          a large bubble bottom-right, not a chip). Gated with the feature
+          (src/askFeature.ts); SafeAreaView's bottom inset keeps it above the
+          home indicator. */}
+      {ASK_FEATURE_ENABLED && (
+        <Pressable
+          onPress={() => navigation.navigate('Ask')}
+          accessibilityRole="button"
+          accessibilityLabel="Ask LakeLore for recommendations"
+          style={({ pressed }) => [styles.askFab, { opacity: pressed ? 0.88 : 1 }]}>
+          <Text style={[text.displayM, { color: colors.flash, marginRight: space.sm }]}>✦</Text>
+          <Text style={[text.labelL, { color: colors.paper, fontSize: 13 }]}>Ask</Text>
+        </Pressable>
       )}
 
       <AboutScreen visible={showAbout} state={state} onClose={() => setShowAbout(false)} />
@@ -1331,6 +1339,24 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
 
   stripe: { height: 3 },
+
+  askFab: {
+    position: 'absolute',
+    right: space.xl,
+    bottom: space.xl,
+    height: 60,
+    paddingHorizontal: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.ink,
+    borderWidth: hairline,
+    borderColor: colors.walleye,
+    shadowColor: colors.ink,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 6,
+  },
 
   emptyResults: {
     paddingHorizontal: space.xl,

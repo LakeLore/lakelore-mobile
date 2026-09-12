@@ -62,8 +62,16 @@ function lakeRight(l: AskLake): { value: string; label: string } {
 
 export default function AskScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { state } = useAppState();
+  const { state, hasState } = useAppState();
   const stateCfg = STATE_CONFIGS[state];
+  // Reached from the launch chooser (replace → nothing to go back to) or
+  // pushed from Search's floating button (back returns there). Either way
+  // the header carries an explicit door to the rankings flow.
+  const canGoBack = navigation.canGoBack();
+  const goRankings = useCallback(() => {
+    if (canGoBack) { navigation.goBack(); return; }
+    navigation.replace(hasState ? 'Search' : 'StateSelect');
+  }, [canGoBack, hasState, navigation]);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -160,13 +168,25 @@ export default function AskScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+    // Bottom edge included (2026-09-12): without it the input row sat under
+    // the home indicator and was clipped on the owner's phone.
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
       <StatusBar style="light" />
       <PaperHeader
         title="Ask LakeLore"
         eyebrow={`${stateCfg.label.toUpperCase()} · ASSISTANT`}
-        onBack={() => navigation.goBack()}
+        onBack={canGoBack ? () => navigation.goBack() : undefined}
         backLabel="←"
+        right={(
+          <Pressable
+            onPress={goRankings}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Review the lake rankings myself"
+            style={styles.rankingsBtn}>
+            <Text style={[text.labelL, { color: colors.paper }]}>Rankings ›</Text>
+          </Pressable>
+        )}
       />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -295,5 +315,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.xl,
     height: 44,
     justifyContent: 'center',
+  },
+  rankingsBtn: {
+    borderWidth: hairline,
+    borderColor: colors.paper3,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.sm,
   },
 });

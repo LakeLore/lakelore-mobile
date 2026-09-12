@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -35,6 +35,10 @@ import StateSelectScreen from './src/screens/StateSelectScreen';
 import SearchScreen from './src/screens/SearchScreen';
 import LakeDetailScreen from './src/screens/LakeDetailScreen';
 import AskScreen from './src/screens/AskScreen';
+import HomeScreen from './src/screens/HomeScreen';
+import { ASK_FEATURE_ENABLED } from './src/askFeature';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from './src/navigation';
 import { colors } from './src/lakelore-rn/theme';
 
@@ -67,8 +71,17 @@ const NavTheme = {
   },
 };
 
+// StateSelect as a stack route (2026-09-12): it used to be a gate rendered
+// OUTSIDE the navigator on first run. Now the launch chooser (Home) and the
+// chat's "Rankings" button both need to reach it from inside the stack, so it
+// is a screen; picking a state replaces it with Search (which auto-opens the
+// county picker on the fresh pick, as before).
+function StateSelectRoute() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  return <StateSelectScreen onSelect={() => navigation.replace('Search')} />;
+}
+
 function AppInner() {
-  const [statePicked, setStatePicked] = useState(false);
   const { hadPersistedState } = useAppState();
 
   // Wait for the persisted-state load so returning users skip the map and
@@ -76,18 +89,24 @@ function AppInner() {
   if (hadPersistedState === null) {
     return <View style={{ flex: 1, backgroundColor: colors.paper }} />;
   }
-  if (!statePicked && !hadPersistedState) {
-    return <StateSelectScreen onSelect={() => setStatePicked(true)} />;
-  }
+  // Launch chooser when the Ask feature is on (owner request 2026-09-12:
+  // "recommendations" vs "review the rankings myself" on every open);
+  // otherwise the pre-existing behavior — map on first run, last state after.
+  const initialRoute: keyof RootStackParamList = ASK_FEATURE_ENABLED
+    ? 'Home'
+    : hadPersistedState ? 'Search' : 'StateSelect';
 
   return (
     <NavigationContainer theme={NavTheme}>
       <Stack.Navigator
+        initialRouteName={initialRoute}
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: colors.paper },
         }}
       >
+        <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="StateSelect" component={StateSelectRoute} />
         <Stack.Screen name="Search" component={SearchScreen} />
         <Stack.Screen name="LakeDetail" component={LakeDetailScreen} />
         <Stack.Screen name="Ask" component={AskScreen} />
