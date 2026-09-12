@@ -115,6 +115,7 @@ function sdStats(r: Result): Stat[] {
 function mnStats(r: Result): Stat[] {
   return [
     { key: 'cpue',    label: cpueLabelForGear('mn', r.gear, r.cpue_kind), value: r.cpue           != null ? r.cpue.toFixed(1)           : null },
+    ...trophyStats(r, 'mn'),
     { key: 'weight',  label: 'Avg wt',      value: r.average_weight != null ? `${r.average_weight.toFixed(2)} lb` : null },
     { key: 'catch',   label: 'Catch',       value: r.total_catch    != null ? String(r.total_catch)        : null },
     stockedStat(r),
@@ -141,6 +142,7 @@ function wiStats(r: Result): Stat[] {
   // rating-sorted list rendered a bare dash for every row (2026-08-14).
   return [
     { key: 'cpue',    label: cpueLabelForGear('wi', r.gear, r.cpue_kind), value: r.cpue != null ? r.cpue.toFixed(2) : null },
+    ...trophyStats(r, 'wi'),
     { key: 'rating',  label: 'Forecast',    value: r.rating != null ? fmtRating(r.rating) : null },
     { key: 'length',  label: lengthLabel(r),  value: r.average_length    != null ? `${r.average_length.toFixed(1)}"` : null },
     { key: 'catch',   label: 'Total catch', value: r.total_catch       != null ? r.total_catch.toLocaleString()    : null },
@@ -152,6 +154,7 @@ function wiStats(r: Result): Stat[] {
 function neStats(r: Result): Stat[] {
   return [
     { key: 'cpue',    label: cpueLabelForGear('ne', r.gear, r.cpue_kind), value: r.cpue           != null ? r.cpue.toFixed(2)                : null },
+    ...trophyStats(r, 'ne'),
     { key: 'length',  label: lengthLabel(r), value: r.average_length != null ? `${r.average_length.toFixed(1)}"` : null },
     stockedStat(r),
     ...metaStats(r),
@@ -161,6 +164,7 @@ function neStats(r: Result): Stat[] {
 function miStats(r: Result): Stat[] {
   return [
     { key: 'cpue',    label: cpueLabelForGear('mi', r.gear, r.cpue_kind), value: r.cpue              != null ? r.cpue.toFixed(2)              : null },
+    ...trophyStats(r, 'mi'),
     { key: 'length',  label: lengthLabel(r),  value: r.average_length    != null ? `${r.average_length.toFixed(1)}"` : null },
     { key: 'catch',   label: 'Total catch', value: r.total_catch       != null ? r.total_catch.toLocaleString() : null },
     stockedStat(r),
@@ -246,6 +250,7 @@ export function cpueLabelForGear(state: StateKey, gear?: string | null, rowKind?
 function iaStats(r: Result): Stat[] {
   return [
     { key: 'cpue',    label: cpueLabelForGear('ia', r.gear, r.cpue_kind),  value: fmtCpue(r.cpue) },
+    ...trophyStats(r, 'ia'),
     { key: 'catch',   label: 'Total catch',  value: r.total_catch       != null ? r.total_catch.toLocaleString()    : null },
     { key: 'length',  label: lengthLabel(r),   value: r.average_length    != null ? `${r.average_length.toFixed(1)}"` : null },
     stockedStat(r),
