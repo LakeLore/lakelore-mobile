@@ -175,18 +175,6 @@ export default function AskScreen() {
       <PaperHeader
         title="Ask LakeLore"
         eyebrow={`${stateCfg.label.toUpperCase()} · ASSISTANT`}
-        onBack={canGoBack ? () => navigation.goBack() : undefined}
-        backLabel="←"
-        right={(
-          <Pressable
-            onPress={goRankings}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Review the lake rankings myself"
-            style={styles.rankingsBtn}>
-            <Text style={[text.labelL, { color: colors.paper }]}>Rankings ›</Text>
-          </Pressable>
-        )}
       />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -255,6 +243,18 @@ export default function AskScreen() {
         </View>
       </KeyboardAvoidingView>
 
+      {/* Return to the data view — same floating-pill treatment as the Ask
+          entry on SearchScreen (owner 2026-09-13; replaces the top-right
+          "Rankings ›" header button and the back arrow). */}
+      <Pressable
+        onPress={goRankings}
+        accessibilityRole="button"
+        accessibilityLabel="Review the lake rankings"
+        style={({ pressed }) => [styles.dataFab, { opacity: pressed ? 0.88 : 1 }]}>
+        <Text style={[text.displayM, { color: colors.flash, marginRight: space.sm }]}>≡</Text>
+        <Text style={[text.labelL, { color: colors.paper, fontSize: 13 }]}>Review the lake rankings.</Text>
+      </Pressable>
+
       <PaywallScreen
         visible={paywall}
         triggeredFrom={stateCfg.label}
@@ -267,7 +267,7 @@ export default function AskScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
-  thread: { paddingHorizontal: space.xl, paddingVertical: space.xl, gap: space.xl },
+  thread: { paddingHorizontal: space.xl, paddingTop: space.xl, paddingBottom: 96, gap: space.xl },
   empty: { paddingTop: space.md },
   starters: { marginTop: space.xl, alignItems: 'flex-start' },
   userWrap: {
@@ -316,10 +316,23 @@ const styles = StyleSheet.create({
     height: 44,
     justifyContent: 'center',
   },
-  rankingsBtn: {
+  dataFab: {
+    position: 'absolute',
+    zIndex: 100,
+    alignSelf: 'center',
+    bottom: 84,
+    height: 52,
+    paddingHorizontal: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.ink,
+    borderRadius: 999,
     borderWidth: hairline,
-    borderColor: colors.paper3,
-    paddingHorizontal: space.lg,
-    paddingVertical: space.sm,
+    borderColor: colors.walleye,
+    shadowColor: colors.ink,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 6,
   },
 });

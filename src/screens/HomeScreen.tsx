@@ -39,7 +39,7 @@ export default function HomeScreen() {
           accessibilityHint="Opens the Ask LakeLore chat"
           style={({ pressed }) => [styles.card, styles.cardPrimary, { opacity: pressed ? 0.88 : 1 }]}>
           <Text style={[text.labelL, { color: colors.flash, marginBottom: space.sm }]}>✦ ASK LAKELORE</Text>
-          <Text style={[text.displayL, { color: colors.paper }]}>Give me recommendations</Text>
+          <Text style={[text.displayL, { color: colors.paper }]}>Ask LakeLore where to fish.</Text>
           <Text style={[text.bodyM, { color: colors.paper3, marginTop: space.sm }]}>
             Say what you’re after in plain words — a species, a place, big fish or lots of them — and get lakes picked for you from the survey data.
           </Text>

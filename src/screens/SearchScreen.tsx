@@ -1421,9 +1421,10 @@ const styles = StyleSheet.create({
   askFab: {
     position: 'absolute',
     zIndex: 100,
-    right: space.xl,
+    alignSelf: 'center',
     bottom: space.xl,
     height: 60,
+    borderRadius: 999,
     paddingHorizontal: 22,
     flexDirection: 'row',
     alignItems: 'center',
