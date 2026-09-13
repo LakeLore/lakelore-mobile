@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
-  View, Text, TextInput, Pressable, FlatList,
+  View, Text, Pressable, FlatList,
   ActivityIndicator, StyleSheet,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -29,7 +29,7 @@ import {
   colors, text, space, hairline,
 } from '../lakelore-rn/theme';
 import {
-  PaperHeader, Chip, Toggle, Segmented, PrimaryButton, LockIcon,
+  PaperHeader, Chip, PrimaryButton, LockIcon,
 } from '../lakelore-rn/components';
 import { AdvancedFiltersModal } from './search/AdvancedFiltersModal';
 import { SortPickerModal } from './search/SortPickerModal';
@@ -567,10 +567,16 @@ export default function SearchScreen() {
     : 'Select Species';
 
   const hasFilters = filters.counties.length > 0
+    || filters.lakeName.trim()
     || filters.minCpue || filters.maxCpue
     || filters.minYear || filters.maxYear
     || filters.minAcres || filters.maxAcres
     || filters.minStocked || filters.maxStocked;
+
+  // Scatter is only ever Abundance (Y) vs Size (X) — needs both signals.
+  const scatterAvailable =
+    (GENERATED_STATES[state].hasCpue || GENERATED_STATES[state].hasRating) &&
+    (GENERATED_STATES[state].hasLength || GENERATED_STATES[state].hasWeight);
 
   const stateCfg = STATE_CONFIGS[state];
   // Toolbar sort label: when sorting by CPUE and the user has narrowed to
@@ -587,7 +593,6 @@ export default function SearchScreen() {
   // chosen via the FILTERS button, not a separate toolbar control.
   const activeMeasure = measures.find(m => m.id === activeMeasureId) ?? null;
   const useMeasurePicker = measures.length > 0;
-  const viewMode2 = viewMode === 'list' ? 0 : 1;
 
   // Scatter gear self-scoping (2026-08-11, see src/scatterScope.ts): gear-less
   // measures (Stocking Impact / Presence) query every gear, which would stack
@@ -814,29 +819,54 @@ export default function SearchScreen() {
           : <Text style={{ color: colors.inkSoft, fontSize: 18 }}>›</Text>}
       </Pressable>
 
-      {/* Lake name + Search */}
-      <View style={styles.lakeRow}>
-        <TextInput
-          style={styles.lakeInput}
-          placeholder="Lake name…"
-          placeholderTextColor={colors.inkSoft}
-          value={filters.lakeName}
-          onChangeText={v => setFilters(prev => ({ ...prev, lakeName: v }))}
-          onSubmitEditing={() => handleSearch(0)}
-          returnKeyType="search"
-          clearButtonMode="while-editing"
-          autoCorrect={false}
-          autoCapitalize="words"
-          spellCheck={false}
-        />
-        <PrimaryButton onPress={() => handleSearch(0)}>
-          {loading && page === 0 ? '…' : 'Search'}
-        </PrimaryButton>
+      {/* Rank Lakes By — the measure as a primary box equal to the species
+          selector (owner request 2026-09-12). Opens the measure picker, or
+          the legacy sort picker when /measures is unavailable. */}
+      <Pressable
+        onPress={() => (useMeasurePicker ? setShowMeasure(true) : setShowSort(true))}
+        disabled={!options && !useMeasurePicker}
+        accessibilityRole="button"
+        accessibilityLabel={`Rank lakes by: ${activeMeasure?.label ?? sortLabel}`}
+        accessibilityHint="Opens the measure picker"
+        style={[styles.speciesBtn, (!options && !useMeasurePicker) && { opacity: 0.55 }]}
+      >
+        <Text style={[text.labelM, { color: colors.inkSoft }]}>Rank Lakes By</Text>
+        <View style={styles.boxValue}>
+          <Text style={[text.displayM, { color: colors.ink }]} numberOfLines={1}>
+            {activeMeasure?.label ?? sortLabel}{activeMeasure && activeMeasure.id !== 'presence' ? ` ${filters.sortDir === 'desc' ? '↓' : '↑'}` : ''}
+          </Text>
+          <Text style={{ color: colors.inkSoft, fontSize: 18 }}>›</Text>
+        </View>
+      </Pressable>
+
+      {/* View Ranking As — List vs Scatter Plot, same box treatment. Scatter
+          keeps its capability gate (abundance + size metric required). */}
+      <View style={styles.speciesBtn}>
+        <Text style={[text.labelM, { color: colors.inkSoft }]}>View Ranking As</Text>
+        <View style={styles.viewOpts}>
+          {(['list', 'scatter'] as const).map(v => {
+            const optLabel = v === 'list' ? 'List' : 'Scatter Plot';
+            const optDisabled = v === 'scatter' && !scatterAvailable;
+            const active = viewMode === v;
+            return (
+              <Pressable
+                key={v}
+                onPress={() => !optDisabled && setViewMode(v)}
+                disabled={optDisabled}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active, disabled: optDisabled }}
+                accessibilityLabel={`View ranking as ${optLabel}`}
+                style={[styles.viewOpt, active && styles.viewOptActive, optDisabled && { opacity: 0.35 }]}>
+                <Text style={[text.labelM, { color: active ? colors.paper : colors.ink }]}>{optLabel}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
 
-      {/* Filter chips row — Filters disabled until options load. (County moved
-          to the scope row at the top per DATA_MODEL §4.) */}
-      <View style={styles.filterRow}>
+      {/* Filters + Search. Lake name and Latest Only live inside Filters now
+          (owner request 2026-09-12). */}
+      <View style={styles.searchRow}>
         <Chip
           dot={!!hasFilters}
           disabled={!options}
@@ -844,26 +874,9 @@ export default function SearchScreen() {
         >
           Filters
         </Chip>
-        <View style={styles.toggleWrap}>
-          <Text style={[text.labelM, { color: colors.inkSoft, marginRight: 6 }]}>Latest Only</Text>
-          <Pressable
-            onPress={() => setShowAbout(true)}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="About Latest Only filter"
-            style={styles.toggleInfo}>
-            <Text style={[text.labelM, { color: colors.inkSoft }]}>ⓘ</Text>
-          </Pressable>
-          <Toggle
-            value={filters.mostRecentOnly}
-            accessibilityLabel="Latest survey only"
-            onValueChange={v => {
-              const updated = { ...filters, mostRecentOnly: v };
-              setFilters(updated);
-              if (updated.species) handleSearch(0, updated);
-            }}
-          />
-        </View>
+        <PrimaryButton onPress={() => handleSearch(0)} style={{ flex: 1 }}>
+          {loading && page === 0 ? '…' : 'Search'}
+        </PrimaryButton>
       </View>
 
       {/* Reset / info row */}
@@ -987,7 +1000,7 @@ export default function SearchScreen() {
       {!searched && !error && (
         <View style={styles.emptyState}>
           <Text style={[text.editorialM, { color: colors.inkSoft, textAlign: 'center' }]}>
-            Select a species or enter a lake name to begin.
+            Select a species to begin — or search a lake by name under Filters.
           </Text>
         </View>
       )}
@@ -1005,54 +1018,9 @@ export default function SearchScreen() {
               ? (scatterFetchPending ? '…' : `${scatterPlottedCount.toLocaleString()} ${scatterPlottedCount === 1 ? 'RESULT' : 'RESULTS'}`)
               : `${total.toLocaleString()} ${total === 1 ? 'RESULT' : 'RESULTS'}`}
           </Text>
-          <View style={styles.viewToggle}>
-            {/* Scatter is ONLY EVER abundance (Y) vs size (X), colored by
-                stocking density — so it requires BOTH an abundance signal
-                (CPUE or forecast rating) AND a size metric (length, or weight
-                for MN). A state with abundance but no size (e.g. OK) gets no
-                Scatter toggle — otherwise the plot had nothing for its X axis
-                and silently fell back to survey year. */}
-            {((GENERATED_STATES[state].hasCpue || GENERATED_STATES[state].hasRating) &&
-              (GENERATED_STATES[state].hasLength || GENERATED_STATES[state].hasWeight)) && (
-              <Segmented
-                options={['List', 'Scatter']}
-                active={viewMode2}
-                onChange={i => setViewMode(i === 0 ? 'list' : 'scatter')}
-              />
-            )}
-            {/* Gear/Source is NOT a separate control (2026-07-21 owner feedback):
-                it's filtered through the existing FILTERS button, same as it
-                always was. The measure's default gear applies automatically. */}
-            {/* Measure — the primary control, labelled by measure. Shown in
-                scatter view too: the scatter only plots Abundance vs Size, so a
-                user who left the measure on Presence/Stocking (nothing to plot)
-                needs the picker right here to switch back to Abundance rather
-                than being forced back to the list first. */}
-            {useMeasurePicker && (
-              <Pressable
-                onPress={() => setShowMeasure(true)}
-                accessibilityRole="button"
-                accessibilityLabel={`Measure: ${activeMeasure?.label ?? sortLabel}${activeMeasure && activeMeasure.id !== 'presence' ? `, ${filters.sortDir === 'desc' ? 'descending' : 'ascending'}` : ''}`}
-                accessibilityHint="Opens the measure picker (abundance, size, stocking, presence)"
-                style={styles.sortBtn}>
-                <Text style={[text.labelM, { color: colors.ink }]} numberOfLines={1}>
-                  {activeMeasure?.label ?? sortLabel}{activeMeasure && activeMeasure.id !== 'presence' ? ` ${filters.sortDir === 'desc' ? '↓' : '↑'}` : ''}
-                </Text>
-              </Pressable>
-            )}
-            {viewMode === 'list' && !useMeasurePicker && (
-              <Pressable
-                onPress={() => setShowSort(true)}
-                accessibilityRole="button"
-                accessibilityLabel={`Sort by ${sortLabel}, ${filters.sortDir === 'desc' ? 'descending' : 'ascending'}`}
-                accessibilityHint="Opens sort picker"
-                style={styles.sortBtn}>
-                <Text style={[text.labelM, { color: colors.ink }]} numberOfLines={1}>
-                  {sortLabel} {filters.sortDir === 'desc' ? '↓' : '↑'}
-                </Text>
-              </Pressable>
-            )}
-          </View>
+          {/* Measure + view controls moved to the primary boxes above the
+              search button (owner request 2026-09-12) — the header keeps
+              only the count. */}
         </View>
       )}
 
@@ -1340,6 +1308,23 @@ const styles = StyleSheet.create({
 
   stripe: { height: 3 },
 
+  boxValue: { flexDirection: 'row', alignItems: 'center', gap: space.md, flexShrink: 1 },
+  viewOpts: { flexDirection: 'row', gap: space.sm },
+  viewOpt: {
+    borderWidth: hairline,
+    borderColor: colors.ink,
+    paddingHorizontal: space.lg,
+    paddingVertical: 6,
+  },
+  viewOptActive: { backgroundColor: colors.ink },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    marginHorizontal: space.xl,
+    marginTop: space.lg,
+  },
+
   askFab: {
     position: 'absolute',
     right: space.xl,
@@ -1389,40 +1374,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper2,
   },
 
-  lakeRow: {
-    flexDirection: 'row',
-    gap: space.md,
-    marginHorizontal: space.xl,
-    marginTop: space.md,
-  },
-  lakeInput: {
-    flex: 1,
-    borderWidth: hairline,
-    borderColor: colors.paper3,
-    backgroundColor: colors.paper2,
-    paddingHorizontal: space.lg,
-    paddingVertical: 12,
-    color: colors.ink,
-    ...text.dataS,
-  },
 
-  filterRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: space.xl,
-    marginTop: space.lg,
-  },
-  toggleWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 'auto',
-  },
-  toggleInfo: {
-    marginRight: 6,
-    paddingHorizontal: 2,
-  },
 
   subRow: {
     flexDirection: 'row',
@@ -1482,11 +1434,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: hairline,
     borderTopColor: colors.paper3,
     borderBottomColor: colors.paper3,
-  },
-  viewToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.md,
   },
   sortBtn: {
     borderWidth: hairline,

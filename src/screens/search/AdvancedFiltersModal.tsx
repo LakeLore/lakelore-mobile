@@ -3,14 +3,14 @@
 // surface the right way.
 import React from 'react';
 import {
-  Modal, View, Pressable, Text, ScrollView,
+  Modal, View, Pressable, Text, ScrollView, TextInput, StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FilterState, FilterOptions, WI_GEAR_LABELS, GENERATED_STATES, StateKey } from '../../types';
-import { colors, text, space } from '../../lakelore-rn/theme';
-import { PaperHeader } from '../../lakelore-rn/components';
+import { colors, text, space, hairline } from '../../lakelore-rn/theme';
+import { PaperHeader, SectionLabel, Toggle } from '../../lakelore-rn/components';
 import { MultiChipSelect } from './MultiChipSelect';
-import { RangeField } from './RangeField';
+import { RangeSlider } from './RangeSlider';
 
 type Props = {
   visible: boolean;
@@ -68,6 +68,37 @@ export function AdvancedFiltersModal({
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
           automaticallyAdjustKeyboardInsets>
+          {/* Lake name + Latest Only moved here from the main screen
+              (owner request 2026-09-12) — the main column is now Species /
+              Rank Lakes By / View Ranking As. */}
+          <View style={styles.section}>
+            <SectionLabel>Lake Name</SectionLabel>
+            <TextInput
+              style={styles.lakeInput}
+              placeholder="Search by lake name…"
+              placeholderTextColor={colors.inkSoft}
+              value={filters.lakeName}
+              onChangeText={v => onChange({ lakeName: v })}
+              returnKeyType="done"
+              clearButtonMode="while-editing"
+              autoCorrect={false}
+              autoCapitalize="words"
+              spellCheck={false}
+            />
+          </View>
+          <View style={[styles.section, styles.latestRow]}>
+            <View style={{ flex: 1, paddingRight: space.lg }}>
+              <SectionLabel>Latest Survey Only</SectionLabel>
+              <Text style={[text.bodyS, { color: colors.inkSoft, marginTop: 2 }]}>
+                Only each lake’s most recent survey for the species.
+              </Text>
+            </View>
+            <Toggle
+              value={filters.mostRecentOnly}
+              accessibilityLabel="Latest survey only"
+              onValueChange={v => onChange({ mostRecentOnly: v })}
+            />
+          </View>
           {/* Show the gear chip even when there's only one option so the
               user can see which gear is in play for the current species
               (e.g. NE Largemouth Bass is sampled by Electrofishing only —
@@ -102,40 +133,45 @@ export function AdvancedFiltersModal({
             />
           ) : null}
           {(cfg?.hasCpue ?? true) && (
-            <RangeField label="Catch Rate" minVal={filters.minCpue} maxVal={filters.maxCpue}
+            <RangeSlider label="Catch Rate" min={0} max={100} step={1}
+              minVal={filters.minCpue} maxVal={filters.maxCpue}
               onMinChange={v => onChange({ minCpue: v })} onMaxChange={v => onChange({ maxCpue: v })} />
           )}
-          <RangeField label="Survey Year" minVal={filters.minYear} maxVal={filters.maxYear}
-            onMinChange={v => onChange({ minYear: v })} onMaxChange={v => onChange({ maxYear: v })}
-            keyboardType="number-pad"
-            placeholder={options ? `${options.yearRange.min}–${options.yearRange.max}` : ''} />
-          <RangeField label="Lake Size (acres)" minVal={filters.minAcres} maxVal={filters.maxAcres}
+          <RangeSlider label="Survey Year"
+            min={options?.yearRange?.min ?? 1980} max={options?.yearRange?.max ?? new Date().getFullYear()} step={1}
+            minVal={filters.minYear} maxVal={filters.maxYear}
+            onMinChange={v => onChange({ minYear: v })} onMaxChange={v => onChange({ maxYear: v })} />
+          <RangeSlider label="Lake Size" min={0} max={5000} step={25} unit="ac"
+            minVal={filters.minAcres} maxVal={filters.maxAcres}
             onMinChange={v => onChange({ minAcres: v })} onMaxChange={v => onChange({ maxAcres: v })} />
           {(cfg?.hasStocking ?? true) && (
-            <RangeField label="Stck Adults / 100AC" minVal={filters.minStocked} maxVal={filters.maxStocked}
+            <RangeSlider label="Stck Adults / 100AC" min={0} max={200} step={5}
+              minVal={filters.minStocked} maxVal={filters.maxStocked}
               onMinChange={v => onChange({ minStocked: v })} onMaxChange={v => onChange({ maxStocked: v })} />
           )}
           {/* Avg Length range: shown wherever the state's data carries
               average_length (MN reports weight instead — see below). */}
           {state !== 'mn' && (cfg?.hasLength ?? true) && (
-            <RangeField label="Avg Length (in)" minVal={filters.minLength} maxVal={filters.maxLength}
+            <RangeSlider label="Avg Length" min={0} max={40} step={0.5} unit="in"
+              minVal={filters.minLength} maxVal={filters.maxLength}
               onMinChange={v => onChange({ minLength: v })} onMaxChange={v => onChange({ maxLength: v })} />
           )}
           {/* Total Catch range: shown wherever fc.total_catch is populated.
               SD uses sample_n (a different metric) and NE doesn't have a
               total_catch column at all. */}
           {(state === 'mn' || (cfg?.hasCatch ?? false)) && (
-            <RangeField label="Total Catch" minVal={filters.minCatch} maxVal={filters.maxCatch}
-              onMinChange={v => onChange({ minCatch: v })} onMaxChange={v => onChange({ maxCatch: v })}
-              keyboardType="number-pad" />
+            <RangeSlider label="Total Catch" min={0} max={1000} step={10}
+              minVal={filters.minCatch} maxVal={filters.maxCatch}
+              onMinChange={v => onChange({ minCatch: v })} onMaxChange={v => onChange({ maxCatch: v })} />
           )}
           {state === 'mn' && (
             <>
-              <RangeField label="Avg Weight (lb)" minVal={filters.minWeight} maxVal={filters.maxWeight}
+              <RangeSlider label="Avg Weight" min={0} max={15} step={0.25} unit="lb"
+                minVal={filters.minWeight} maxVal={filters.maxWeight}
                 onMinChange={v => onChange({ minWeight: v })} onMaxChange={v => onChange({ maxWeight: v })} />
-              <RangeField label="# Gear Sets" minVal={filters.minGearCount} maxVal={filters.maxGearCount}
-                onMinChange={v => onChange({ minGearCount: v })} onMaxChange={v => onChange({ maxGearCount: v })}
-                keyboardType="number-pad" />
+              <RangeSlider label="# Gear Sets" min={0} max={25} step={1}
+                minVal={filters.minGearCount} maxVal={filters.maxGearCount}
+                onMinChange={v => onChange({ minGearCount: v })} onMaxChange={v => onChange({ maxGearCount: v })} />
             </>
           )}
           <View style={{ height: 40 }} />
@@ -144,3 +180,18 @@ export function AdvancedFiltersModal({
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  section: { marginBottom: space.xxl },
+  lakeInput: {
+    marginTop: space.md,
+    paddingHorizontal: space.lg,
+    paddingVertical: 10,
+    borderWidth: hairline,
+    borderColor: colors.paper3,
+    backgroundColor: colors.paper2,
+    color: colors.ink,
+    ...text.dataS,
+  },
+  latestRow: { flexDirection: 'row', alignItems: 'center' },
+});
