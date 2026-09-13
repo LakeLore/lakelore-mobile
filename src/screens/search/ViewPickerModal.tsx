@@ -14,7 +14,8 @@ export type ViewMode = 'list' | 'scatter';
 
 type Props = {
   visible: boolean;
-  viewMode: ViewMode;
+  /** null = nothing chosen yet (no row shows the checkmark). */
+  viewMode: ViewMode | null;
   /** Scatter needs both an abundance signal and a size metric in this
    *  state's data — when false the option shows disabled with the reason. */
   scatterAvailable: boolean;

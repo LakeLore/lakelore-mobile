@@ -181,6 +181,8 @@ interface SearchSession {
   measures: Measure[];
   activeMeasureId: string | null;
   activeSourceId: string | null;
+  measurePicked?: boolean;
+  viewPicked?: boolean;
 }
 
 export default function SearchScreen() {
@@ -224,6 +226,13 @@ export default function SearchScreen() {
   const [showSort, setShowSort] = useState(false);
   const [showMeasure, setShowMeasure] = useState(false);
   const [showViewPicker, setShowViewPicker] = useState(false);
+  // Explicit-selection flags (owner 2026-09-13): the three primary boxes must
+  // each be chosen by the user — no prepopulated "Catch / Net" / "List" after
+  // reset or on a fresh launch. No search fires until all three are picked;
+  // after that, any change re-searches. Each picker chains to the next
+  // unselected one, mirroring the county → species flow.
+  const [measurePicked, setMeasurePicked] = useState(false);
+  const [viewPicked, setViewPicked] = useState(false);
   // Measures for the current species×county scope (DATA_MODEL_PROPOSAL_2026-07-20).
   // Empty when the server predates /measures — the toolbar then falls back to the
   // legacy sort button. The gear/source WITHIN a measure is chosen via the FILTERS
@@ -355,7 +364,7 @@ export default function SearchScreen() {
     if (prevStateRef.current !== state) {
       sessionCache.current[prevStateRef.current as StateKey] = {
         filters, results, searchStamp, scatterBase, total, page, searched, viewMode,
-        measures, activeMeasureId, activeSourceId,
+        measures, activeMeasureId, activeSourceId, measurePicked, viewPicked,
       };
       prevStateRef.current = state;
 
@@ -375,6 +384,9 @@ export default function SearchScreen() {
         setMeasures(cached.measures ?? []);
         setActiveMeasureId(cached.activeMeasureId ?? null);
         setActiveSourceId(cached.activeSourceId ?? null);
+        // A cached session that had searched was complete by definition.
+        setMeasurePicked(cached.measurePicked ?? cached.searched);
+        setViewPicked(cached.viewPicked ?? cached.searched);
       } else {
         // Restore saved counties for this state if we have them. Falls back
         // to defaultFilters' empty array if persistedCounties hasn't loaded
@@ -392,6 +404,8 @@ export default function SearchScreen() {
         setMeasures([]);
         setActiveMeasureId(null);
         setActiveSourceId(null);
+        setMeasurePicked(false);
+        setViewPicked(false);
         // Auto-opening the county picker for new states is handled by the
         // [state, countyPickerSeen] effect above, gated on per-state seen
         // flags so it only fires the first time the user enters each state.
@@ -509,25 +523,44 @@ export default function SearchScreen() {
   }, [state]);
 
   const handleSpeciesSelect = async (species: string) => {
-    // Refresh filter options so gear counts reflect this species, and reset the
-    // gear filter to whichever gear has the most records for the new species.
-    // Pass current counties so gear/species counts stay scoped to the same
-    // area the user is searching in.
+    // Refresh filter options (gear counts for this species) and the measure
+    // manifest IN PARALLEL — they were sequential round trips, which doubled
+    // the pause after a species tap (owner report 2026-09-13).
+    const [optsR, measR] = await Promise.allSettled([
+      fetchFilters(state, species || undefined, filters.counties),
+      fetchMeasures(state, species || undefined, filters.counties),
+    ]);
     let nextOpts = options;
-    try {
-      nextOpts = await fetchFilters(state, species || undefined, filters.counties);
-      setOptions(nextOpts);
-    } catch { /* keep existing options if refetch fails */ }
+    if (optsR.status === 'fulfilled') { nextOpts = optsR.value; setOptions(nextOpts); }
+    const ms = measR.status === 'fulfilled' ? (measR.value.measures ?? []) : [];
+    setMeasures(ms);
 
-    // Seed gear via the legacy default first (fallback when /measures is absent),
-    // then let the measure cascade for the new species take over the whole
-    // (measure, gear/source, sort) choice. A new species resets to the default
-    // measure (most abundance records) and its default source.
     let updated = { ...filters, species, gearTypes: defaultGearFor(nextOpts) };
-    updated = await loadMeasuresFor(species, filters.counties, updated, null, null);
+    if (measurePicked && ms.length) {
+      // Measure already chosen: keep it if the new species still has it
+      // (else cascade default) and re-search if the view is chosen too.
+      const measure = pickMeasure(ms, activeMeasureId);
+      if (measure) {
+        const source = pickSource(measure, activeSourceId);
+        setActiveMeasureId(measure.id);
+        setActiveSourceId(source?.id ?? null);
+        updated = applyMeasureSource(measure, source, updated);
+      }
+    } else if (!measurePicked) {
+      setActiveMeasureId(null);
+      setActiveSourceId(null);
+    }
     setFilters(updated);
-    if (species || filters.lakeName) {
+    if (measurePicked && viewPicked && (species || updated.lakeName)) {
       handleSearch(0, updated);
+    } else if (species) {
+      // Chain to the next unselected box (same pattern as county → species).
+      // The delay lets the species sheet finish dismissing — iOS won't
+      // present a modal while another is mid-dismiss.
+      setTimeout(() => {
+        if (!measurePicked) (ms.length ? setShowMeasure(true) : setShowSort(true));
+        else if (!viewPicked) setShowViewPicker(true);
+      }, 500);
     }
   };
 
@@ -557,6 +590,8 @@ export default function SearchScreen() {
     setMeasures([]);
     setActiveMeasureId(null);
     setActiveSourceId(null);
+    setMeasurePicked(false);
+    setViewPicked(false);
   };
 
   const handleLoadMore = () => {
@@ -760,7 +795,7 @@ export default function SearchScreen() {
   // County selector label — mirrors the state: one selection shows the county's
   // own name (like the state name), several show "Counties (n)", none = "All".
   const countyLabel =
-    filters.counties.length === 0 ? 'All'
+    filters.counties.length === 0 ? `All ${regionWord}`
     : filters.counties.length === 1 ? filters.counties[0]
     : `${regionWord} (${filters.counties.length})`;
 
@@ -843,8 +878,10 @@ export default function SearchScreen() {
       >
         <Text style={[text.displayM, { color: colors.inkSoft }]}>Rank Lakes By</Text>
         <View style={styles.boxValue}>
-          <Text style={[text.displayM, { color: colors.ink, flexShrink: 1, textAlign: 'right' }]} numberOfLines={1}>
-            {activeMeasure?.label ?? sortLabel}{activeMeasure && activeMeasure.id !== 'presence' ? ` ${filters.sortDir === 'desc' ? '↓' : '↑'}` : ''}
+          <Text style={[text.displayM, { color: measurePicked ? colors.ink : colors.inkSoft, flexShrink: 1, textAlign: 'right' }]} numberOfLines={1}>
+            {measurePicked
+              ? `${activeMeasure?.label ?? sortLabel}${activeMeasure && activeMeasure.id !== 'presence' ? ` ${filters.sortDir === 'desc' ? '↓' : '↑'}` : ''}`
+              : 'Select'}
           </Text>
           <Text style={{ color: colors.inkSoft, fontSize: 18 }}>›</Text>
         </View>
@@ -860,8 +897,8 @@ export default function SearchScreen() {
       >
         <Text style={[text.displayM, { color: colors.inkSoft }]}>View Ranking As</Text>
         <View style={styles.boxValue}>
-          <Text style={[text.displayM, { color: colors.ink, flexShrink: 1, textAlign: 'right' }]} numberOfLines={1}>
-            {viewMode === 'list' ? 'List' : 'Scatter Plot'}
+          <Text style={[text.displayM, { color: viewPicked ? colors.ink : colors.inkSoft, flexShrink: 1, textAlign: 'right' }]} numberOfLines={1}>
+            {viewPicked ? (viewMode === 'list' ? 'List' : 'Scatter Plot') : 'Select'}
           </Text>
           <Text style={{ color: colors.inkSoft, fontSize: 18 }}>›</Text>
         </View>
@@ -1143,11 +1180,13 @@ export default function SearchScreen() {
           const source = pickSource(measure, activeSourceId);
           setActiveMeasureId(measure.id);
           setActiveSourceId(source?.id ?? null);
+          setMeasurePicked(true);
           // Scatter can't plot the trophy-only rate — fall back to List.
           if (measure.id === 'trophy' && viewMode === 'scatter') setViewMode('list');
           const updated = applyMeasureSource(measure, source, filters, sortDir);
           setFilters(updated);
-          if (updated.species || updated.lakeName) handleSearch(0, updated);
+          if (viewPicked && (updated.species || updated.lakeName)) handleSearch(0, updated);
+          else if (!viewPicked) setTimeout(() => setShowViewPicker(true), 500);
         }}
       />
 
@@ -1155,11 +1194,21 @@ export default function SearchScreen() {
           species and measure pickers (owner request 2026-09-12). */}
       <ViewPickerModal
         visible={showViewPicker}
-        viewMode={viewMode}
+        viewMode={viewPicked ? viewMode : null}
         scatterAvailable={scatterAllowed}
         disabledReason={scatterDisabledReason}
         onClose={() => setShowViewPicker(false)}
-        onChange={setViewMode}
+        onChange={v => {
+          setViewMode(v);
+          const first = !viewPicked;
+          setViewPicked(true);
+          // Completing the third selection fires the first search; later
+          // list↔scatter flips are presentation-only (scatter has its own
+          // fetch effect), so no re-search.
+          if (first && measurePicked && (filters.species || filters.lakeName)) {
+            handleSearch(0);
+          }
+        }}
       />
 
       {/* Sort picker (legacy fallback when /measures is unavailable) */}
@@ -1173,7 +1222,9 @@ export default function SearchScreen() {
         onChange={(sortBy, sortDir) => {
           const updated = { ...filters, sortBy, sortDir };
           setFilters(updated);
-          handleSearch(0, updated);
+          setMeasurePicked(true);
+          if (viewPicked) handleSearch(0, updated);
+          else setTimeout(() => setShowViewPicker(true), 500);
         }}
       />
 
@@ -1209,6 +1260,15 @@ export default function SearchScreen() {
           fetchFilters(state, filters.species || undefined, counties)
             .then(async opts => {
               setOptions(opts);
+              // Before the measure is user-picked, only refresh the manifest
+              // for the dropdown — never auto-apply one (owner 2026-09-13).
+              if (!measurePicked) {
+                try {
+                  const resp = await fetchMeasures(state, filters.species || undefined, counties);
+                  setMeasures(resp.measures ?? []);
+                } catch { /* keep the old manifest */ }
+                return;
+              }
               const gear = defaultGearFor(opts);
               // Re-resolve measures for the new county scope, keeping the same
               // measure + source if they still have data (else cascade default).
@@ -1221,15 +1281,21 @@ export default function SearchScreen() {
                 return;
               }
               setFilters(withMeasure);
-              if (withMeasure.species) handleSearch(0, withMeasure);
+              if (withMeasure.species && viewPicked) handleSearch(0, withMeasure);
             })
             .catch(() => {});
-          if (updated.species) handleSearch(0, updated);
-          // First-run flow (D2): without a species the guided path used to
-          // END here on an empty screen ("Select a species to begin") after
-          // 2-3 choices with zero fish shown. Chain straight into the species
-          // picker so the next required step presents itself.
-          else setShowSpeciesPicker(true);
+          // First-run flow (D2, extended 2026-09-13): chain straight into the
+          // next unselected box's picker so the guided path never dead-ends —
+          // county → species → measure → view, then the search fires itself.
+          if (updated.species && measurePicked && viewPicked) {
+            handleSearch(0, updated);
+          } else {
+            setTimeout(() => {
+              if (!updated.species) setShowSpeciesPicker(true);
+              else if (!measurePicked) (measures.length ? setShowMeasure(true) : setShowSort(true));
+              else if (!viewPicked) setShowViewPicker(true);
+            }, 500);
+          }
         }}
         onClose={() => setShowCountyPicker(false)}
       />
@@ -1270,7 +1336,10 @@ export default function SearchScreen() {
           if (updates.gearTypes) setActiveSourceId(match ? match.id : null);
         }}
         onClose={() => setShowAdvanced(false)}
-        onApply={() => { setShowAdvanced(false); handleSearch(0); }}
+        onApply={() => {
+          setShowAdvanced(false);
+          if (measurePicked && viewPicked) handleSearch(0);
+        }}
       />
 
       {/* State picker */}
