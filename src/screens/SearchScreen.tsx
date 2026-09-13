@@ -33,6 +33,7 @@ import {
 } from '../lakelore-rn/components';
 import { AdvancedFiltersModal } from './search/AdvancedFiltersModal';
 import { SortPickerModal } from './search/SortPickerModal';
+import { ViewPickerModal } from './search/ViewPickerModal';
 import { MeasurePickerModal } from './search/MeasurePickerModal';
 import { StatePickerModal } from './search/StatePickerModal';
 import { KEYS } from '../storage';
@@ -222,6 +223,7 @@ export default function SearchScreen() {
   const [paywallTriggered, setPaywallTriggered] = useState<StateKey | null>(null);
   const [showSort, setShowSort] = useState(false);
   const [showMeasure, setShowMeasure] = useState(false);
+  const [showViewPicker, setShowViewPicker] = useState(false);
   // Measures for the current species×county scope (DATA_MODEL_PROPOSAL_2026-07-20).
   // Empty when the server predates /measures — the toolbar then falls back to the
   // legacy sort button. The gear/source WITHIN a measure is chosen via the FILTERS
@@ -830,39 +832,25 @@ export default function SearchScreen() {
         accessibilityHint="Opens the measure picker"
         style={[styles.speciesBtn, (!options && !useMeasurePicker) && { opacity: 0.55 }]}
       >
-        <Text style={[text.labelM, { color: colors.inkSoft }]}>Rank Lakes By</Text>
-        <View style={styles.boxValue}>
-          <Text style={[text.displayM, { color: colors.ink }]} numberOfLines={1}>
-            {activeMeasure?.label ?? sortLabel}{activeMeasure && activeMeasure.id !== 'presence' ? ` ${filters.sortDir === 'desc' ? '↓' : '↑'}` : ''}
-          </Text>
-          <Text style={{ color: colors.inkSoft, fontSize: 18 }}>›</Text>
-        </View>
+        <Text style={[text.displayM, { color: colors.ink }]} numberOfLines={1}>
+          {activeMeasure?.label ?? sortLabel}{activeMeasure && activeMeasure.id !== 'presence' ? ` ${filters.sortDir === 'desc' ? '↓' : '↑'}` : ''}
+        </Text>
+        <Text style={{ color: colors.inkSoft, fontSize: 18 }}>›</Text>
       </Pressable>
 
-      {/* View Ranking As — List vs Scatter Plot, same box treatment. Scatter
-          keeps its capability gate (abundance + size metric required). */}
-      <View style={styles.speciesBtn}>
-        <Text style={[text.labelM, { color: colors.inkSoft }]}>View Ranking As</Text>
-        <View style={styles.viewOpts}>
-          {(['list', 'scatter'] as const).map(v => {
-            const optLabel = v === 'list' ? 'List' : 'Scatter Plot';
-            const optDisabled = v === 'scatter' && !scatterAvailable;
-            const active = viewMode === v;
-            return (
-              <Pressable
-                key={v}
-                onPress={() => !optDisabled && setViewMode(v)}
-                disabled={optDisabled}
-                accessibilityRole="button"
-                accessibilityState={{ selected: active, disabled: optDisabled }}
-                accessibilityLabel={`View ranking as ${optLabel}`}
-                style={[styles.viewOpt, active && styles.viewOptActive, optDisabled && { opacity: 0.35 }]}>
-                <Text style={[text.labelM, { color: active ? colors.paper : colors.ink }]}>{optLabel}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
+      {/* View Ranking As — identical box, opens the view picker sheet. */}
+      <Pressable
+        onPress={() => setShowViewPicker(true)}
+        accessibilityRole="button"
+        accessibilityLabel={`View ranking as: ${viewMode === 'list' ? 'List' : 'Scatter Plot'}`}
+        accessibilityHint="Opens the view picker"
+        style={styles.speciesBtn}
+      >
+        <Text style={[text.displayM, { color: colors.ink }]} numberOfLines={1}>
+          {viewMode === 'list' ? 'List' : 'Scatter Plot'}
+        </Text>
+        <Text style={{ color: colors.inkSoft, fontSize: 18 }}>›</Text>
+      </Pressable>
 
       {/* Filters + Search. Lake name and Latest Only live inside Filters now
           (owner request 2026-09-12). */}
@@ -1151,6 +1139,16 @@ export default function SearchScreen() {
         }}
       />
 
+      {/* View picker — List vs Scatter Plot, same dropdown treatment as the
+          species and measure pickers (owner request 2026-09-12). */}
+      <ViewPickerModal
+        visible={showViewPicker}
+        viewMode={viewMode}
+        scatterAvailable={scatterAvailable}
+        onClose={() => setShowViewPicker(false)}
+        onChange={setViewMode}
+      />
+
       {/* Sort picker (legacy fallback when /measures is unavailable) */}
       <SortPickerModal
         visible={showSort}
@@ -1308,15 +1306,6 @@ const styles = StyleSheet.create({
 
   stripe: { height: 3 },
 
-  boxValue: { flexDirection: 'row', alignItems: 'center', gap: space.md, flexShrink: 1 },
-  viewOpts: { flexDirection: 'row', gap: space.sm },
-  viewOpt: {
-    borderWidth: hairline,
-    borderColor: colors.ink,
-    paddingHorizontal: space.lg,
-    paddingVertical: 6,
-  },
-  viewOptActive: { backgroundColor: colors.ink },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',

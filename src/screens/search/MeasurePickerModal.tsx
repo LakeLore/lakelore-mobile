@@ -44,7 +44,7 @@ export function MeasurePickerModal({
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.paper }}>
         <PaperHeader
           modal
-          title="Measure"
+          title="Rank Lakes By"
           right={
             <Pressable onPress={onClose} hitSlop={8}>
               <Text style={[text.labelL, { color: colors.ink }]}>Done</Text>
