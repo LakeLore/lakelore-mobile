@@ -52,7 +52,7 @@ export default function HomeScreen() {
           accessibilityHint="Opens the state and county selectors"
           style={({ pressed }) => [styles.card, styles.cardSecondary, { backgroundColor: pressed ? colors.paper2 : colors.paper }]}>
           <Text style={[text.labelL, { color: colors.walleye2, marginBottom: space.sm }]}>BROWSE THE RANKINGS</Text>
-          <Text style={[text.displayL, { color: colors.ink }]}>I’ll review the lake rankings myself</Text>
+          <Text style={[text.displayL, { color: colors.ink }]}>Review lake ranking data.</Text>
           <Text style={[text.bodyM, { color: colors.inkSoft, marginTop: space.sm }]}>
             Pick a state and county, then sort every surveyed lake by catch rate, size, stocking, or trophy fish.
           </Text>

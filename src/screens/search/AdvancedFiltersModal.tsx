@@ -1,10 +1,11 @@
 // Advanced Filters modal — gear/survey type chips plus numeric range fields.
 // State-specific blocks key off `state` so each agency's available filters
 // surface the right way.
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Modal, View, Pressable, Text, ScrollView, TextInput, StyleSheet,
 } from 'react-native';
+import { fetchLakesIndex, LakeIndexEntry } from '../../api';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FilterState, FilterOptions, WI_GEAR_LABELS, GENERATED_STATES, StateKey } from '../../types';
 import { colors, text, space, hairline } from '../../lakelore-rn/theme';
@@ -44,6 +45,34 @@ export function AdvancedFiltersModal({
   // range on whether this state's data actually carries the metric.
   const cfg = GENERATED_STATES[state as StateKey];
 
+  // Lake-name typeahead (owner 2026-09-13): typing presents matching lake
+  // names like the species dropdown. Backed by the public per-state lakes
+  // index (names only), fetched once per state and filtered locally.
+  const [lakeIndex, setLakeIndex] = useState<LakeIndexEntry[] | null>(null);
+  const [pickedName, setPickedName] = useState('');
+  useEffect(() => {
+    if (!visible || lakeIndex) return;
+    let alive = true;
+    fetchLakesIndex(state as StateKey)
+      .then(lakes => { if (alive) setLakeIndex(lakes); })
+      .catch(() => { /* typeahead is a nicety — typing still works without it */ });
+    return () => { alive = false; };
+  }, [visible, lakeIndex, state]);
+  const lakeQuery = filters.lakeName.trim();
+  const lakeSuggestions = useMemo(() => {
+    if (!lakeIndex || lakeQuery.length < 2 || lakeQuery === pickedName) return [];
+    const q = lakeQuery.toLowerCase();
+    const starts: LakeIndexEntry[] = [];
+    const contains: LakeIndexEntry[] = [];
+    for (const l of lakeIndex) {
+      const n = l.name.toLowerCase();
+      if (n.startsWith(q)) starts.push(l);
+      else if (n.includes(q)) contains.push(l);
+      if (starts.length >= 12) break;
+    }
+    return [...starts, ...contains].slice(0, 12);
+  }, [lakeIndex, lakeQuery, pickedName]);
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.paper }}>
@@ -78,13 +107,30 @@ export function AdvancedFiltersModal({
               placeholder="Search by lake name…"
               placeholderTextColor={colors.inkSoft}
               value={filters.lakeName}
-              onChangeText={v => onChange({ lakeName: v })}
+              onChangeText={v => { setPickedName(''); onChange({ lakeName: v }); }}
               returnKeyType="done"
               clearButtonMode="while-editing"
               autoCorrect={false}
               autoCapitalize="words"
               spellCheck={false}
             />
+            {lakeSuggestions.length > 0 && (
+              <View style={styles.suggestBox}>
+                {lakeSuggestions.map(l => (
+                  <Pressable
+                    key={`${l.id}`}
+                    style={({ pressed }) => [styles.suggestRow, pressed && { backgroundColor: colors.paper2 }]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${l.name}${l.county ? `, ${l.county}` : ''}`}
+                    onPress={() => { setPickedName(l.name); onChange({ lakeName: l.name }); }}>
+                    <Text style={[text.bodyL, { color: colors.ink, flexShrink: 1 }]} numberOfLines={1}>{l.name}</Text>
+                    {!!l.county && (
+                      <Text style={[text.labelM, { color: colors.inkSoft, flexShrink: 0 }]}>{l.county}</Text>
+                    )}
+                  </Pressable>
+                ))}
+              </View>
+            )}
           </View>
           <View style={[styles.section, styles.latestRow]}>
             <View style={{ flex: 1, paddingRight: space.lg }}>
@@ -194,4 +240,20 @@ const styles = StyleSheet.create({
     ...text.dataS,
   },
   latestRow: { flexDirection: 'row', alignItems: 'center' },
+  suggestBox: {
+    borderWidth: hairline,
+    borderTopWidth: 0,
+    borderColor: colors.paper3,
+    backgroundColor: colors.paper,
+  },
+  suggestRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: space.md,
+    paddingHorizontal: space.lg,
+    paddingVertical: 11,
+    borderBottomWidth: hairline,
+    borderBottomColor: colors.paper3,
+  },
 });

@@ -334,6 +334,21 @@ export async function askLakes(state: StateKey, messages: AskMessage[]): Promise
   return res.json() as Promise<AskResponse>;
 }
 
+// ── Lake-name typeahead (2026-09-13) ─────────────────────────────────────────
+// The public per-state lakes index (names + counts, no metrics — the same
+// endpoint the marketing site uses). Fetched once per state and cached for
+// the session; the Advanced Filters lake-name field filters it locally.
+export interface LakeIndexEntry { id: string | number; name: string; county?: string | null }
+const _lakeIndexCache = new Map<StateKey, LakeIndexEntry[]>();
+export async function fetchLakesIndex(state: StateKey): Promise<LakeIndexEntry[]> {
+  const hit = _lakeIndexCache.get(state);
+  if (hit) return hit;
+  const resp = await get<{ lakes: LakeIndexEntry[] }>(`${baseUrl(state)}/lakes-index`, 20_000);
+  const lakes = (resp.lakes ?? []).filter(l => !!l.name);
+  _lakeIndexCache.set(state, lakes);
+  return lakes;
+}
+
 export async function fetchFilters(
   state: StateKey,
   species?: string,

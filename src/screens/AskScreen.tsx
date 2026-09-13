@@ -217,30 +217,33 @@ export default function AskScreen() {
               </View>
             </View>
           )}
+          {/* Input flows RIGHT UNDER the conversation (owner 2026-09-13) —
+              not pinned to the screen bottom — so the floating pill below
+              never covers it. */}
+          <View style={styles.inputRow}>
+            <TextInput
+              style={styles.input}
+              placeholder={`Ask about ${stateCfg.label} lakes…`}
+              placeholderTextColor={colors.inkSoft}
+              value={input}
+              onChangeText={setInput}
+              onSubmitEditing={() => send(input)}
+              returnKeyType="send"
+              editable={!busy}
+              multiline
+              maxLength={2000}
+              accessibilityLabel="Your question"
+            />
+            <Pressable
+              onPress={() => send(input)}
+              disabled={busy || !input.trim()}
+              accessibilityRole="button"
+              accessibilityLabel="Send"
+              style={({ pressed }) => [styles.sendBtn, { opacity: busy || !input.trim() ? 0.4 : pressed ? 0.85 : 1 }]}>
+              <Text style={[text.labelL, { color: colors.paper }]}>Ask</Text>
+            </Pressable>
+          </View>
         </ScrollView>
-        <View style={styles.inputRow}>
-          <TextInput
-            style={styles.input}
-            placeholder={`Ask about ${stateCfg.label} lakes…`}
-            placeholderTextColor={colors.inkSoft}
-            value={input}
-            onChangeText={setInput}
-            onSubmitEditing={() => send(input)}
-            returnKeyType="send"
-            editable={!busy}
-            multiline
-            maxLength={2000}
-            accessibilityLabel="Your question"
-          />
-          <Pressable
-            onPress={() => send(input)}
-            disabled={busy || !input.trim()}
-            accessibilityRole="button"
-            accessibilityLabel="Send"
-            style={({ pressed }) => [styles.sendBtn, { opacity: busy || !input.trim() ? 0.4 : pressed ? 0.85 : 1 }]}>
-            <Text style={[text.labelL, { color: colors.paper }]}>Ask</Text>
-          </Pressable>
-        </View>
       </KeyboardAvoidingView>
 
       {/* Return to the data view — same floating-pill treatment as the Ask
@@ -252,7 +255,7 @@ export default function AskScreen() {
         accessibilityLabel="Review the lake rankings"
         style={({ pressed }) => [styles.dataFab, { opacity: pressed ? 0.88 : 1 }]}>
         <Text style={[text.displayM, { color: colors.flash, marginRight: space.sm }]}>≡</Text>
-        <Text style={[text.labelL, { color: colors.paper, fontSize: 13 }]}>Review the lake rankings.</Text>
+        <Text style={[text.labelL, { color: colors.paper, fontSize: 13 }]}>Review lake ranking data.</Text>
       </Pressable>
 
       <PaywallScreen
@@ -291,11 +294,7 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     gap: space.md,
-    paddingHorizontal: space.xl,
-    paddingVertical: space.md,
-    borderTopWidth: hairline,
-    borderColor: colors.paper3,
-    backgroundColor: colors.paper,
+    marginTop: space.md,
     alignItems: 'flex-end',
   },
   input: {
