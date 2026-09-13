@@ -869,6 +869,7 @@ export default function SearchScreen() {
 
       {/* Filters. No Search button (owner 2026-09-12): every selection —
           species, measure, view, county, filters Apply — searches on its own. */}
+      {/* One utility row (owner 2026-09-12): Filters · Reset · About. */}
       <View style={styles.searchRow}>
         <Chip
           dot={!!hasFilters}
@@ -877,19 +878,15 @@ export default function SearchScreen() {
         >
           Filters
         </Chip>
-        {loading && page === 0 && <ActivityIndicator size="small" color={colors.inkSoft} />}
-      </View>
-
-      {/* Reset / info row */}
-      <View style={styles.subRow}>
         {(searched || hasFilters || filters.species || filters.lakeName) ? (
-          <Pressable onPress={handleReset} hitSlop={6}>
+          <Pressable onPress={handleReset} hitSlop={8}>
             <Text style={[text.labelM, { color: colors.destructive }]}>Reset</Text>
           </Pressable>
-        ) : <View />}
-        <Pressable onPress={() => setShowAbout(true)} hitSlop={6}>
+        ) : null}
+        <Pressable onPress={() => setShowAbout(true)} hitSlop={8}>
           <Text style={[text.labelM, { color: colors.inkSoft }]}>ⓘ About &amp; Glossary</Text>
         </Pressable>
+        {loading && page === 0 && <ActivityIndicator size="small" color={colors.inkSoft} style={{ marginLeft: 'auto' }} />}
       </View>
 
       {/* Offline-cache banner: results below are the last saved search. */}
@@ -1327,7 +1324,7 @@ const styles = StyleSheet.create({
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.md,
+    gap: space.xl,
     marginHorizontal: space.xl,
     marginTop: space.lg,
   },
@@ -1383,13 +1380,6 @@ const styles = StyleSheet.create({
 
 
 
-  subRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: space.xl,
-    paddingVertical: space.md,
-  },
 
   previewBanner: {
     backgroundColor: colors.ink,
