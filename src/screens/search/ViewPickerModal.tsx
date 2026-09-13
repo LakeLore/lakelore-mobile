@@ -18,6 +18,8 @@ type Props = {
   /** Scatter needs both an abundance signal and a size metric in this
    *  state's data — when false the option shows disabled with the reason. */
   scatterAvailable: boolean;
+  /** Why the scatter option is disabled (state capability, trophy measure). */
+  disabledReason?: string;
   onClose: () => void;
   onChange: (v: ViewMode) => void;
 };
@@ -28,7 +30,7 @@ const OPTIONS: Array<{ id: ViewMode; label: string; blurb: string }> = [
 ];
 
 export function ViewPickerModal({
-  visible, viewMode, scatterAvailable, onClose, onChange,
+  visible, viewMode, scatterAvailable, disabledReason, onClose, onChange,
 }: Props) {
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -64,7 +66,7 @@ export function ViewPickerModal({
                   {o.label}
                 </Text>
                 <Text style={[text.labelM, { color: colors.inkSoft, marginTop: 2 }]}>
-                  {disabled ? 'Needs both abundance and size data — not available for this state.' : o.blurb}
+                  {disabled ? (disabledReason ?? 'Not available for this state.') : o.blurb}
                 </Text>
               </View>
               <Text style={[text.labelM, { color: active ? colors.walleye2 : colors.inkSoft, flexShrink: 0 }]}>

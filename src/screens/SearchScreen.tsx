@@ -29,7 +29,7 @@ import {
   colors, text, space, hairline,
 } from '../lakelore-rn/theme';
 import {
-  PaperHeader, Chip, PrimaryButton, LockIcon,
+  PaperHeader, Chip, LockIcon,
 } from '../lakelore-rn/components';
 import { AdvancedFiltersModal } from './search/AdvancedFiltersModal';
 import { SortPickerModal } from './search/SortPickerModal';
@@ -579,6 +579,13 @@ export default function SearchScreen() {
   const scatterAvailable =
     (GENERATED_STATES[state].hasCpue || GENERATED_STATES[state].hasRating) &&
     (GENERATED_STATES[state].hasLength || GENERATED_STATES[state].hasWeight);
+  // Trophy Abundance ranks by the trophy-only rate, which the scatter's
+  // Y axis doesn't plot — Scatter Plot is not selectable under it (owner
+  // 2026-09-12), and picking Trophy while in scatter falls back to List.
+  const scatterAllowed = scatterAvailable && activeMeasureId !== 'trophy';
+  const scatterDisabledReason = activeMeasureId === 'trophy'
+    ? 'Not available for Trophy Abundance — the plot pairs overall abundance with average size.'
+    : 'Needs both abundance and size data — not available for this state.';
 
   const stateCfg = STATE_CONFIGS[state];
   // Toolbar sort label: when sorting by CPUE and the user has narrowed to
@@ -808,17 +815,19 @@ export default function SearchScreen() {
         accessibilityHint="Opens species picker"
         style={[styles.speciesBtn, !options && { opacity: 0.55 }]}
       >
-        <Text style={[
-          text.displayM,
-          { color: filters.species ? colors.ink : colors.inkSoft },
-        ]} numberOfLines={1}>
-          {loadingOptions && !options ? 'Loading…'
-            : !options && error ? 'Couldn’t load species'
-            : speciesLabel}
-        </Text>
-        {loadingOptions && !options
-          ? <ActivityIndicator size="small" color={colors.inkSoft} />
-          : <Text style={{ color: colors.inkSoft, fontSize: 18 }}>›</Text>}
+        <Text style={[text.displayM, { color: colors.inkSoft }]}>Species</Text>
+        <View style={styles.boxValue}>
+          <Text
+            style={[text.displayM, { color: filters.species ? colors.ink : colors.inkSoft, flexShrink: 1, textAlign: 'right' }]}
+            numberOfLines={1}>
+            {loadingOptions && !options ? 'Loading…'
+              : !options && error ? 'Couldn’t load'
+              : filters.species ? speciesLabel : 'Select'}
+          </Text>
+          {loadingOptions && !options
+            ? <ActivityIndicator size="small" color={colors.inkSoft} />
+            : <Text style={{ color: colors.inkSoft, fontSize: 18 }}>›</Text>}
+        </View>
       </Pressable>
 
       {/* Rank Lakes By — the measure as a primary box equal to the species
@@ -832,10 +841,13 @@ export default function SearchScreen() {
         accessibilityHint="Opens the measure picker"
         style={[styles.speciesBtn, (!options && !useMeasurePicker) && { opacity: 0.55 }]}
       >
-        <Text style={[text.displayM, { color: colors.ink }]} numberOfLines={1}>
-          {activeMeasure?.label ?? sortLabel}{activeMeasure && activeMeasure.id !== 'presence' ? ` ${filters.sortDir === 'desc' ? '↓' : '↑'}` : ''}
-        </Text>
-        <Text style={{ color: colors.inkSoft, fontSize: 18 }}>›</Text>
+        <Text style={[text.displayM, { color: colors.inkSoft }]}>Rank Lakes By</Text>
+        <View style={styles.boxValue}>
+          <Text style={[text.displayM, { color: colors.ink, flexShrink: 1, textAlign: 'right' }]} numberOfLines={1}>
+            {activeMeasure?.label ?? sortLabel}{activeMeasure && activeMeasure.id !== 'presence' ? ` ${filters.sortDir === 'desc' ? '↓' : '↑'}` : ''}
+          </Text>
+          <Text style={{ color: colors.inkSoft, fontSize: 18 }}>›</Text>
+        </View>
       </Pressable>
 
       {/* View Ranking As — identical box, opens the view picker sheet. */}
@@ -846,14 +858,17 @@ export default function SearchScreen() {
         accessibilityHint="Opens the view picker"
         style={styles.speciesBtn}
       >
-        <Text style={[text.displayM, { color: colors.ink }]} numberOfLines={1}>
-          {viewMode === 'list' ? 'List' : 'Scatter Plot'}
-        </Text>
-        <Text style={{ color: colors.inkSoft, fontSize: 18 }}>›</Text>
+        <Text style={[text.displayM, { color: colors.inkSoft }]}>View Ranking As</Text>
+        <View style={styles.boxValue}>
+          <Text style={[text.displayM, { color: colors.ink, flexShrink: 1, textAlign: 'right' }]} numberOfLines={1}>
+            {viewMode === 'list' ? 'List' : 'Scatter Plot'}
+          </Text>
+          <Text style={{ color: colors.inkSoft, fontSize: 18 }}>›</Text>
+        </View>
       </Pressable>
 
-      {/* Filters + Search. Lake name and Latest Only live inside Filters now
-          (owner request 2026-09-12). */}
+      {/* Filters. No Search button (owner 2026-09-12): every selection —
+          species, measure, view, county, filters Apply — searches on its own. */}
       <View style={styles.searchRow}>
         <Chip
           dot={!!hasFilters}
@@ -862,9 +877,7 @@ export default function SearchScreen() {
         >
           Filters
         </Chip>
-        <PrimaryButton onPress={() => handleSearch(0)} style={{ flex: 1 }}>
-          {loading && page === 0 ? '…' : 'Search'}
-        </PrimaryButton>
+        {loading && page === 0 && <ActivityIndicator size="small" color={colors.inkSoft} />}
       </View>
 
       {/* Reset / info row */}
@@ -1133,6 +1146,8 @@ export default function SearchScreen() {
           const source = pickSource(measure, activeSourceId);
           setActiveMeasureId(measure.id);
           setActiveSourceId(source?.id ?? null);
+          // Scatter can't plot the trophy-only rate — fall back to List.
+          if (measure.id === 'trophy' && viewMode === 'scatter') setViewMode('list');
           const updated = applyMeasureSource(measure, source, filters, sortDir);
           setFilters(updated);
           if (updated.species || updated.lakeName) handleSearch(0, updated);
@@ -1144,7 +1159,8 @@ export default function SearchScreen() {
       <ViewPickerModal
         visible={showViewPicker}
         viewMode={viewMode}
-        scatterAvailable={scatterAvailable}
+        scatterAvailable={scatterAllowed}
+        disabledReason={scatterDisabledReason}
         onClose={() => setShowViewPicker(false)}
         onChange={setViewMode}
       />
@@ -1305,6 +1321,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
 
   stripe: { height: 3 },
+
+  boxValue: { flexDirection: 'row', alignItems: 'center', gap: space.md, flexShrink: 1, marginLeft: space.md },
 
   searchRow: {
     flexDirection: 'row',
