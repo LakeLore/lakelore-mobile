@@ -29,7 +29,7 @@ import {
   colors, text, space, hairline,
 } from '../lakelore-rn/theme';
 import {
-  PaperHeader, Chip, LockIcon,
+  PaperHeader, LockIcon,
 } from '../lakelore-rn/components';
 import { AdvancedFiltersModal } from './search/AdvancedFiltersModal';
 import { SortPickerModal } from './search/SortPickerModal';
@@ -906,24 +906,27 @@ export default function SearchScreen() {
 
       {/* Filters. No Search button (owner 2026-09-12): every selection —
           species, measure, view, county, filters Apply — searches on its own. */}
-      {/* One utility row (owner 2026-09-12): Filters · Reset · About. */}
+      {/* One utility row (owner 2026-09-12/13): Advanced Filters · Reset ·
+          About — larger targets, evenly distributed across the row. */}
       <View style={styles.searchRow}>
-        <Chip
-          dot={!!hasFilters}
+        <Pressable
           disabled={!options}
           onPress={() => options && setShowAdvanced(true)}
-        >
-          Filters
-        </Chip>
+          accessibilityRole="button"
+          accessibilityLabel="Advanced Filters"
+          style={[styles.advBtn, !options && { opacity: 0.4 }]}>
+          {!!hasFilters && <View style={styles.advDot} />}
+          <Text style={[text.labelL, { color: colors.ink }]}>Advanced Filters</Text>
+        </Pressable>
         {(searched || hasFilters || filters.species || filters.lakeName) ? (
-          <Pressable onPress={handleReset} hitSlop={8}>
-            <Text style={[text.labelM, { color: colors.destructive }]}>Reset</Text>
+          <Pressable onPress={handleReset} hitSlop={10} accessibilityRole="button">
+            <Text style={[text.labelL, { color: colors.destructive }]}>Reset</Text>
           </Pressable>
         ) : null}
-        <Pressable onPress={() => setShowAbout(true)} hitSlop={8}>
-          <Text style={[text.labelM, { color: colors.inkSoft }]}>ⓘ About &amp; Glossary</Text>
+        <Pressable onPress={() => setShowAbout(true)} hitSlop={10} accessibilityRole="button">
+          <Text style={[text.labelL, { color: colors.inkSoft }]}>ⓘ About</Text>
         </Pressable>
-        {loading && page === 0 && <ActivityIndicator size="small" color={colors.inkSoft} style={{ marginLeft: 'auto' }} />}
+        {loading && page === 0 && <ActivityIndicator size="small" color={colors.inkSoft} />}
       </View>
 
       {/* Offline-cache banner: results below are the last saved search. */}
@@ -982,17 +985,6 @@ export default function SearchScreen() {
           a large bubble bottom-right, not a chip). Gated with the feature
           (src/askFeature.ts); SafeAreaView's bottom inset keeps it above the
           home indicator. */}
-      {ASK_FEATURE_ENABLED && (
-        <Pressable
-          onPress={() => navigation.navigate('Ask')}
-          accessibilityRole="button"
-          accessibilityLabel="Ask LakeLore for recommendations"
-          style={({ pressed }) => [styles.askFab, { opacity: pressed ? 0.88 : 1 }]}>
-          <Text style={[text.displayM, { color: colors.flash, marginRight: space.sm }]}>✦</Text>
-          <Text style={[text.labelL, { color: colors.paper, fontSize: 13 }]}>Ask</Text>
-        </Pressable>
-      )}
-
       <AboutScreen visible={showAbout} state={state} onClose={() => setShowAbout(false)} />
 
       {/* Subscription gate: shown when a paid-state API call returns 402. */}
@@ -1375,6 +1367,21 @@ export default function SearchScreen() {
           if (searched) handleSearch(0);
         }}
       />
+
+      {/* Ask LakeLore — floating door to the chat (owner 2026-09-12/13: a
+          large bubble bottom-right, above EVERYTHING on this screen — last
+          child + zIndex/elevation so no sibling can stack over it; native
+          modal sheets are the only thing that cover it). */}
+      {ASK_FEATURE_ENABLED && (
+        <Pressable
+          onPress={() => navigation.navigate('Ask')}
+          accessibilityRole="button"
+          accessibilityLabel="Ask LakeLore where to fish"
+          style={({ pressed }) => [styles.askFab, { opacity: pressed ? 0.88 : 1 }]}>
+          <Text style={[text.displayM, { color: colors.flash, marginRight: space.sm }]}>✦</Text>
+          <Text style={[text.labelL, { color: colors.paper, fontSize: 13 }]}>Ask LakeLore where to fish.</Text>
+        </Pressable>
+      )}
     </SafeAreaView>
   );
 }
@@ -1393,13 +1400,27 @@ const styles = StyleSheet.create({
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.xl,
+    justifyContent: 'space-between',
     marginHorizontal: space.xl,
-    marginTop: space.lg,
+    marginVertical: space.xl,
+  },
+  advBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: hairline,
+    borderColor: colors.ink,
+    paddingHorizontal: space.lg,
+    paddingVertical: 9,
+  },
+  advDot: {
+    width: 6, height: 6, borderRadius: 3,
+    backgroundColor: colors.walleye,
   },
 
   askFab: {
     position: 'absolute',
+    zIndex: 100,
     right: space.xl,
     bottom: space.xl,
     height: 60,
