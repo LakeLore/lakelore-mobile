@@ -920,11 +920,11 @@ export default function SearchScreen() {
         </Pressable>
         {(searched || hasFilters || filters.species || filters.lakeName) ? (
           <Pressable onPress={handleReset} hitSlop={10} accessibilityRole="button">
-            <Text style={[text.labelL, { color: colors.destructive }]}>Reset</Text>
+            <Text style={[text.labelL, { color: colors.destructive, fontSize: 13 }]}>Reset</Text>
           </Pressable>
         ) : null}
         <Pressable onPress={() => setShowAbout(true)} hitSlop={10} accessibilityRole="button">
-          <Text style={[text.labelL, { color: colors.inkSoft }]}>ⓘ About</Text>
+          <Text style={[text.labelL, { color: colors.inkSoft, fontSize: 13 }]}>ⓘ About</Text>
         </Pressable>
         {loading && page === 0 && <ActivityIndicator size="small" color={colors.inkSoft} />}
       </View>
@@ -1402,7 +1402,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginHorizontal: space.xl,
-    marginVertical: space.xl,
+    marginVertical: space.lg,
   },
   advBtn: {
     flexDirection: 'row',
@@ -1459,9 +1459,9 @@ const styles = StyleSheet.create({
     borderWidth: hairline,
     borderColor: colors.ink,
     paddingHorizontal: space.lg,
-    paddingVertical: 12,
+    paddingVertical: 8,
     marginHorizontal: space.xl,
-    marginTop: space.lg,
+    marginTop: space.sm,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
