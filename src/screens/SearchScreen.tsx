@@ -850,7 +850,7 @@ export default function SearchScreen() {
         accessibilityHint="Opens species picker"
         style={[styles.speciesBtn, !options && { opacity: 0.55 }]}
       >
-        <Text style={[text.displayM, { color: colors.inkSoft }]}>Species</Text>
+        <Text style={[text.displayM, { color: colors.inkSoft }]}>Select Species</Text>
         <View style={styles.boxValue}>
           <Text
             style={[text.displayM, { color: filters.species ? colors.ink : colors.inkSoft, flexShrink: 1, textAlign: 'right' }]}
