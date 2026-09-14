@@ -10,7 +10,8 @@
 // bigger than the acres cap still matches when the right dot sits at the
 // end). Only an interior position writes a bound.
 import React, { useRef, useState } from 'react';
-import { View, Text, PanResponder, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { colors, text, space } from '../../lakelore-rn/theme';
 import { SectionLabel } from '../../lakelore-rn/components';
 
@@ -62,38 +63,34 @@ export function RangeSlider({
   const fromX = (x: number) => min + (x / usable()) * (max - min);
   const snap = (v: number) => clamp(Math.round(v / step) * step, min, max);
 
-  // Once a thumb owns the gesture it must KEEP it until the finger lifts:
-  // the enclosing ScrollView asks to take over as soon as the drag wanders
-  // (termination request) — the default "yes" is what made drags stop after
-  // a short distance. Refuse it, block the native responder (Android), and
-  // tell the parent to freeze scrolling for the duration.
-  const panLo = useRef(PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderTerminationRequest: () => false,
-    onShouldBlockNativeResponder: () => true,
-    onPanResponderGrant: () => { grabRef.current = loRef.current; onDraggingRef.current?.(true); },
-    onPanResponderMove: (_e, g) => {
-      const v = snap(clamp(fromX(toX(grabRef.current) + g.dx), min, hiRef.current));
+  // PanResponder proved unwinnable here (2026-09-14 round 2): JS responders
+  // can refuse JS-side termination requests, but the ScrollView's NATIVE pan
+  // recognizer cancels them unilaterally on iOS — drags kept dying partway.
+  // react-native-gesture-handler (already in the binary) resolves the contest
+  // at the native layer: a thumb pan ACTIVATES on ~any horizontal movement
+  // and, once active, natively blocks the scroll; a clearly vertical drag
+  // fails the pan so the sheet still scrolls when that's the intent.
+  const panLo = Gesture.Pan()
+    .activeOffsetX([-2, 2])
+    .failOffsetY([-16, 16])
+    .runOnJS(true)
+    .onStart(() => { grabRef.current = loRef.current; onDraggingRef.current?.(true); })
+    .onUpdate(e => {
+      const v = snap(clamp(fromX(toX(grabRef.current) + e.translationX), min, hiRef.current));
       onMinChange(v <= min ? '' : fmtNum(v));
-    },
-    onPanResponderRelease: () => { onDraggingRef.current?.(false); },
-    onPanResponderTerminate: () => { onDraggingRef.current?.(false); },
-  })).current;
+    })
+    .onFinalize(() => { onDraggingRef.current?.(false); });
 
-  const panHi = useRef(PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderTerminationRequest: () => false,
-    onShouldBlockNativeResponder: () => true,
-    onPanResponderGrant: () => { grabRef.current = hiRef.current; onDraggingRef.current?.(true); },
-    onPanResponderMove: (_e, g) => {
-      const v = snap(clamp(fromX(toX(grabRef.current) + g.dx), loRef.current, max));
+  const panHi = Gesture.Pan()
+    .activeOffsetX([-2, 2])
+    .failOffsetY([-16, 16])
+    .runOnJS(true)
+    .onStart(() => { grabRef.current = hiRef.current; onDraggingRef.current?.(true); })
+    .onUpdate(e => {
+      const v = snap(clamp(fromX(toX(grabRef.current) + e.translationX), loRef.current, max));
       onMaxChange(v >= max ? '' : fmtNum(v));
-    },
-    onPanResponderRelease: () => { onDraggingRef.current?.(false); },
-    onPanResponderTerminate: () => { onDraggingRef.current?.(false); },
-  })).current;
+    })
+    .onFinalize(() => { onDraggingRef.current?.(false); });
 
   const u = unit ? ` ${unit}` : '';
   const loLabel = lo <= min && !parse(minVal) ? 'Any' : `${fmtNum(lo)}${u}`;
@@ -116,12 +113,16 @@ export function RangeSlider({
         {width > 0 && (
           <>
             <View style={[styles.trackActive, { left: xLo + THUMB / 2, width: Math.max(xHi - xLo, 0) }]} />
-            <View {...panLo.panHandlers} style={[styles.hit, { left: xLo - (HIT - THUMB) / 2 }]}>
-              <View style={styles.thumb} />
-            </View>
-            <View {...panHi.panHandlers} style={[styles.hit, { left: xHi - (HIT - THUMB) / 2 }]}>
-              <View style={styles.thumb} />
-            </View>
+            <GestureDetector gesture={panLo}>
+              <View style={[styles.hit, { left: xLo - (HIT - THUMB) / 2 }]}>
+                <View style={styles.thumb} />
+              </View>
+            </GestureDetector>
+            <GestureDetector gesture={panHi}>
+              <View style={[styles.hit, { left: xHi - (HIT - THUMB) / 2 }]}>
+                <View style={styles.thumb} />
+              </View>
+            </GestureDetector>
           </>
         )}
       </View>

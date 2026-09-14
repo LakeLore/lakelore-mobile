@@ -27,7 +27,7 @@ type Props = {
 
 const OPTIONS: Array<{ id: ViewMode; label: string; blurb: string }> = [
   { id: 'list', label: 'List', blurb: 'Ranked rows — every matching lake with its numbers.' },
-  { id: 'scatter', label: 'Scatter Plot', blurb: 'Abundance vs. average size — each dot is a lake.' },
+  { id: 'scatter', label: 'Scatter Plot', blurb: 'Abundance vs. average size, colored by stocking impact — each dot is a lake.' },
 ];
 
 export function ViewPickerModal({

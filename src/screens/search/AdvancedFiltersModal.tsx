@@ -3,8 +3,9 @@
 // surface the right way.
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Modal, View, Pressable, Text, ScrollView, TextInput, StyleSheet,
+  Modal, View, Pressable, Text, TextInput, StyleSheet,
 } from 'react-native';
+import { GestureHandlerRootView, ScrollView } from 'react-native-gesture-handler';
 import { fetchLakesIndex, LakeIndexEntry } from '../../api';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FilterState, FilterOptions, WI_GEAR_LABELS, GENERATED_STATES, StateKey } from '../../types';
@@ -81,6 +82,9 @@ export function AdvancedFiltersModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      {/* Gesture handlers don't see the app-root GestureHandlerRootView from
+          inside a native Modal window — the modal needs its own. */}
+      <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.paper }}>
         <PaperHeader
           modal
@@ -232,6 +236,7 @@ export function AdvancedFiltersModal({
           <View style={{ height: 40 }} />
         </ScrollView>
       </SafeAreaView>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
