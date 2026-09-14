@@ -19,22 +19,14 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppState } from '../StateContext';
 import { askLakes, AskLake, AskMessage, SubscriptionRequiredError } from '../api';
 import { parseAskMarkers, stripAskMarkers } from '../askMarkers';
+import { AskTurn, getAskSession, saveAskSession, clearAskSession } from '../askSession';
 import PaywallScreen from './PaywallScreen';
 import { STATE_CONFIGS } from '../types';
 import type { RootStackParamList } from '../navigation';
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
 import { PaperHeader, Chip } from '../lakelore-rn/components';
 
-interface Turn {
-  role: 'user' | 'assistant';
-  /** Plain text — what goes back to the server as history. */
-  content: string;
-  /** Assistant only: the answer with [[id|Name]] markers, for rendering. */
-  display?: string;
-  lakes?: AskLake[];
-  /** Local error note (network, quota) — never sent back as history. */
-  error?: boolean;
-}
+type Turn = AskTurn;
 
 const STARTERS = [
   'Where should I fish for walleye this weekend?',
@@ -54,7 +46,13 @@ export default function AskScreen() {
     if (canGoBack) { navigation.goBack(); return; }
     navigation.replace(hasState ? 'Search' : 'StateSelect');
   }, [canGoBack, hasState, navigation]);
-  const [turns, setTurns] = useState<Turn[]>([]);
+  // Conversation restores from the per-state session store (owner
+  // 2026-09-14: switching to the data view and back keeps the chat).
+  const [turns, setTurns] = useState<Turn[]>(() => getAskSession(state));
+  const commit = useCallback((next: Turn[]) => {
+    saveAskSession(state, next);   // store first — survives unmount mid-flight
+    setTurns(next);
+  }, [state]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [paywall, setPaywall] = useState(false);
@@ -77,12 +75,12 @@ export default function AskScreen() {
       .filter(t => !t.error)
       .map(t => ({ role: t.role, content: t.content }));
     const next: Turn[] = [...turns, { role: 'user', content: question }];
-    setTurns(next);
+    commit(next);
     setInput('');
     setBusy(true);
     try {
       const r = await askLakes(state, [...history, { role: 'user', content: question }]);
-      setTurns([...next, {
+      commit([...next, {
         role: 'assistant',
         content: r.answer_text || stripAskMarkers(r.answer),
         display: r.answer,
@@ -91,16 +89,16 @@ export default function AskScreen() {
     } catch (err) {
       if (err instanceof SubscriptionRequiredError) {
         setPaywall(true);
-        setTurns(next.slice(0, -1));
+        commit(next.slice(0, -1));
       } else {
         const msg = err instanceof Error ? err.message : 'Something went wrong.';
-        setTurns([...next, { role: 'assistant', content: msg, error: true }]);
+        commit([...next, { role: 'assistant', content: msg, error: true }]);
       }
     } finally {
       setBusy(false);
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
     }
-  }, [busy, state, turns]);
+  }, [busy, state, turns, commit]);
 
   const renderAssistant = (t: Turn, idx: number) => {
     const lakesById = new Map((t.lakes ?? []).map(l => [l.lake_id, l]));
@@ -138,6 +136,16 @@ export default function AskScreen() {
       <PaperHeader
         title="Ask LakeLore"
         eyebrow={`${stateCfg.label.toUpperCase()} · ASSISTANT`}
+        right={turns.length > 0 ? (
+          <Pressable
+            onPress={() => { clearAskSession(state); setTurns([]); setInput(''); }}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Start a new chat"
+            style={styles.newChatBtn}>
+            <Text style={[text.labelL, { color: colors.paper }]}>＋ New chat</Text>
+          </Pressable>
+        ) : undefined}
       />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -272,6 +280,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.xl,
     height: 44,
     justifyContent: 'center',
+  },
+  newChatBtn: {
+    borderWidth: hairline,
+    borderColor: colors.paper3,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.sm,
   },
   dataFab: {
     position: 'absolute',
