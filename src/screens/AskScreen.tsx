@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     zIndex: 100,
     alignSelf: 'center',
-    bottom: 84,
+    bottom: space.xl,
     height: 60,
     paddingHorizontal: 22,
     flexDirection: 'row',

@@ -574,6 +574,9 @@ export default function SearchScreen() {
     } catch { /* keep existing options if refetch fails */ }
 
     const df = defaultFilters(state);
+    // Reset clears the three selection boxes + advanced filters ONLY — the
+    // county scope survives (owner 2026-09-14).
+    df.counties = filters.counties;
     df.gearTypes = defaultGearFor(baseOpts);
     setFilters(df);
     setResults([]);
@@ -1027,8 +1030,8 @@ export default function SearchScreen() {
       {/* Empty state */}
       {!searched && !error && (
         <View style={styles.emptyState}>
-          <Text style={[text.editorialM, { color: colors.inkSoft, textAlign: 'center' }]}>
-            Select a species to begin — or search a lake by name under Filters.
+          <Text style={[text.editorialM, { color: colors.inkSoft, textAlign: 'center', fontSize: 21, lineHeight: 30 }]}>
+            Select a species to begin.
           </Text>
         </View>
       )}

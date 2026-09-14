@@ -3,8 +3,8 @@
 // / Presence. This is the "Sort by" control, labelled by measure. Selecting a
 // measure adopts its default Gear/Source (most records); the Gear Type filter
 // inside the Filters modal refines it (2026-07-21 owner call — no separate
-// Source picker). Tapping the active measure flips sort direction (Presence
-// has no ranking).
+// Source picker). Selection always applies descending order — the tap-to-flip
+// affordance was removed 2026-09-14 (accidental flips).
 import React from 'react';
 import {
   Modal, View, Pressable, Text, ScrollView, StyleSheet,
@@ -65,19 +65,13 @@ export function MeasurePickerModal({
                   { backgroundColor: pressed || active ? colors.paper2 : 'transparent' },
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel={
-                  `${m.label}, ${coverage(m)}` +
-                  (active && sortable
-                    ? `, currently ${sortDir === 'desc' ? 'descending' : 'ascending'} — tap to flip`
-                    : '')
-                }
+                accessibilityLabel={`${m.label}, ${coverage(m)}`}
+                // Tap-to-flip removed (owner 2026-09-14: too easy to hit by
+                // accident) — selecting always applies the default descending
+                // order and closes; re-tapping the active row is a no-op close.
                 onPress={() => {
-                  if (active && sortable) {
-                    onChange(m, sortDir === 'desc' ? 'asc' : 'desc');
-                  } else {
-                    onChange(m, 'desc');
-                    if (!active) onClose();
-                  }
+                  onChange(m, 'desc');
+                  onClose();
                 }}
               >
                 {/* flex:1 + paddingRight keeps a wrapping blurb clear of the
@@ -92,7 +86,7 @@ export function MeasurePickerModal({
                   </Text>
                 </View>
                 <Text style={[text.labelM, { color: active ? colors.walleye2 : colors.inkSoft, flexShrink: 0 }]}>
-                  {active ? (sortable ? '✓ tap to flip' : '✓') : coverage(m)}
+                  {active ? '✓' : coverage(m)}
                 </Text>
               </Pressable>
             );
