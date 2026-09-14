@@ -452,6 +452,8 @@ function buildParams(
   if (f.minLength)        params.set('minLength', f.minLength);
   if (f.maxLength)        params.set('maxLength', f.maxLength);
   if (f.minCatch)         params.set('minCatch', f.minCatch);
+  if (f.minTrophy)        params.set('minTrophy', f.minTrophy);
+  if (f.maxTrophy)        params.set('maxTrophy', f.maxTrophy);
   if (f.maxCatch)         params.set('maxCatch', f.maxCatch);
 
   if (state === 'mn') {

@@ -129,6 +129,8 @@ export interface FilterState {
   minLength: string;
   maxLength: string;
   minCatch: string;
+  minTrophy: string;
+  maxTrophy: string;
   maxCatch: string;
   mostRecentOnly: boolean;
   sortBy: string;
@@ -170,6 +172,8 @@ export function defaultFilters(state: StateKey): FilterState {
     maxLength: '',
     minCatch: '',
     maxCatch: '',
+    minTrophy: '',
+    maxTrophy: '',
     mostRecentOnly: true,
     sortBy: cfg.sortOptions[0]?.value ?? 'cpue',
     sortDir: 'desc',

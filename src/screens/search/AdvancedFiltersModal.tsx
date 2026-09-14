@@ -18,13 +18,16 @@ type Props = {
   filters: FilterState;
   state: string;
   options: FilterOptions | null;
+  /** The current /measures manifest contains a trophy measure — shows the
+   *  Trophy Catch Rate slider (the registry export has no trophy flag). */
+  hasTrophy?: boolean;
   onChange: (u: Partial<FilterState>) => void;
   onClose: () => void;
   onApply: () => void;
 };
 
 export function AdvancedFiltersModal({
-  visible, filters, state, options, onChange, onClose, onApply,
+  visible, filters, state, options, hasTrophy, onChange, onClose, onApply,
 }: Props) {
   // Gear/Source: the DEFAULT is always a single gear (the most-prevalent source
   // for the scope, set by the measure cascade / defaultGearFor), but the user
@@ -182,47 +185,49 @@ export function AdvancedFiltersModal({
               showMoreThreshold={100}
             />
           ) : null}
-          {(cfg?.hasCpue ?? true) && (
-            <RangeSlider onDragging={setSliderActive} label="Catch Rate" min={0} max={100} step={1}
-              minVal={filters.minCpue} maxVal={filters.maxCpue}
-              onMinChange={v => onChange({ minCpue: v })} onMaxChange={v => onChange({ maxCpue: v })} />
-          )}
+          {/* Slider order fixed by owner 2026-09-14: Survey Year, Total
+              Catch, # Gear Sets, Lake Size, Catch Rate, Avg Size, Trophy
+              Catch Rate, Stocking Impact — gated per state as before. */}
           <RangeSlider onDragging={setSliderActive} label="Survey Year"
             min={options?.yearRange?.min ?? 1980} max={options?.yearRange?.max ?? new Date().getFullYear()} step={1}
             minVal={filters.minYear} maxVal={filters.maxYear}
             onMinChange={v => onChange({ minYear: v })} onMaxChange={v => onChange({ maxYear: v })} />
-          <RangeSlider onDragging={setSliderActive} label="Lake Size" min={0} max={5000} step={25} unit="ac"
-            minVal={filters.minAcres} maxVal={filters.maxAcres}
-            onMinChange={v => onChange({ minAcres: v })} onMaxChange={v => onChange({ maxAcres: v })} />
-          {(cfg?.hasStocking ?? true) && (
-            <RangeSlider onDragging={setSliderActive} label="Stck Adults / 100AC" min={0} max={200} step={5}
-              minVal={filters.minStocked} maxVal={filters.maxStocked}
-              onMinChange={v => onChange({ minStocked: v })} onMaxChange={v => onChange({ maxStocked: v })} />
-          )}
-          {/* Avg Length range: shown wherever the state's data carries
-              average_length (MN reports weight instead — see below). */}
-          {state !== 'mn' && (cfg?.hasLength ?? true) && (
-            <RangeSlider onDragging={setSliderActive} label="Avg Length" min={0} max={40} step={0.5} unit="in"
-              minVal={filters.minLength} maxVal={filters.maxLength}
-              onMinChange={v => onChange({ minLength: v })} onMaxChange={v => onChange({ maxLength: v })} />
-          )}
-          {/* Total Catch range: shown wherever fc.total_catch is populated.
-              SD uses sample_n (a different metric) and NE doesn't have a
-              total_catch column at all. */}
           {(state === 'mn' || (cfg?.hasCatch ?? false)) && (
             <RangeSlider onDragging={setSliderActive} label="Total Catch" min={0} max={1000} step={10}
               minVal={filters.minCatch} maxVal={filters.maxCatch}
               onMinChange={v => onChange({ minCatch: v })} onMaxChange={v => onChange({ maxCatch: v })} />
           )}
           {state === 'mn' && (
-            <>
-              <RangeSlider onDragging={setSliderActive} label="Avg Weight" min={0} max={15} step={0.25} unit="lb"
-                minVal={filters.minWeight} maxVal={filters.maxWeight}
-                onMinChange={v => onChange({ minWeight: v })} onMaxChange={v => onChange({ maxWeight: v })} />
-              <RangeSlider onDragging={setSliderActive} label="# Gear Sets" min={0} max={25} step={1}
-                minVal={filters.minGearCount} maxVal={filters.maxGearCount}
-                onMinChange={v => onChange({ minGearCount: v })} onMaxChange={v => onChange({ maxGearCount: v })} />
-            </>
+            <RangeSlider onDragging={setSliderActive} label="# Gear Sets" min={0} max={25} step={1}
+              minVal={filters.minGearCount} maxVal={filters.maxGearCount}
+              onMinChange={v => onChange({ minGearCount: v })} onMaxChange={v => onChange({ maxGearCount: v })} />
+          )}
+          <RangeSlider onDragging={setSliderActive} label="Lake Size" min={0} max={5000} step={25} unit="ac"
+            minVal={filters.minAcres} maxVal={filters.maxAcres}
+            onMinChange={v => onChange({ minAcres: v })} onMaxChange={v => onChange({ maxAcres: v })} />
+          {(cfg?.hasCpue ?? true) && (
+            <RangeSlider onDragging={setSliderActive} label="Catch Rate" min={0} max={100} step={1}
+              minVal={filters.minCpue} maxVal={filters.maxCpue}
+              onMinChange={v => onChange({ minCpue: v })} onMaxChange={v => onChange({ maxCpue: v })} />
+          )}
+          {state === 'mn' ? (
+            <RangeSlider onDragging={setSliderActive} label="Avg Size" min={0} max={15} step={0.25} unit="lb"
+              minVal={filters.minWeight} maxVal={filters.maxWeight}
+              onMinChange={v => onChange({ minWeight: v })} onMaxChange={v => onChange({ maxWeight: v })} />
+          ) : (cfg?.hasLength ?? true) ? (
+            <RangeSlider onDragging={setSliderActive} label="Avg Size" min={0} max={40} step={0.5} unit="in"
+              minVal={filters.minLength} maxVal={filters.maxLength}
+              onMinChange={v => onChange({ minLength: v })} onMaxChange={v => onChange({ maxLength: v })} />
+          ) : null}
+          {hasTrophy && (
+            <RangeSlider onDragging={setSliderActive} label="Trophy Catch Rate" min={0} max={20} step={0.25}
+              minVal={filters.minTrophy} maxVal={filters.maxTrophy}
+              onMinChange={v => onChange({ minTrophy: v })} onMaxChange={v => onChange({ maxTrophy: v })} />
+          )}
+          {(cfg?.hasStocking ?? true) && (
+            <RangeSlider onDragging={setSliderActive} label="Stocking Impact" min={0} max={200} step={5}
+              minVal={filters.minStocked} maxVal={filters.maxStocked}
+              onMinChange={v => onChange({ minStocked: v })} onMaxChange={v => onChange({ maxStocked: v })} />
           )}
           <View style={{ height: 40 }} />
         </ScrollView>
