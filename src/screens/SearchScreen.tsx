@@ -870,11 +870,11 @@ export default function SearchScreen() {
           the legacy sort picker when /measures is unavailable. */}
       <Pressable
         onPress={() => (useMeasurePicker ? setShowMeasure(true) : setShowSort(true))}
-        disabled={!options && !useMeasurePicker}
+        disabled={!filters.species || (!options && !useMeasurePicker)}
         accessibilityRole="button"
         accessibilityLabel={`Rank lakes by: ${activeMeasure?.label ?? sortLabel}`}
         accessibilityHint="Opens the measure picker"
-        style={[styles.speciesBtn, (!options && !useMeasurePicker) && { opacity: 0.55 }]}
+        style={[styles.speciesBtn, (!filters.species || (!options && !useMeasurePicker)) && { opacity: 0.55 }]}
       >
         <Text style={[text.displayM, { color: colors.inkSoft }]}>Rank Lakes By</Text>
         <View style={styles.boxValue}>
@@ -890,10 +890,11 @@ export default function SearchScreen() {
       {/* View Ranking As — identical box, opens the view picker sheet. */}
       <Pressable
         onPress={() => setShowViewPicker(true)}
+        disabled={!filters.species}
         accessibilityRole="button"
         accessibilityLabel={`View ranking as: ${viewMode === 'list' ? 'List' : 'Scatter Plot'}`}
         accessibilityHint="Opens the view picker"
-        style={styles.speciesBtn}
+        style={[styles.speciesBtn, !filters.species && { opacity: 0.55 }]}
       >
         <Text style={[text.displayM, { color: colors.inkSoft }]}>View Ranking As</Text>
         <View style={styles.boxValue}>

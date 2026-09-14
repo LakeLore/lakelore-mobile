@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
     zIndex: 100,
     alignSelf: 'center',
     bottom: 84,
-    height: 52,
+    height: 60,
     paddingHorizontal: 22,
     flexDirection: 'row',
     alignItems: 'center',
