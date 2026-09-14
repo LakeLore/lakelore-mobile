@@ -23,7 +23,7 @@ import PaywallScreen from './PaywallScreen';
 import { STATE_CONFIGS } from '../types';
 import type { RootStackParamList } from '../navigation';
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
-import { PaperHeader, LakeRow, Chip } from '../lakelore-rn/components';
+import { PaperHeader, Chip } from '../lakelore-rn/components';
 
 interface Turn {
   role: 'user' | 'assistant';
@@ -41,24 +41,6 @@ const STARTERS = [
   'Small lake with big northern pike',
   'Which lakes have the most crappie?',
 ];
-
-function fmtAcres(a?: number | null) {
-  return a != null ? `${Math.round(a).toLocaleString()} ac` : null;
-}
-
-function lakeLocation(l: AskLake): string {
-  return [l.county, fmtAcres(l.acres), l.max_depth_ft != null ? `${l.max_depth_ft} ft` : null,
-    l.survey_year ? `${l.survey_year}` : null].filter(Boolean).join(' · ');
-}
-
-function lakeRight(l: AskLake): { value: string; label: string } {
-  if (l.cpue != null) return { value: String(l.cpue), label: 'Catch Rate' };
-  if (l.avg_weight_lb != null) return { value: `${l.avg_weight_lb}`, label: 'Avg lb' };
-  if (l.avg_length_in != null) return { value: `${l.avg_length_in}`, label: 'Avg in' };
-  if (l.stocked_adults_per_100ac != null) return { value: `${l.stocked_adults_per_100ac}`, label: 'Stocked /100ac' };
-  if (l.rating) return { value: l.rating, label: 'Rating' };
-  return { value: '—', label: '' };
-}
 
 export default function AskScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -142,27 +124,8 @@ export default function AskScreen() {
             );
           })}
         </Text>
-        {(t.lakes?.length ?? 0) > 0 && (
-          <View style={styles.cards}>
-            {t.lakes!.map(l => {
-              const right = lakeRight(l);
-              const stats: [string, string][] = [];
-              if (l.species) stats.push(['Species', l.species]);
-              if (l.gear) stats.push(['Gear', l.gear]);
-              return (
-                <LakeRow
-                  key={l.lake_id}
-                  name={l.lake_name ?? 'Lake'}
-                  location={lakeLocation(l)}
-                  stats={stats}
-                  rightValue={right.value}
-                  rightLabel={right.label}
-                  onPress={() => openLake(l)}
-                />
-              );
-            })}
-          </View>
-        )}
+        {/* Lake cards removed 2026-09-14 (owner: redundant with the
+            inline tappable links). t.lakes still resolves the links. */}
       </View>
     );
   };
@@ -285,11 +248,6 @@ const styles = StyleSheet.create({
     borderLeftWidth: 2,
     borderLeftColor: colors.walleye,
     paddingLeft: space.lg,
-  },
-  cards: {
-    marginTop: space.lg,
-    borderTopWidth: hairline,
-    borderColor: colors.paper3,
   },
   inputRow: {
     flexDirection: 'row',
