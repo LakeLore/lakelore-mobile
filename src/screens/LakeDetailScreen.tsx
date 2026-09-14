@@ -74,6 +74,9 @@ interface CatchRow {
   // Agency forecast rating — on the /lake wire for the ratings-tier states
   // (GA/MO/IL/FL/KY/OK/KS) since 2026-07-17; null/absent elsewhere.
   rating?: string | null; rating_ordinal?: number | null;
+  // Trophy Abundance (schema v8): catch rate of trophy-class fish in the same
+  // unit as cpue; null where the state/species has no memorable-length data.
+  cpue_memorable?: number | null; trophy_derivation?: string | null;
 }
 interface StockRow { stock_year: number; species: string; life_stage: string; quantity: number }
 // adults_per_100ac is null for lakes with no usable acreage (metricsV2) —
@@ -417,12 +420,13 @@ export default function LakeDetailScreen() {
   const [data, setData] = useState<LakeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<'cpue'|'size'|'stocking'>('cpue');
+  const [tab, setTab] = useState<'cpue'|'size'|'trophy'|'stocking'>('cpue');
   const [localSpecies, setLocalSpecies] = useState(initialSpecies);
   const [scaledGear, setScaledGear] = useState<string|null>(null);
   const [selectedStockYear, setSelectedStockYear] = useState<{year: number; row: Record<string,number> | undefined} | null>(null);
   const [selectedCpueYear, setSelectedCpueYear] = useState<{year: number; row: Record<string,number|null>} | null>(null);
   const [selectedSizeYear, setSelectedSizeYear] = useState<{year: number; row: Record<string,number|null>} | null>(null);
+  const [selectedTrophyYear, setSelectedTrophyYear] = useState<{year: number; row: Record<string,number|null>} | null>(null);
   const [cacheDate, setCacheDate] = useState<number | null>(null);
   const [paywallTriggered, setPaywallTriggered] = useState<StateKey | null>(null);
   // True when the paywall came from the preview banner (screen still usable
@@ -573,6 +577,18 @@ export default function LakeDetailScreen() {
     return { sizeChartData: chartData, sizeGearKeys: gearKeys, sizeField: field };
   }, [data, localSpecies]);
   const sizeUnit = sizeField === 'average_weight' ? 'lb' : 'in';
+
+  // Trophy Abundance tab (2026-09-14): trophy-class catch rate by year, per
+  // gear — same chart as Catch, thinner by nature. Tab hidden when no catch
+  // row carries cpue_memorable (non-trophy states/species).
+  const { trophyChartData, trophyGearKeys, hasTrophy } = useMemo(() => {
+    if (!data) return { trophyChartData: [], trophyGearKeys: [], hasTrophy: false };
+    const hasAny = data.catches.some(c => c.cpue_memorable != null);
+    if (!hasAny) return { trophyChartData: [], trophyGearKeys: [], hasTrophy: false };
+    const filtered = data.catches.filter(c => !localSpecies || c.species === localSpecies);
+    const { chartData, gearKeys } = buildYearGearSeries(filtered, c => c.cpue_memorable ?? null);
+    return { trophyChartData: chartData, trophyGearKeys: gearKeys, hasTrophy: true };
+  }, [data, localSpecies]);
 
   // Latest agency forecast rating for the selected species (ratings-tier
   // states). This is those states' HEADLINE metric — before 2026-07-17 it
@@ -970,9 +986,14 @@ export default function LakeDetailScreen() {
             the tab count (D9 — the old two-tab layout switched to 'Catch Over
             Time'/'Stocking History', same concepts under different names). */}
         <View style={styles.tabs}>
-          {(sizeField ? (['cpue','size','stocking'] as const) : (['cpue','stocking'] as const)).map(t => {
+          {([
+            'cpue',
+            ...(sizeField ? ['size' as const] : []),
+            ...(hasTrophy ? ['trophy' as const] : []),
+            'stocking',
+          ] as Array<'cpue'|'size'|'trophy'|'stocking'>).map(t => {
             const on = tab === t;
-            const label = t === 'cpue' ? 'Catch' : t === 'size' ? 'Avg Size' : 'Stocking';
+            const label = t === 'cpue' ? 'Catch' : t === 'size' ? 'Avg Size' : t === 'trophy' ? 'Trophy' : 'Stocking';
             return (
               <Pressable key={t} style={[styles.tab, on && styles.tabActive]} onPress={() => setTab(t)}>
                 <Text numberOfLines={1} style={[
@@ -1113,6 +1134,69 @@ export default function LakeDetailScreen() {
           ) : (
             <View style={styles.emptyChart}>
               <Text style={[text.editorialS, { color: colors.inkSoft }]}>No size data for {speciesName}</Text>
+            </View>
+          )
+        )}
+
+        {/* Trophy Abundance tab — trophy-class catch rate over time, same
+            line chart and gear legend as Catch (2026-09-14). */}
+        {tab === 'trophy' && (
+          trophyChartData.length > 0 ? (
+            <View style={styles.chartSection}
+              accessible
+              accessibilityLabel={`Trophy catch-rate chart for ${speciesName}: ${trophyGearKeys.length} gear series across ${trophyChartData.length} survey ${trophyChartData.length === 1 ? 'year' : 'years'}`}>
+              <Text style={[text.bodyS, { color: colors.inkSoft, marginBottom: 8 }]}>
+                Catch rate of trophy-class fish only — at or above the species’ trophy length (e.g. a 25″ walleye). Same units as the Catch tab. Each line = one gear type.
+              </Text>
+              <CpueChart data={trophyChartData} seriesKeys={trophyGearKeys} scaledGear={scaledGear} width={chartWidth}
+                yLabel="Trophy Rate"
+                onDotPress={(year, row) => setSelectedTrophyYear(prev => prev?.year === year ? null : { year, row })} />
+              <Text style={[text.bodyS, { color: colors.inkSoft, textAlign: 'center', marginTop: 4 }]}>
+                Tap a dot to see year detail · tap a gear to rescale Y axis
+              </Text>
+              {selectedTrophyYear && (
+                <View style={styles.yearPopup}>
+                  <View style={styles.yearPopupHeader}>
+                    <Text style={[text.dataL, { color: colors.ink }]}>{selectedTrophyYear.year}</Text>
+                    <Pressable
+                      onPress={() => setSelectedTrophyYear(null)}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel="Close year detail">
+                      <Text style={[text.labelL, { color: colors.inkSoft }]}>✕</Text>
+                    </Pressable>
+                  </View>
+                  {trophyGearKeys.map((g, i) => {
+                    const val = selectedTrophyYear.row[g];
+                    if (val == null) return null;
+                    return (
+                      <View key={g} style={styles.popupRow}>
+                        <View style={[styles.popupDot, { backgroundColor: LINE_COLORS[i % LINE_COLORS.length] }]} />
+                        <Text style={[text.bodyM, { flex: 1, color: colors.ink2 }]} numberOfLines={1}>{g}</Text>
+                        <Text style={[text.dataM, { color: colors.ink }]}>{(val as number).toFixed(2)}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+              <View style={styles.gearLegend}>
+                {trophyGearKeys.map((g, i) => {
+                  const sel = scaledGear === g;
+                  return (
+                    <Pressable key={g}
+                      style={[styles.gearChip, { borderColor: sel ? colors.ink : colors.paper3,
+                        backgroundColor: sel ? colors.paper2 : colors.paper }]}
+                      onPress={() => { setScaledGear(sel ? null : g); setSelectedTrophyYear(null); }}>
+                      <View style={[styles.gearDot, { backgroundColor: LINE_COLORS[i%LINE_COLORS.length] }]} />
+                      <Text style={[text.labelM, { color: colors.ink }]} numberOfLines={1}>{g}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ) : (
+            <View style={styles.emptyChart}>
+              <Text style={[text.editorialS, { color: colors.inkSoft }]}>No trophy-class data for {speciesName}</Text>
             </View>
           )
         )}
