@@ -49,6 +49,9 @@ export function AdvancedFiltersModal({
   // names like the species dropdown. Backed by the public per-state lakes
   // index (names only), fetched once per state and filtered locally.
   const [lakeIndex, setLakeIndex] = useState<LakeIndexEntry[] | null>(null);
+  // True while a range-slider thumb is held — the ScrollView must not scroll
+  // (or steal the gesture) mid-drag.
+  const [sliderActive, setSliderActive] = useState(false);
   const [pickedName, setPickedName] = useState('');
   useEffect(() => {
     if (!visible || lakeIndex) return;
@@ -96,6 +99,7 @@ export function AdvancedFiltersModal({
           contentContainerStyle={{ paddingBottom: space.xxxl }}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
+          scrollEnabled={!sliderActive}
           automaticallyAdjustKeyboardInsets>
           {/* Lake name + Latest Only moved here from the main screen
               (owner request 2026-09-12) — the main column is now Species /
@@ -179,26 +183,26 @@ export function AdvancedFiltersModal({
             />
           ) : null}
           {(cfg?.hasCpue ?? true) && (
-            <RangeSlider label="Catch Rate" min={0} max={100} step={1}
+            <RangeSlider onDragging={setSliderActive} label="Catch Rate" min={0} max={100} step={1}
               minVal={filters.minCpue} maxVal={filters.maxCpue}
               onMinChange={v => onChange({ minCpue: v })} onMaxChange={v => onChange({ maxCpue: v })} />
           )}
-          <RangeSlider label="Survey Year"
+          <RangeSlider onDragging={setSliderActive} label="Survey Year"
             min={options?.yearRange?.min ?? 1980} max={options?.yearRange?.max ?? new Date().getFullYear()} step={1}
             minVal={filters.minYear} maxVal={filters.maxYear}
             onMinChange={v => onChange({ minYear: v })} onMaxChange={v => onChange({ maxYear: v })} />
-          <RangeSlider label="Lake Size" min={0} max={5000} step={25} unit="ac"
+          <RangeSlider onDragging={setSliderActive} label="Lake Size" min={0} max={5000} step={25} unit="ac"
             minVal={filters.minAcres} maxVal={filters.maxAcres}
             onMinChange={v => onChange({ minAcres: v })} onMaxChange={v => onChange({ maxAcres: v })} />
           {(cfg?.hasStocking ?? true) && (
-            <RangeSlider label="Stck Adults / 100AC" min={0} max={200} step={5}
+            <RangeSlider onDragging={setSliderActive} label="Stck Adults / 100AC" min={0} max={200} step={5}
               minVal={filters.minStocked} maxVal={filters.maxStocked}
               onMinChange={v => onChange({ minStocked: v })} onMaxChange={v => onChange({ maxStocked: v })} />
           )}
           {/* Avg Length range: shown wherever the state's data carries
               average_length (MN reports weight instead — see below). */}
           {state !== 'mn' && (cfg?.hasLength ?? true) && (
-            <RangeSlider label="Avg Length" min={0} max={40} step={0.5} unit="in"
+            <RangeSlider onDragging={setSliderActive} label="Avg Length" min={0} max={40} step={0.5} unit="in"
               minVal={filters.minLength} maxVal={filters.maxLength}
               onMinChange={v => onChange({ minLength: v })} onMaxChange={v => onChange({ maxLength: v })} />
           )}
@@ -206,16 +210,16 @@ export function AdvancedFiltersModal({
               SD uses sample_n (a different metric) and NE doesn't have a
               total_catch column at all. */}
           {(state === 'mn' || (cfg?.hasCatch ?? false)) && (
-            <RangeSlider label="Total Catch" min={0} max={1000} step={10}
+            <RangeSlider onDragging={setSliderActive} label="Total Catch" min={0} max={1000} step={10}
               minVal={filters.minCatch} maxVal={filters.maxCatch}
               onMinChange={v => onChange({ minCatch: v })} onMaxChange={v => onChange({ maxCatch: v })} />
           )}
           {state === 'mn' && (
             <>
-              <RangeSlider label="Avg Weight" min={0} max={15} step={0.25} unit="lb"
+              <RangeSlider onDragging={setSliderActive} label="Avg Weight" min={0} max={15} step={0.25} unit="lb"
                 minVal={filters.minWeight} maxVal={filters.maxWeight}
                 onMinChange={v => onChange({ minWeight: v })} onMaxChange={v => onChange({ maxWeight: v })} />
-              <RangeSlider label="# Gear Sets" min={0} max={25} step={1}
+              <RangeSlider onDragging={setSliderActive} label="# Gear Sets" min={0} max={25} step={1}
                 minVal={filters.minGearCount} maxVal={filters.maxGearCount}
                 onMinChange={v => onChange({ minGearCount: v })} onMaxChange={v => onChange({ maxGearCount: v })} />
             </>

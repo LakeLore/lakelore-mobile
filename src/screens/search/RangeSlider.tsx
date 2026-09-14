@@ -27,6 +27,10 @@ type Props = {
   onMaxChange: (v: string) => void;
   /** Optional unit suffix for the value readout ("ac", "in", "lb"). */
   unit?: string;
+  /** Fires true on thumb grab, false on release — the parent ScrollView
+   *  disables scrolling while a drag is live so it can't steal the gesture
+   *  mid-drag (the "sticky slider" bug, owner 2026-09-14). */
+  onDragging?: (active: boolean) => void;
 };
 
 const THUMB = 24;      // visible dot
@@ -35,7 +39,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), h
 const fmtNum = (v: number) => (Math.abs(v % 1) < 1e-9 ? String(Math.round(v)) : String(+v.toFixed(2)));
 
 export function RangeSlider({
-  label, min, max, step, minVal, maxVal, onMinChange, onMaxChange, unit,
+  label, min, max, step, minVal, maxVal, onMinChange, onMaxChange, unit, onDragging,
 }: Props) {
   const [width, setWidth] = useState(0);
 
@@ -51,30 +55,44 @@ export function RangeSlider({
   const hiRef = useRef(hi); hiRef.current = hi;
   const widthRef = useRef(0); widthRef.current = width;
   const grabRef = useRef(0);
+  const onDraggingRef = useRef(onDragging); onDraggingRef.current = onDragging;
 
   const usable = () => Math.max(widthRef.current - THUMB, 1);
   const toX = (v: number) => ((v - min) / (max - min)) * usable();
   const fromX = (x: number) => min + (x / usable()) * (max - min);
   const snap = (v: number) => clamp(Math.round(v / step) * step, min, max);
 
+  // Once a thumb owns the gesture it must KEEP it until the finger lifts:
+  // the enclosing ScrollView asks to take over as soon as the drag wanders
+  // (termination request) — the default "yes" is what made drags stop after
+  // a short distance. Refuse it, block the native responder (Android), and
+  // tell the parent to freeze scrolling for the duration.
   const panLo = useRef(PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: () => { grabRef.current = loRef.current; },
+    onPanResponderTerminationRequest: () => false,
+    onShouldBlockNativeResponder: () => true,
+    onPanResponderGrant: () => { grabRef.current = loRef.current; onDraggingRef.current?.(true); },
     onPanResponderMove: (_e, g) => {
       const v = snap(clamp(fromX(toX(grabRef.current) + g.dx), min, hiRef.current));
       onMinChange(v <= min ? '' : fmtNum(v));
     },
+    onPanResponderRelease: () => { onDraggingRef.current?.(false); },
+    onPanResponderTerminate: () => { onDraggingRef.current?.(false); },
   })).current;
 
   const panHi = useRef(PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: () => { grabRef.current = hiRef.current; },
+    onPanResponderTerminationRequest: () => false,
+    onShouldBlockNativeResponder: () => true,
+    onPanResponderGrant: () => { grabRef.current = hiRef.current; onDraggingRef.current?.(true); },
     onPanResponderMove: (_e, g) => {
       const v = snap(clamp(fromX(toX(grabRef.current) + g.dx), loRef.current, max));
       onMaxChange(v >= max ? '' : fmtNum(v));
     },
+    onPanResponderRelease: () => { onDraggingRef.current?.(false); },
+    onPanResponderTerminate: () => { onDraggingRef.current?.(false); },
   })).current;
 
   const u = unit ? ` ${unit}` : '';
