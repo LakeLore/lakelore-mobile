@@ -497,43 +497,6 @@ export default function LakeDetailScreen() {
 
   useEffect(() => { loadLake(); }, [loadLake]);
 
-  // Shareable branded lake card (IMPROVEMENT_PLAN P3.3): captures the
-  // detail content (charts + the lakeloreapp.com footer line) as a PNG and
-  // opens the share sheet. Native modules (view-shot / expo-sharing) are
-  // REQUIRED LAZILY: OTA bundles run on older binaries that don't ship
-  // them — a top-level import would crash those at launch.
-  const shareRef = React.useRef<View>(null);
-  const shareLakeCard = async () => {
-    // Native-availability probe BEFORE any require, via a pure-JS property
-    // read that cannot enter the TurboModule lookup path: on a binary
-    // WITHOUT these native modules (build ≤ 20), merely require()-ing
-    // react-native-view-shot 4.x crashes the app — its spec calls
-    // TurboModuleRegistry.getEnforcing at MODULE SCOPE, and under the
-    // bridgeless runtime that failure aborts natively, below the reach of
-    // this function's try/catch (2026-07-17 crash report, MN Lake Benton).
-    // ExpoSharing shipped in the same commit/build as RNViewShot, so its
-    // presence in the expo-modules host object implies both exist.
-    const expoModules = (globalThis as unknown as { expo?: { modules?: Record<string, unknown> } }).expo?.modules;
-    if (!expoModules?.ExpoSharing) {
-      toast('Sharing arrives with the next app build — this version doesn’t include it yet.');
-      return;
-    }
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { captureRef } = require('react-native-view-shot');
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const Sharing = require('expo-sharing');
-      if (!(await Sharing.isAvailableAsync())) {
-        toast('Sharing is not available on this device.');
-        return;
-      }
-      const uri = await captureRef(shareRef, { format: 'png', quality: 1 });
-      await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share lake card' });
-    } catch {
-      toast('Sharing needs the latest app version from the store.');
-    }
-  };
-
   const lakeSpecies = useMemo(() => {
     if (!data) return [];
     const set = new Set([
@@ -720,7 +683,10 @@ export default function LakeDetailScreen() {
           : state.toUpperCase()}
         onBack={() => navigation.goBack()}
         backLabel="←"
-        right={lake.max_depth_feet ? `${Math.round(lake.max_depth_feet)} FT` : undefined}
+        right={[
+          lake.area_acres ? `${Math.round(lake.area_acres).toLocaleString()} AC` : null,
+          lake.max_depth_feet ? `${Math.round(lake.max_depth_feet)} FT` : null,
+        ].filter(Boolean).join(' · ') || undefined}
       />
 
       {/* Preview banner — identity redacted, everything else live. */}
@@ -754,30 +720,32 @@ export default function LakeDetailScreen() {
       )}
 
       <ScrollView style={{ backgroundColor: colors.paper }}>
-       {/* collapsable=false: Android flattens plain Views, which breaks
-           view-shot's node lookup for the share card. */}
-       <View ref={shareRef} collapsable={false} style={{ backgroundColor: colors.paper }}>
-        {/* Share-card title: the app's PaperHeader (which shows the lake name)
-            sits OUTSIDE shareRef, so the captured image had no name (2026-07-21
-            bug). Give the card its own title. Share is gated to !isPreview, so
-            lake.name is always the real name here. */}
-        <View style={styles.shareTitle}>
-          <Text style={[text.labelS, { color: colors.inkSoft }]}>
-            LAKELORE · {state.toUpperCase()}
-          </Text>
-          <Text style={[text.displayL, { color: colors.ink, marginTop: 2 }]} numberOfLines={2}>
-            {lake.name ?? state.toUpperCase()}
-          </Text>
+       <View style={{ backgroundColor: colors.paper }}>
+        {/* Prominent actions (owner 2026-09-14): the state survey link and
+            Report Data Issue as side-by-side buttons right under the header.
+            Lake identity lives ONLY in the header now — the duplicate
+            LakeLore/name/county/acres block is gone (with Share Lake Card). */}
+        <View style={styles.actionRow}>
+          {state === 'mn' && !isPreview && (
+            <Pressable
+              onPress={() => Linking.openURL(MN_LAKEFINDER_URL(lake.id))}
+              accessibilityRole="link"
+              accessibilityLabel="Take me to the DNR survey"
+              accessibilityHint="Opens MN DNR LakeFinder in browser"
+              style={({ pressed }) => [styles.actionBtn, { opacity: pressed ? 0.85 : 1 }]}>
+              <Text style={[text.labelL, { color: colors.paper }]}>Take me to the DNR survey.</Text>
+            </Pressable>
+          )}
+          <Pressable
+            onPress={() => { setFeedbackText(''); setFeedbackError(null); setFeedbackOpen(true); }}
+            accessibilityRole="button"
+            accessibilityLabel="Report data issue"
+            style={({ pressed }) => [styles.actionBtn, styles.actionBtnAlt, { opacity: pressed ? 0.85 : 1 }]}>
+            <Text style={[text.labelL, { color: colors.ink }]}>Report Data Issue.</Text>
+          </Pressable>
         </View>
-        {/* Lake meta + source links */}
+        {/* Remaining source links (non-MN states) */}
         <View style={styles.metaBar}>
-          <Text style={[text.labelM, { color: colors.inkSoft }]}>
-            {[
-              lake.county ? `${lake.county.toUpperCase()} CO` : null,
-              lake.area_acres ? `${Math.round(lake.area_acres).toLocaleString()} AC` : null,
-              lake.max_depth_feet ? `${Math.round(lake.max_depth_feet)} FT` : null,
-            ].filter(Boolean).join(' · ')}
-          </Text>
           <View style={styles.linkRow}>
             {/* Source links are hidden in preview — they resolve to agency
                 pages/PDFs that name the lake (and preview ids are hashed, so
@@ -799,15 +767,6 @@ export default function LakeDetailScreen() {
                 accessibilityLabel="Open SD GFP stocking report"
                 accessibilityHint="Opens in browser">
                 <Text style={[text.labelM, { color: colors.walleye2 }]}>SD GFP Stocking Report ↗</Text>
-              </Pressable>
-            ) : null}
-            {state === 'mn' ? (
-              <Pressable
-                onPress={() => Linking.openURL(MN_LAKEFINDER_URL(lake.id))}
-                accessibilityRole="link"
-                accessibilityLabel="Open MN DNR LakeFinder"
-                accessibilityHint="Opens in browser">
-                <Text style={[text.labelM, { color: colors.walleye2 }]}>MN DNR LakeFinder ↗</Text>
               </Pressable>
             ) : null}
             {state === 'ia' && tab !== 'stocking' && (
@@ -932,20 +891,6 @@ export default function LakeDetailScreen() {
               </Pressable>
             )}
             </>}
-            {!isPreview && (
-              <Pressable
-                onPress={shareLakeCard}
-                accessibilityRole="button"
-                accessibilityLabel="Share this lake as an image">
-                <Text style={[text.labelM, { color: colors.walleye2 }]}>Share Lake Card</Text>
-              </Pressable>
-            )}
-            <Pressable
-              onPress={() => { setFeedbackText(''); setFeedbackError(null); setFeedbackOpen(true); }}
-              accessibilityRole="button"
-              accessibilityLabel="Report data issue">
-              <Text style={[text.labelM, { color: colors.inkSoft }]}>Report data issue</Text>
-            </Pressable>
           </View>
         </View>
 
@@ -1459,11 +1404,23 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
 
-  shareTitle: {
-    paddingHorizontal: space.xl,
-    paddingTop: space.lg,
-    paddingBottom: space.sm,
+  actionRow: {
+    flexDirection: 'row',
+    gap: space.md,
+    marginHorizontal: space.xl,
+    marginTop: space.lg,
+  },
+  actionBtn: {
+    flex: 1,
+    backgroundColor: colors.ink,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionBtnAlt: {
     backgroundColor: colors.paper,
+    borderWidth: hairline,
+    borderColor: colors.ink,
   },
   metaBar: {
     paddingHorizontal: space.xl,
