@@ -627,6 +627,37 @@ export default function LakeDetailScreen() {
     );
     return pick?.report_id ?? null;
   }, [data?.surveys, speciesSurveyIds]);
+
+  // One primary survey link per state (owner 2026-09-14: the prominent
+  // "Take me to the … survey." button, generalized from MN). Folds the old
+  // per-state link-row branches into a single URL: bespoke states first,
+  // then any survey with a real source_url, then the agency homepage.
+  const surveyUrl = useMemo((): string | null => {
+    if (!data) return null;
+    const id = data.lake.id;
+    if (state === 'mn') return MN_LAKEFINDER_URL(id);
+    if (state === 'sd') return latestReportId ? SD_REPORT_URL(latestReportId) : null;
+    if (state === 'ia') return IA_PBI_SURVEY_URL;
+    if (state === 'nd') return ND_SURVEY_URL(id);
+    if (state === 'ne' || state === 'wi' || state === 'mi') {
+      const pick = (data.surveys ?? []).find(sv =>
+        sv.source_pdf && (!speciesSurveyIds || speciesSurveyIds.has(String(sv.id))))
+        ?? (data.surveys ?? []).find(sv => sv.source_pdf);
+      if (pick?.source_pdf) {
+        if (state === 'mi') return `https://www2.dnr.state.mi.us/publications/pdfs/DNRFishLibrary/StatusoftheFisheryResourceReports/${pick.source_pdf}`;
+        if (pick.source_url) return pick.source_url;
+      }
+      return GENERATED_STATES[state].agencyUrl || null;
+    }
+    const linkable = (sv: { source_url?: string | null }) =>
+      !!sv.source_url && /^https?:/i.test(sv.source_url);
+    const pick = (data.surveys ?? []).find(sv =>
+      linkable(sv) && (!speciesSurveyIds || speciesSurveyIds.has(String(sv.id))))
+      ?? (data.surveys ?? []).find(linkable);
+    if (pick?.source_url) return pick.source_url;
+    return GENERATED_STATES[state].agencyUrl || null;
+  }, [data, state, latestReportId, speciesSurveyIds]);
+
   const chartWidth = width - 32;
 
   const speciesName = localSpecies
@@ -721,178 +752,34 @@ export default function LakeDetailScreen() {
 
       <ScrollView style={{ backgroundColor: colors.paper }}>
        <View style={{ backgroundColor: colors.paper }}>
-        {/* Prominent actions (owner 2026-09-14): the state survey link and
-            Report Data Issue as side-by-side buttons right under the header.
-            Lake identity lives ONLY in the header now — the duplicate
-            LakeLore/name/county/acres block is gone (with Share Lake Card). */}
-        <View style={styles.actionRow}>
-          {state === 'mn' && !isPreview && (
-            <Pressable
-              onPress={() => Linking.openURL(MN_LAKEFINDER_URL(lake.id))}
-              accessibilityRole="link"
-              accessibilityLabel="Take me to the DNR survey"
-              accessibilityHint="Opens MN DNR LakeFinder in browser"
-              style={({ pressed }) => [styles.actionBtn, { opacity: pressed ? 0.85 : 1 }]}>
-              <Text style={[text.labelL, { color: colors.paper }]}>Take me to the DNR survey.</Text>
-            </Pressable>
-          )}
-          <Pressable
-            onPress={() => { setFeedbackText(''); setFeedbackError(null); setFeedbackOpen(true); }}
-            accessibilityRole="button"
-            accessibilityLabel="Report data issue"
-            style={({ pressed }) => [styles.actionBtn, styles.actionBtnAlt, { opacity: pressed ? 0.85 : 1 }]}>
-            <Text style={[text.labelL, { color: colors.ink }]}>Report Data Issue.</Text>
-          </Pressable>
-        </View>
-        {/* Remaining source links (non-MN states) */}
-        <View style={styles.metaBar}>
-          <View style={styles.linkRow}>
-            {/* Source links are hidden in preview — they resolve to agency
-                pages/PDFs that name the lake (and preview ids are hashed, so
-                id-based URLs wouldn't work anyway). */}
-            {!isPreview && <>
-            {state === 'sd' && tab !== 'stocking' && latestReportId ? (
+        {/* Prominent actions (owner 2026-09-14, generalized to all states):
+            the state's survey link + Report Data Issue, side by side under
+            the header. Hidden ENTIRELY in preview — the survey link names
+            the lake, and report-an-issue on a redacted lake is meaningless.
+            The old small link row (incl. per-tab stocking links) is gone. */}
+        {!isPreview && (
+          <View style={styles.actionRow}>
+            {surveyUrl != null && (
               <Pressable
-                onPress={() => Linking.openURL(SD_REPORT_URL(latestReportId))}
+                onPress={() => Linking.openURL(surveyUrl)}
                 accessibilityRole="link"
-                accessibilityLabel="Open SD GFP report"
-                accessibilityHint="Opens in browser">
-                <Text style={[text.labelM, { color: colors.walleye2 }]}>SD GFP Report ↗</Text>
-              </Pressable>
-            ) : null}
-            {state === 'sd' && tab === 'stocking' && (data?.latest_stocking_report_id ?? latestReportId) ? (
-              <Pressable
-                onPress={() => Linking.openURL(SD_REPORT_URL((data?.latest_stocking_report_id ?? latestReportId) as number))}
-                accessibilityRole="link"
-                accessibilityLabel="Open SD GFP stocking report"
-                accessibilityHint="Opens in browser">
-                <Text style={[text.labelM, { color: colors.walleye2 }]}>SD GFP Stocking Report ↗</Text>
-              </Pressable>
-            ) : null}
-            {state === 'ia' && tab !== 'stocking' && (
-              <Pressable
-                onPress={() => Linking.openURL(IA_PBI_SURVEY_URL)}
-                accessibilityRole="link"
-                accessibilityLabel="Open Iowa DNR Survey Visit Summary"
-                accessibilityHint="Opens in browser">
-                <Text style={[text.labelM, { color: colors.walleye2 }]}>Iowa DNR Survey Visit Summary ↗</Text>
-              </Pressable>
-            )}
-            {state === 'ia' && tab === 'stocking' && (
-              <Pressable
-                onPress={() => Linking.openURL(IA_LAKE_DETAILS_URL(lake.id))}
-                accessibilityRole="link"
-                accessibilityLabel="Open Iowa DNR lake stocking record"
-                accessibilityHint="Opens in browser">
-                <Text style={[text.labelM, { color: colors.walleye2 }]}>Iowa DNR Lake Stocking Record ↗</Text>
-              </Pressable>
-            )}
-            {/* NE/MI/WI — CPUE tab (and MI Stocking too): per-lake survey PDF.
-                Most recent survey with a source_pdf, narrowed by the currently-
-                selected species when one is picked. URL per state:
-                  NE: source_url captured directly during scrape (Cloudflare page)
-                  WI: source_url captured from WDNR's reports index
-                  MI: stable DNR directory listing — built from the filename */}
-            {(state === 'ne' || state === 'mi' || state === 'wi') &&
-              (tab !== 'stocking' || state === 'mi') && (() => {
-              const pick = (data?.surveys ?? []).find(s =>
-                s.source_pdf && (!speciesSurveyIds || speciesSurveyIds.has(String(s.id))),
-              );
-              if (!pick?.source_pdf) return null;
-              const filename = pick.source_pdf;
-              let url: string | null = null;
-              if (state === 'ne' || state === 'wi') url = pick.source_url ?? null;
-              else if (state === 'mi') url = `https://www2.dnr.state.mi.us/publications/pdfs/DNRFishLibrary/StatusoftheFisheryResourceReports/${filename}`;
-              if (!url) return null;
-              const label = filename.replace(/^Reports_/i, '').replace(/[-_]/g, ' ').replace(/\.pdf$/i, '').replace(/\b(20\d\d)\b/, '($1)').trim();
-              return (
-                <Pressable
-                  onPress={() => Linking.openURL(url!)}
-                  accessibilityRole="link"
-                  accessibilityLabel={`Open ${label}`}
-                  accessibilityHint="Opens in browser">
-                  <Text style={[text.labelM, { color: colors.walleye2 }]}>{label} ↗</Text>
-                </Pressable>
-              );
-            })()}
-            {state === 'ne' && tab === 'stocking' && (
-              <Pressable
-                onPress={() => Linking.openURL(NE_STOCKING_URL)}
-                accessibilityRole="link"
-                accessibilityLabel="Open NE Fish Stocking Database"
-                accessibilityHint="Opens in browser">
-                <Text style={[text.labelM, { color: colors.walleye2 }]}>NE Fish Stocking Database ↗</Text>
-              </Pressable>
-            )}
-            {state === 'wi' && tab === 'stocking' && (
-              <Pressable
-                onPress={() => Linking.openURL(WI_STOCKING_URL)}
-                accessibilityRole="link"
-                accessibilityLabel="Open WI Stocking Records Search"
-                accessibilityHint="Opens in browser">
-                <Text style={[text.labelM, { color: colors.walleye2 }]}>WI Stocking Records Search ↗</Text>
-              </Pressable>
-            )}
-            {state === 'nd' && tab !== 'stocking' && (
-              <Pressable
-                onPress={() => Linking.openURL(ND_SURVEY_URL(lake.id))}
-                accessibilityRole="link"
-                accessibilityLabel="Open ND survey report"
-                accessibilityHint="Opens in browser">
-                <Text style={[text.labelM, { color: colors.walleye2 }]}>ND Survey Report ↗</Text>
-              </Pressable>
-            )}
-            {state === 'nd' && tab === 'stocking' && (
-              <Pressable
-                onPress={() => Linking.openURL(ND_STOCKING_URL(lake.id))}
-                accessibilityRole="link"
-                accessibilityLabel="Open ND stocking report"
-                accessibilityHint="Opens in browser">
-                <Text style={[text.labelM, { color: colors.walleye2 }]}>ND Stocking Report ↗</Text>
-              </Pressable>
-            )}
-            {/* Non-legacy states: deep link to THIS lake's source wherever the
-                pipeline captured one (per-lake agency pages, survey-summary /
-                management-plan PDFs, forecast documents) — most recent survey
-                with a source_url, narrowed by the selected species like the
-                NE/WI/MI block above. Falls back to the agency homepage. */}
-            {!BESPOKE_SOURCE_LINK_STATES.has(state) && (() => {
-              // Guard on http(s) — some states' source_url carries a
-              // provenance label (e.g. OR "myodfw stocked-waters KML"), not
-              // a link.
-              const linkable = (s: { source_url?: string | null }) =>
-                !!s.source_url && /^https?:/i.test(s.source_url);
-              const pick = (data?.surveys ?? []).find(s =>
-                linkable(s) && (!speciesSurveyIds || speciesSurveyIds.has(String(s.id))),
-              ) ?? (data?.surveys ?? []).find(linkable);
-              if (!pick?.source_url) return null;
-              const isPdf = /\.pdf(\?|$)/i.test(pick.source_url);
-              return (
-                <Pressable
-                  onPress={() => Linking.openURL(pick.source_url!)}
-                  accessibilityRole="link"
-                  accessibilityLabel={`Open ${GENERATED_STATES[state].agency} source for this lake`}
-                  accessibilityHint="Opens in browser">
-                  <Text style={[text.labelM, { color: colors.walleye2 }]}>
-                    {isPdf ? 'Survey Report ↗' : 'Agency Lake Page ↗'}
-                  </Text>
-                </Pressable>
-              );
-            })()}
-            {!BESPOKE_SOURCE_LINK_STATES.has(state) && !!GENERATED_STATES[state].agencyUrl && (
-              <Pressable
-                onPress={() => Linking.openURL(GENERATED_STATES[state].agencyUrl)}
-                accessibilityRole="link"
-                accessibilityLabel={`Open ${GENERATED_STATES[state].agency} website`}
-                accessibilityHint="Opens in browser">
-                <Text style={[text.labelM, { color: colors.walleye2 }]}>
-                  {GENERATED_STATES[state].agency} ↗
+                accessibilityLabel={`Take me to the ${GENERATED_STATES[state].agency} survey`}
+                accessibilityHint="Opens in browser"
+                style={({ pressed }) => [styles.actionBtn, { opacity: pressed ? 0.85 : 1 }]}>
+                <Text style={[text.labelL, { color: colors.paper }]} numberOfLines={1}>
+                  Take me to the {GENERATED_STATES[state].agency} survey.
                 </Text>
               </Pressable>
             )}
-            </>}
+            <Pressable
+              onPress={() => { setFeedbackText(''); setFeedbackError(null); setFeedbackOpen(true); }}
+              accessibilityRole="button"
+              accessibilityLabel="Report data issue"
+              style={({ pressed }) => [styles.actionBtn, styles.actionBtnAlt, { opacity: pressed ? 0.85 : 1 }]}>
+              <Text style={[text.labelL, { color: colors.ink }]}>Report Data Issue.</Text>
+            </Pressable>
           </View>
-        </View>
+        )}
 
         {/* Species selector */}
         {lakeSpecies.length > 1 && (
