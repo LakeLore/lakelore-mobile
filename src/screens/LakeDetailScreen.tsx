@@ -416,6 +416,19 @@ export default function LakeDetailScreen() {
   const navigation = useNavigation();
   const { lakeId, species: initialSpecies, state } = route.params;
   const { width } = useWindowDimensions();
+  // Center the active species chip in the bar (owner 2026-09-15): arriving
+  // from a results row deep in the species list used to land the bar at the
+  // far left with the selected chip off-screen. Chip positions are captured
+  // per-species via onLayout; centering runs on mount (unanimated) and on
+  // every species tap (animated).
+  const speciesBarRef = React.useRef<ScrollView>(null);
+  const chipLayouts = React.useRef<Record<string, { x: number; w: number }>>({});
+  const centerSpeciesChip = React.useCallback((sp: string | null, animated: boolean) => {
+    if (!sp) return;
+    const l = chipLayouts.current[sp];
+    if (!l) return;
+    speciesBarRef.current?.scrollTo({ x: Math.max(0, l.x + l.w / 2 - width / 2), animated });
+  }, [width]);
 
   const [data, setData] = useState<LakeData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -788,15 +801,24 @@ export default function LakeDetailScreen() {
         {/* Species selector */}
         {lakeSpecies.length > 1 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false}
+            ref={speciesBarRef}
             style={styles.speciesBar} contentContainerStyle={styles.speciesBarContent}>
             {lakeSpecies.map(sp => {
               const name = speciesDisplayName(sp, state);
               const active = localSpecies === sp;
               return (
-                <Chip key={sp} active={active}
-                  onPress={() => { setLocalSpecies(sp); setScaledGear(null); setSelectedStockYear(null); setSelectedCpueYear(null); setSelectedSizeYear(null); }}>
-                  {name}
-                </Chip>
+                <View
+                  key={sp}
+                  onLayout={e => {
+                    chipLayouts.current[sp] = { x: e.nativeEvent.layout.x, w: e.nativeEvent.layout.width };
+                    // First layout of the chip we arrived on — snap it centered.
+                    if (active) centerSpeciesChip(sp, false);
+                  }}>
+                  <Chip active={active}
+                    onPress={() => { setLocalSpecies(sp); setScaledGear(null); setSelectedStockYear(null); setSelectedCpueYear(null); setSelectedSizeYear(null); centerSpeciesChip(sp, true); }}>
+                    {name}
+                  </Chip>
+                </View>
               );
             })}
           </ScrollView>
