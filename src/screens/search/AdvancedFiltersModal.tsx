@@ -57,6 +57,10 @@ export function AdvancedFiltersModal({
   // (or steal the gesture) mid-drag.
   const [sliderActive, setSliderActive] = useState(false);
   const [pickedName, setPickedName] = useState('');
+  // The modal never unmounts across a state switch — drop the previous
+  // state's index or suggestions would be the wrong state's lakes
+  // (bug-hunt P1-3).
+  useEffect(() => { setLakeIndex(null); setPickedName(''); }, [state]);
   useEffect(() => {
     if (!visible || lakeIndex) return;
     let alive = true;

@@ -815,7 +815,7 @@ export default function LakeDetailScreen() {
                     if (active) centerSpeciesChip(sp, false);
                   }}>
                   <Chip active={active}
-                    onPress={() => { setLocalSpecies(sp); setScaledGear(null); setSelectedStockYear(null); setSelectedCpueYear(null); setSelectedSizeYear(null); centerSpeciesChip(sp, true); }}>
+                    onPress={() => { setLocalSpecies(sp); setScaledGear(null); setSelectedStockYear(null); setSelectedCpueYear(null); setSelectedSizeYear(null); setSelectedTrophyYear(null); centerSpeciesChip(sp, true); }}>
                     {name}
                   </Chip>
                 </View>
@@ -853,7 +853,7 @@ export default function LakeDetailScreen() {
             const on = tab === t;
             const label = t === 'cpue' ? 'Catch' : t === 'size' ? 'Avg Size' : t === 'trophy' ? 'Trophy' : 'Stocking';
             return (
-              <Pressable key={t} style={[styles.tab, on && styles.tabActive]} onPress={() => setTab(t)}>
+              <Pressable key={t} style={[styles.tab, on && styles.tabActive]} onPress={() => { if (t !== tab) setScaledGear(null); setTab(t); }}>
                 <Text numberOfLines={1} style={[
                   text.labelL,
                   { color: on ? colors.ink : colors.inkSoft, fontFamily: on ? fonts.monoSemi : fonts.mono },
@@ -1177,7 +1177,7 @@ export default function LakeDetailScreen() {
               <Text style={[text.dataS, { color: colors.inkSoft, marginTop: 4 }]}>
                 {`${STATE_CONFIGS[state]?.label ?? state.toUpperCase()} · ${lake.name ?? 'name hidden'} · ID ${lake.id} · `}
                 {`${localSpecies ? speciesDisplayName(localSpecies, state) : 'no species'} · `}
-                {`${tab === 'cpue' ? 'Catch tab' : tab === 'size' ? 'Avg Size tab' : 'Stocking tab'}`}
+                {`${tab === 'cpue' ? 'Catch tab' : tab === 'size' ? 'Avg Size tab' : tab === 'trophy' ? 'Trophy tab' : 'Stocking tab'}`}
               </Text>
               <TextInput
                 style={styles.feedbackInput}
@@ -1210,7 +1210,7 @@ export default function LakeDetailScreen() {
                       lakeId: lake.id,
                       lakeName: lake.name,
                       species: localSpecies ?? null,
-                      tab: tab === 'cpue' ? 'catch' : tab === 'size' ? 'size' : 'stocking',
+                      tab: tab === 'cpue' ? 'catch' : tab === 'size' ? 'size' : tab === 'trophy' ? 'trophy' : 'stocking',
                       version: Application.nativeApplicationVersion ?? null,
                       build: Application.nativeBuildVersion ?? null,
                     });

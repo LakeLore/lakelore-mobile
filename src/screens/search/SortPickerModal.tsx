@@ -57,16 +57,13 @@ export function SortPickerModal({
                   { backgroundColor: pressed ? colors.paper2 : 'transparent' },
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel={`Sort by ${label}${active ? `, currently ${sortDir === 'desc' ? 'descending' : 'ascending'} — tap to flip` : ''}`}
+                accessibilityLabel={`Sort by ${label}`}
+                // Tap-to-flip removed (2026-09-15, matches MeasurePickerModal):
+                // the cascade's first tap used to flip the pre-highlighted
+                // default to ASCENDING and strand a stacked modal.
                 onPress={() => {
-                  if (active) {
-                    // Tap the active row again to flip direction; stay open so
-                    // the flip is visible.
-                    onChange(opt.value, sortDir === 'desc' ? 'asc' : 'desc');
-                  } else {
-                    onChange(opt.value, 'desc');
-                    onClose();
-                  }
+                  onChange(opt.value, 'desc');
+                  onClose();
                 }}
               >
                 <Text style={[
@@ -77,7 +74,7 @@ export function SortPickerModal({
                 </Text>
                 {active && (
                   <Text style={[text.labelM, { color: colors.walleye2 }]}>
-                    ✓ tap to flip
+                    ✓
                   </Text>
                 )}
               </Pressable>

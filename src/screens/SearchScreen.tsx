@@ -183,6 +183,7 @@ interface SearchSession {
   activeSourceId: string | null;
   measurePicked?: boolean;
   viewPicked?: boolean;
+  speciesPicked?: boolean;
 }
 
 export default function SearchScreen() {
@@ -209,6 +210,7 @@ export default function SearchScreen() {
   // offline-cache entry when it lands late — state closures can't see the
   // newer stamp, this ref can. Updated at every mint site below.
   const searchStampRef = useRef(searchStamp);
+  const searchSeqRef = useRef(0);
   const [scatterBase, setScatterBase] = useState<ScatterBase | null>(null);
   const [scatterBaseLoading, setScatterBaseLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -233,6 +235,9 @@ export default function SearchScreen() {
   // unselected one, mirroring the county → species flow.
   const [measurePicked, setMeasurePicked] = useState(false);
   const [viewPicked, setViewPicked] = useState(false);
+  // 'All Species' is a legitimate first-box pick (bug-hunt: species='' made
+  // it a dead end) — track the PICK, not the value.
+  const [speciesPicked, setSpeciesPicked] = useState(false);
   // Measures for the current species×county scope (DATA_MODEL_PROPOSAL_2026-07-20).
   // Empty when the server predates /measures — the toolbar then falls back to the
   // legacy sort button. The gear/source WITHIN a measure is chosen via the FILTERS
@@ -364,7 +369,7 @@ export default function SearchScreen() {
     if (prevStateRef.current !== state) {
       sessionCache.current[prevStateRef.current as StateKey] = {
         filters, results, searchStamp, scatterBase, total, page, searched, viewMode,
-        measures, activeMeasureId, activeSourceId, measurePicked, viewPicked,
+        measures, activeMeasureId, activeSourceId, measurePicked, viewPicked, speciesPicked,
       };
       prevStateRef.current = state;
 
@@ -387,6 +392,7 @@ export default function SearchScreen() {
         // A cached session that had searched was complete by definition.
         setMeasurePicked(cached.measurePicked ?? cached.searched);
         setViewPicked(cached.viewPicked ?? cached.searched);
+        setSpeciesPicked(cached.speciesPicked ?? (!!cached.filters.species || cached.searched));
       } else {
         // Restore saved counties for this state if we have them. Falls back
         // to defaultFilters' empty array if persistedCounties hasn't loaded
@@ -406,6 +412,7 @@ export default function SearchScreen() {
         setActiveSourceId(null);
         setMeasurePicked(false);
         setViewPicked(false);
+        setSpeciesPicked(false);
         // Auto-opening the county picker for new states is handled by the
         // [state, countyPickerSeen] effect above, gated on per-state seen
         // flags so it only fires the first time the user enters each state.
@@ -422,6 +429,9 @@ export default function SearchScreen() {
       toast('Pick a species or enter a lake name to search.');
       return;
     }
+    // Superseded-response guard (bug-hunt: every selection auto-searches, and
+    // the county path fires two by design — last-to-LAND used to win).
+    const seq = ++searchSeqRef.current;
     setLoading(true);
     setSearched(true);
     try {
@@ -435,6 +445,7 @@ export default function SearchScreen() {
       // [viewMode === 'scatter'] effect below owns it now; a fresh
       // searchStamp is what invalidates the old scatter rows.
       const data: ResultsResponse = await fetchResults(state, f, nextPage, PAGE_SIZE);
+      if (seq !== searchSeqRef.current) return; // a newer search superseded this one
       if (nextPage === 0) {
         setResults(dropConsolidated(state, data.results));
         searchStampRef.current = { filters: f };
@@ -467,6 +478,7 @@ export default function SearchScreen() {
           // 30 d expiry enforced inside getOfflineResults (it never throws);
           // stale/absent falls through to the error banner.
           const cached = await getOfflineResults(state);
+          if (seq !== searchSeqRef.current) return;
           if (cached) {
             const stamp: SearchStamp = { filters: null };
             searchStampRef.current = stamp;
@@ -483,7 +495,7 @@ export default function SearchScreen() {
         setError(err instanceof Error ? err.message : 'Search failed');
       }
     } finally {
-      setLoading(false);
+      if (seq === searchSeqRef.current) setLoading(false);
     }
   }, [filters, state]);
 
@@ -536,6 +548,11 @@ export default function SearchScreen() {
     setMeasures(ms);
 
     let updated = { ...filters, species, gearTypes: defaultGearFor(nextOpts) };
+    // A hidden filter must not outlive its UI (bug-hunt P1): the Trophy slider
+    // is manifest-gated, so clear its bounds when this species has no trophy.
+    if (!ms.some(m => m.id === 'trophy')) {
+      updated = { ...updated, minTrophy: '', maxTrophy: '' };
+    }
     if (measurePicked && ms.length) {
       // Measure already chosen: keep it if the new species still has it
       // (else cascade default) and re-search if the view is chosen too.
@@ -551,9 +568,11 @@ export default function SearchScreen() {
       setActiveSourceId(null);
     }
     setFilters(updated);
-    if (measurePicked && viewPicked && (species || updated.lakeName)) {
-      handleSearch(0, updated);
-    } else if (species) {
+    setSpeciesPicked(true); // 'All Species' counts as a pick — cascade continues
+    if (measurePicked && viewPicked) {
+      if (species || updated.lakeName) handleSearch(0, updated);
+      else toast('All Species needs a lake name — add one under Advanced Filters.');
+    } else {
       // Chain to the next unselected box (same pattern as county → species).
       // The delay lets the species sheet finish dismissing — iOS won't
       // present a modal while another is mid-dismiss.
@@ -595,6 +614,8 @@ export default function SearchScreen() {
     setActiveSourceId(null);
     setMeasurePicked(false);
     setViewPicked(false);
+    setSpeciesPicked(false);
+    setOfflineCacheDate(null);
   };
 
   const handleLoadMore = () => {
@@ -611,7 +632,12 @@ export default function SearchScreen() {
     || filters.minCpue || filters.maxCpue
     || filters.minYear || filters.maxYear
     || filters.minAcres || filters.maxAcres
-    || filters.minStocked || filters.maxStocked;
+    || filters.minStocked || filters.maxStocked
+    || filters.minLength || filters.maxLength
+    || filters.minCatch || filters.maxCatch
+    || filters.minTrophy || filters.maxTrophy
+    || filters.minWeight || filters.maxWeight
+    || filters.minGearCount || filters.maxGearCount;
 
   // Scatter is only ever Abundance (Y) vs Size (X) — needs both signals.
   const scatterAvailable =
@@ -856,11 +882,12 @@ export default function SearchScreen() {
         <Text style={[text.displayM, { color: colors.inkSoft }]}>Select Species</Text>
         <View style={styles.boxValue}>
           <Text
-            style={[text.displayM, { color: filters.species ? colors.ink : colors.inkSoft, flexShrink: 1, textAlign: 'right' }]}
+            style={[text.displayM, { color: (filters.species || speciesPicked) ? colors.ink : colors.inkSoft, flexShrink: 1, textAlign: 'right' }]}
             numberOfLines={1}>
             {loadingOptions && !options ? 'Loading…'
               : !options && error ? 'Couldn’t load'
-              : filters.species ? speciesLabel : 'Select'}
+              : filters.species ? speciesLabel
+              : speciesPicked ? 'All Species' : 'Select'}
           </Text>
           {loadingOptions && !options
             ? <ActivityIndicator size="small" color={colors.inkSoft} />
@@ -873,11 +900,11 @@ export default function SearchScreen() {
           the legacy sort picker when /measures is unavailable. */}
       <Pressable
         onPress={() => (useMeasurePicker ? setShowMeasure(true) : setShowSort(true))}
-        disabled={!filters.species || (!options && !useMeasurePicker)}
+        disabled={!speciesPicked || (!options && !useMeasurePicker)}
         accessibilityRole="button"
         accessibilityLabel={`Rank lakes by: ${activeMeasure?.label ?? sortLabel}`}
         accessibilityHint="Opens the measure picker"
-        style={[styles.speciesBtn, (!filters.species || (!options && !useMeasurePicker)) && { opacity: 0.55 }]}
+        style={[styles.speciesBtn, (!speciesPicked || (!options && !useMeasurePicker)) && { opacity: 0.55 }]}
       >
         <Text style={[text.displayM, { color: colors.inkSoft }]}>Rank Lakes By</Text>
         <View style={styles.boxValue}>
@@ -893,11 +920,11 @@ export default function SearchScreen() {
       {/* View Ranking As — identical box, opens the view picker sheet. */}
       <Pressable
         onPress={() => setShowViewPicker(true)}
-        disabled={!filters.species}
+        disabled={!speciesPicked}
         accessibilityRole="button"
         accessibilityLabel={`View ranking as: ${viewMode === 'list' ? 'List' : 'Scatter Plot'}`}
         accessibilityHint="Opens the view picker"
-        style={[styles.speciesBtn, !filters.species && { opacity: 0.55 }]}
+        style={[styles.speciesBtn, !speciesPicked && { opacity: 0.55 }]}
       >
         <Text style={[text.displayM, { color: colors.inkSoft }]}>View Ranking As</Text>
         <View style={styles.boxValue}>
@@ -940,7 +967,13 @@ export default function SearchScreen() {
             Offline — showing results saved {new Date(offlineCacheDate).toLocaleDateString()}
           </Text>
           <Pressable
-            onPress={() => handleSearch(0)}
+            onPress={() => {
+              // Cold-launch offline leaves options null and every control
+              // gated off (bug-hunt P1) — Retry must revive the whole screen,
+              // not just re-run a search the guard rejects.
+              if (!options) loadStateOptions(state);
+              if (filters.species || filters.lakeName) handleSearch(0);
+            }}
             accessibilityRole="button"
             accessibilityLabel="Retry search"
             style={styles.unlockBtn}>
@@ -1172,6 +1205,10 @@ export default function SearchScreen() {
         sortDir={filters.sortDir}
         onClose={() => setShowMeasure(false)}
         onChange={(measure, sortDir) => {
+          // Re-tapping the ACTIVE measure is a dismiss, not a re-selection —
+          // re-applying it reset a manual multi-gear pick to the default
+          // source and fired a redundant search (bug-hunt P2).
+          if (measurePicked && measure.id === activeMeasureId) return;
           // Keep the current source if this measure still has it, else default.
           const source = pickSource(measure, activeSourceId);
           setActiveMeasureId(measure.id);
@@ -1287,7 +1324,7 @@ export default function SearchScreen() {
             handleSearch(0, updated);
           } else {
             setTimeout(() => {
-              if (!updated.species) setShowSpeciesPicker(true);
+              if (!speciesPicked) setShowSpeciesPicker(true);
               else if (!measurePicked) (measures.length ? setShowMeasure(true) : setShowSort(true));
               else if (!viewPicked) setShowViewPicker(true);
             }, 500);
@@ -1335,7 +1372,9 @@ export default function SearchScreen() {
         onClose={() => setShowAdvanced(false)}
         onApply={() => {
           setShowAdvanced(false);
-          if (measurePicked && viewPicked) handleSearch(0);
+          // A lake-name lookup is not a ranking — it must not be gated behind
+          // the measure/view cascade (bug-hunt P1: name-only search was dead).
+          if (filters.lakeName.trim() || (filters.species && measurePicked && viewPicked)) handleSearch(0);
         }}
       />
 

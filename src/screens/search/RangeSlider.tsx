@@ -55,7 +55,8 @@ export function RangeSlider({
   const loRef = useRef(lo); loRef.current = lo;
   const hiRef = useRef(hi); hiRef.current = hi;
   const widthRef = useRef(0); widthRef.current = width;
-  const grabRef = useRef(0);
+  const grabLoRef = useRef(0);
+  const grabHiRef = useRef(0);
   const onDraggingRef = useRef(onDragging); onDraggingRef.current = onDragging;
 
   const usable = () => Math.max(widthRef.current - THUMB, 1);
@@ -74,9 +75,9 @@ export function RangeSlider({
     .activeOffsetX([-2, 2])
     .failOffsetY([-16, 16])
     .runOnJS(true)
-    .onStart(() => { grabRef.current = loRef.current; onDraggingRef.current?.(true); })
+    .onStart(() => { grabLoRef.current = loRef.current; onDraggingRef.current?.(true); })
     .onUpdate(e => {
-      const v = snap(clamp(fromX(toX(grabRef.current) + e.translationX), min, hiRef.current));
+      const v = snap(clamp(fromX(toX(grabLoRef.current) + e.translationX), min, Math.max(min, hiRef.current - step)));
       onMinChange(v <= min ? '' : fmtNum(v));
     })
     .onFinalize(() => { onDraggingRef.current?.(false); });
@@ -85,9 +86,9 @@ export function RangeSlider({
     .activeOffsetX([-2, 2])
     .failOffsetY([-16, 16])
     .runOnJS(true)
-    .onStart(() => { grabRef.current = hiRef.current; onDraggingRef.current?.(true); })
+    .onStart(() => { grabHiRef.current = hiRef.current; onDraggingRef.current?.(true); })
     .onUpdate(e => {
-      const v = snap(clamp(fromX(toX(grabRef.current) + e.translationX), loRef.current, max));
+      const v = snap(clamp(fromX(toX(grabHiRef.current) + e.translationX), Math.min(max, loRef.current + step), max));
       onMaxChange(v >= max ? '' : fmtNum(v));
     })
     .onFinalize(() => { onDraggingRef.current?.(false); });
