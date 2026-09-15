@@ -768,8 +768,8 @@ export default function LakeDetailScreen() {
                 accessibilityRole="link"
                 accessibilityLabel={`Take me to the source — ${GENERATED_STATES[state].agency}`}
                 accessibilityHint="Opens in browser"
-                style={({ pressed }) => [styles.actionBtn, { opacity: pressed ? 0.85 : 1 }]}>
-                <Text style={[text.labelM, { color: colors.paper }]} numberOfLines={1}>
+                style={({ pressed }) => [styles.actionBtn, styles.actionBtnAlt, { opacity: pressed ? 0.85 : 1 }]}>
+                <Text style={[text.labelM, { color: colors.ink }]} numberOfLines={1}>
                   Take me to the source.
                 </Text>
               </Pressable>
@@ -783,6 +783,7 @@ export default function LakeDetailScreen() {
             </Pressable>
           </View>
         )}
+        {!isPreview && <View style={styles.actionSep} />}
 
         {/* Species selector */}
         {lakeSpecies.length > 1 && (
@@ -1299,6 +1300,11 @@ const styles = StyleSheet.create({
     gap: space.md,
     marginHorizontal: space.xl,
     marginTop: space.lg,
+    marginBottom: space.lg,
+  },
+  actionSep: {
+    height: hairline,
+    backgroundColor: colors.paper3,
   },
   actionBtn: {
     flex: 1,
