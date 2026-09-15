@@ -637,7 +637,10 @@ export default function LakeDetailScreen() {
     const id = data.lake.id;
     if (state === 'mn') return MN_LAKEFINDER_URL(id);
     if (state === 'sd') return latestReportId ? SD_REPORT_URL(latestReportId) : null;
-    if (state === 'ia') return IA_PBI_SURVEY_URL;
+    // IA: the lake's own Fish Iowa page — NOT the statewide Power BI
+    // dashboard, which isn't lake-addressable (owner 2026-09-14: the button
+    // must land on THIS lake's source).
+    if (state === 'ia') return IA_LAKE_DETAILS_URL(id);
     if (state === 'nd') return ND_SURVEY_URL(id);
     if (state === 'ne' || state === 'wi' || state === 'mi') {
       const pick = (data.surveys ?? []).find(sv =>
@@ -647,7 +650,7 @@ export default function LakeDetailScreen() {
         if (state === 'mi') return `https://www2.dnr.state.mi.us/publications/pdfs/DNRFishLibrary/StatusoftheFisheryResourceReports/${pick.source_pdf}`;
         if (pick.source_url) return pick.source_url;
       }
-      return GENERATED_STATES[state].agencyUrl || null;
+      return null; // no per-lake source — hide the button, never a homepage
     }
     const linkable = (sv: { source_url?: string | null }) =>
       !!sv.source_url && /^https?:/i.test(sv.source_url);
@@ -655,7 +658,7 @@ export default function LakeDetailScreen() {
       linkable(sv) && (!speciesSurveyIds || speciesSurveyIds.has(String(sv.id))))
       ?? (data.surveys ?? []).find(linkable);
     if (pick?.source_url) return pick.source_url;
-    return GENERATED_STATES[state].agencyUrl || null;
+    return null; // no captured source for this lake — hide the button
   }, [data, state, latestReportId, speciesSurveyIds]);
 
   const chartWidth = width - 32;
