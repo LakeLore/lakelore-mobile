@@ -769,7 +769,7 @@ export default function LakeDetailScreen() {
                 accessibilityLabel={`Take me to the source — ${GENERATED_STATES[state].agency}`}
                 accessibilityHint="Opens in browser"
                 style={({ pressed }) => [styles.actionBtn, { opacity: pressed ? 0.85 : 1 }]}>
-                <Text style={[text.displayM, { color: colors.paper }]} numberOfLines={1}>
+                <Text style={[text.labelM, { color: colors.paper }]} numberOfLines={1}>
                   Take me to the source.
                 </Text>
               </Pressable>
@@ -779,7 +779,7 @@ export default function LakeDetailScreen() {
               accessibilityRole="button"
               accessibilityLabel="Report data issue"
               style={({ pressed }) => [styles.actionBtn, styles.actionBtnAlt, { opacity: pressed ? 0.85 : 1 }]}>
-              <Text style={[text.displayM, { color: colors.ink }]} numberOfLines={1}>Report Data Issue.</Text>
+              <Text style={[text.labelM, { color: colors.ink }]} numberOfLines={1}>Report Data Issue.</Text>
             </Pressable>
           </View>
         )}
@@ -1303,7 +1303,7 @@ const styles = StyleSheet.create({
   actionBtn: {
     flex: 1,
     backgroundColor: colors.ink,
-    paddingVertical: 8,
+    paddingVertical: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
