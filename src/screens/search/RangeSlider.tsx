@@ -93,6 +93,29 @@ export function RangeSlider({
     })
     .onFinalize(() => { onDraggingRef.current?.(false); });
 
+  // VoiceOver path (2026-09-15): the pan gesture is not operable under a
+  // screen reader, and the old text inputs are gone — each thumb is an
+  // 'adjustable' element whose increment/decrement swipe moves it one step,
+  // with the same clamps and the same ''-at-the-end contract as dragging.
+  const bump = (which: 'lo' | 'hi', dir: 1 | -1) => {
+    if (which === 'lo') {
+      const v = clamp(loRef.current + dir * step, min, Math.max(min, hiRef.current - step));
+      onMinChange(v <= min ? '' : fmtNum(v));
+    } else {
+      const v = clamp(hiRef.current + dir * step, Math.min(max, loRef.current + step), max);
+      onMaxChange(v >= max ? '' : fmtNum(v));
+    }
+  };
+  const a11yThumb = (which: 'lo' | 'hi', valueText: string) => ({
+    accessible: true,
+    accessibilityRole: 'adjustable' as const,
+    accessibilityLabel: `${label} ${which === 'lo' ? 'minimum' : 'maximum'}`,
+    accessibilityValue: { text: valueText },
+    accessibilityActions: [{ name: 'increment' as const }, { name: 'decrement' as const }],
+    onAccessibilityAction: (e: { nativeEvent: { actionName: string } }) =>
+      bump(which, e.nativeEvent.actionName === 'increment' ? 1 : -1),
+  });
+
   const u = unit ? ` ${unit}` : '';
   const loLabel = lo <= min && !parse(minVal) ? 'Any' : `${fmtNum(lo)}${u}`;
   const hiLabel = hi >= max && !parse(maxVal) ? 'Any' : `${fmtNum(hi)}${u}`;
@@ -107,20 +130,18 @@ export function RangeSlider({
       </View>
       <View
         style={styles.trackArea}
-        onLayout={e => setWidth(e.nativeEvent.layout.width)}
-        accessible
-        accessibilityLabel={`${label} range, ${loLabel} to ${hiLabel}`}>
+        onLayout={e => setWidth(e.nativeEvent.layout.width)}>
         <View style={styles.track} />
         {width > 0 && (
           <>
             <View style={[styles.trackActive, { left: xLo + THUMB / 2, width: Math.max(xHi - xLo, 0) }]} />
             <GestureDetector gesture={panLo}>
-              <View style={[styles.hit, { left: xLo - (HIT - THUMB) / 2 }]}>
+              <View {...a11yThumb('lo', loLabel)} style={[styles.hit, { left: xLo - (HIT - THUMB) / 2 }]}>
                 <View style={styles.thumb} />
               </View>
             </GestureDetector>
             <GestureDetector gesture={panHi}>
-              <View style={[styles.hit, { left: xHi - (HIT - THUMB) / 2 }]}>
+              <View {...a11yThumb('hi', hiLabel)} style={[styles.hit, { left: xHi - (HIT - THUMB) / 2 }]}>
                 <View style={styles.thumb} />
               </View>
             </GestureDetector>

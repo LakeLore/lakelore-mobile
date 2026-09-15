@@ -1340,6 +1340,7 @@ export default function SearchScreen() {
         state={state}
         options={options}
         hasTrophy={measures.some(m => m.id === 'trophy')}
+        previewLocked={preview}
         onChange={updates => {
           // Manually choosing a gear in advanced filters IS choosing a gear
           // Source: clear the relative/stocking/presence scope so /results

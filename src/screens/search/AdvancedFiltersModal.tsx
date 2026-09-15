@@ -22,13 +22,17 @@ type Props = {
   /** The current /measures manifest contains a trophy measure — shows the
    *  Trophy Catch Rate slider (the registry export has no trophy flag). */
   hasTrophy?: boolean;
+  /** Non-subscriber in a paid state (owner 2026-09-15): lake identity is
+   *  redacted everywhere else in preview, so the typeahead must not hand it
+   *  out either — no index fetch, no suggestions; plain typing still works. */
+  previewLocked?: boolean;
   onChange: (u: Partial<FilterState>) => void;
   onClose: () => void;
   onApply: () => void;
 };
 
 export function AdvancedFiltersModal({
-  visible, filters, state, options, hasTrophy, onChange, onClose, onApply,
+  visible, filters, state, options, hasTrophy, previewLocked, onChange, onClose, onApply,
 }: Props) {
   // Gear/Source: the DEFAULT is always a single gear (the most-prevalent source
   // for the scope, set by the measure cascade / defaultGearFor), but the user
@@ -62,16 +66,16 @@ export function AdvancedFiltersModal({
   // (bug-hunt P1-3).
   useEffect(() => { setLakeIndex(null); setPickedName(''); }, [state]);
   useEffect(() => {
-    if (!visible || lakeIndex) return;
+    if (!visible || lakeIndex || previewLocked) return;
     let alive = true;
     fetchLakesIndex(state as StateKey)
       .then(lakes => { if (alive) setLakeIndex(lakes); })
       .catch(() => { /* typeahead is a nicety — typing still works without it */ });
     return () => { alive = false; };
-  }, [visible, lakeIndex, state]);
+  }, [visible, lakeIndex, state, previewLocked]);
   const lakeQuery = filters.lakeName.trim();
   const lakeSuggestions = useMemo(() => {
-    if (!lakeIndex || lakeQuery.length < 2 || lakeQuery === pickedName) return [];
+    if (previewLocked || !lakeIndex || lakeQuery.length < 2 || lakeQuery === pickedName) return [];
     const q = lakeQuery.toLowerCase();
     const starts: LakeIndexEntry[] = [];
     const contains: LakeIndexEntry[] = [];
@@ -82,7 +86,7 @@ export function AdvancedFiltersModal({
       if (starts.length >= 12) break;
     }
     return [...starts, ...contains].slice(0, 12);
-  }, [lakeIndex, lakeQuery, pickedName]);
+  }, [lakeIndex, lakeQuery, pickedName, previewLocked]);
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
