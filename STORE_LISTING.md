@@ -321,11 +321,21 @@ Real device screenshots also work — Expo Go renders the app screens identicall
 2. Capture each screen: side button + volume up.
 3. AirDrop to Mac.
 
+### What's New — 1.1.2 (draft, 2026-09-15; paste into ASC "What's New" + Play "Release notes")
+
+> **Trophy fishing, redesigned search, and better filters.**
+> • NEW: Trophy Abundance — rank lakes by the catch rate of true trophy-class fish (like a 25″ walleye), with a trophy-over-time chart on every lake page that has the data.
+> • Redesigned search: pick a species, how to rank, and how to view — results appear as you choose. No search button needed.
+> • Filters got easier: sliders for every range, lake-name suggestions as you type, and lake pages now jump straight to the official state survey.
+> • Plus dozens of fixes, including smoother charts and more reliable sessions.
+
+*(The Ask LakeLore assistant is deliberately NOT in this release or these notes — staging-only.)*
+
 ### Shot list (8 screenshots — 5 required, 3 optional)
 
 Aim for editorial framing: include search results that *say something*. e.g. WAE results sorted by stocking density in MN, with a stripe of high-density lakes at the top.
 
-*(Rewritten 2026-07-26 for the 1.1.1 UI — the old list described the pre-Measure, pre-map-selector app and a standalone glossary modal that no longer exists. Screenshots on disk are from May and MUST be recaptured on 1.1.1 before submission: Apple 2.3.3.)*
+*(Rewritten 2026-07-26 for the 1.1.1 UI. **STALE AGAIN as of 2026-09-15:** the 1.1.2 wave reworked the search screen — three stacked selector boxes (Species / Rank Lakes By / View Ranking As), Advanced Filters row, no Search button, slider filters — and the lake page — identity in the header, source/report buttons, Trophy tab, no Share Lake Card. RECAPTURE all shots on a 1.1.2 build before the store submission (Apple 2.3.3). Shots 2–6 change visibly; add Trophy to shot 3's framing and consider the Trophy chart as an optional shot.)*
 
 1. **State Select** — the pan/zoom US + Canada atlas map with the A-Z state list below.
 2. **Search · List view** — Minnesota, Walleye, Measure = Abundance. Shows the brand on a results page.
