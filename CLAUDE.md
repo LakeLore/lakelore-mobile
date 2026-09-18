@@ -90,6 +90,8 @@ EXPO_PUBLIC_API_BASE=https://lake-fish-api-staging.fly.dev EXPO_PUBLIC_ASK_ENABL
 
 `npm run ota` stays production-only (branch production, no staging env).
 
+**Metro cache poisons cross-channel publishes (found 2026-09-17, pre-production verification):** `EXPO_PUBLIC_*` inlining rides the transform cache in `node_modules/.cache` — a production `expo export`/`eas update` run after staging publishes reused STAGING-inlined modules (the bundle carried the staging API base with the env unset; a marker test proved the shell env wasn't even consulted). **Before ANY publish that changes channels: `rm -rf node_modules/.cache` and pass `--clear`, then grep the exported .hbc for `lake-fish-api-staging` (must be 0) and `EXPO_PUBLIC_ASK_ENABLED` (must be 0 for production).** A cross-runtime production publish also requires temporarily setting app.json `version` to the TARGET runtime (eas update derives runtimeVersion from it) — flip, publish, restore.
+
 EAS config: `eas.json`. Project ID + owner in `app.json` `extra.eas`. Owner `ndrwtp` (personal Expo account).
 
 ## TestFlight iteration loop (preferred dev/test path on iOS)
