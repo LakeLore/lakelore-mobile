@@ -69,6 +69,25 @@ the kill switch is useless until a newer public build exists to update *to*.
 > legal objective was met; the sequencing turned a data decision into a
 > user-facing regression that a two-minute reachability check would have caught.
 
+**Carve-out — security fixes that no shipped client can observe ship SERVER-FIRST (2026-10-07).**
+The rule above exists to protect installed binaries. A fix that only changes the
+answer for inputs **no shipped client version sends** has no client to protect,
+and waiting on a client rollout leaves the hole open. Deploy it immediately,
+provided all three hold and are written into the commit message:
+
+1. **What changes:** the exact inputs whose answer changes (e.g. "mixed-case
+   paths such as `/api/tx/Results`").
+2. **Proof no client sends them:** checked against every version in the mobile
+   repo's history, not just the current one (e.g.
+   `git log -S'/Results' -- src` returns nothing; `src/api.ts` at the oldest
+   live runtime builds the same lowercase paths).
+3. **Normal inputs are untouched:** the gated deploy script's smoke + parity
+   replay pass, i.e. responses to what clients DO send are byte-identical.
+
+If any of the three cannot be shown, it is an ordinary serving-contract change
+and the client-first rule applies. First use: the 2026-10-07 paywall case-bypass
+fix (the gate matched paths case-sensitively; Express routes case-insensitively).
+
 Run these checks before touching any build commands.
 
 ```bash

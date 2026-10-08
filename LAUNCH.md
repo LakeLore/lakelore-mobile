@@ -6,6 +6,23 @@ For listing copy, screenshot capture, and store-form answers, see [STORE_LISTING
 
 Last reviewed: 2026-07-16 (all-states launch reconciliation).
 
+## Current state
+
+The one place for "what is live right now" (moved here from `~/CLAUDE.md` 2026-10-07 — status no longer lives in any `CLAUDE.md`). Update this section when a release, OTA, server deploy or activation lands; cite the evidence (group id, release number, a request you ran).
+
+**Verified 2026-10-07:** App Store live version **1.1.1** (iTunes lookup); production OTAs exist for runtimes 1.1.0 and 1.1.1 (`eas update:list`); server release **v92** (2026-09-18), 2 machines in `ord`; registry = 56 built, 38 active, MN free. Not yet shipped: 1.1.2 store builds.
+
+**Carried over verbatim from `~/CLAUDE.md` (written 2026-09-15/18 — treat as history, not re-verified):**
+
+As of the last update to this file (2026-09-15 — pre-1.1.2-release update; previous full audit 2026-07-17):
+
+- **Mobile app**: store-live build is **v1.1.1 (build 29)** on runtime 1.1.1 (released 2026-08-24). The repo is at **v1.1.2** — a large staged wave (TestFlight staging builds 31–34 + ~23 staging OTAs, channel `staging`, server `lake-fish-api-staging`): search redesigned around three selector boxes (Species / Rank Lakes By / View Ranking As) with auto-search + guided picker cascade, slider filters + lake-name typeahead, Trophy Abundance (schema v8) end-to-end incl. a lake-detail Trophy chart tab, lake-detail header/source-button rework (**Share Lake Card feature REMOVED 2026-09-14**), session-token 401 recovery, and the staging-only **Ask LakeLore** chatbot (compiled OUT of production builds via `EXPO_PUBLIC_ASK_ENABLED`; server route gated by `LAKELORE_ASK_ENABLED`). A 2026-09-15 three-agent bug hunt fixed 12 findings pre-release. Rollout EXECUTED 2026-09-18: production OTA live on runtime 1.1.1 (group 5a1473c1, chatbot-free bundle verified) AND the paired v8 server deploy is LIVE (all gates green, both machines deep-ready; trophy measure serving; /ask returns 503 ask_unavailable on prod). v7 rollback copies staged at /data/rollback-v7/ on both volumes + prior image ref recorded (remove after a quiet week). Remaining: 1.1.2 store builds with recaptured screenshots. deploy-data.sh hard-refuses schema-mismatched uploads (rc 3).
+- **API server**: live in production at `https://lake-fish-api.fly.dev` serving the 38 active schema-v7 DBs (held states 400 by design; deploy-data.sh uploads active states only since 2026-08-25). `ACTIVE_STATES` is registry-driven; `LAKELORE_DB_DIR=/data`; `/readyz` + deploy-data.sh readiness gate; GitHub Actions uptime probes every 15 min. Preview mode covers `/results` AND `/lake/:id` with identity redaction + hashed ids; `/pdf` hard-402s, and since 2026-08-25 a RAW lake id in preview mode 402s too (hashed ids only — closes the `/lakes-index` identity-join scrape).
+- **Marketing site**: live at `https://lakeloreapp.com` with `/privacy`, `/terms`, `/support`. All-states copy + store links + the 2026-07-17 privacy-policy accuracy pass (email-capture disclosure, active Sentry/Vercel/Expo/B2 providers) **pushed 2026-07-17** — the formerly-held web batch is fully deployed. **2026-09-12: the programmatic SEO layer (~50k `/lakes/{state}/{lakeId}` pages) was REMOVED** — it kept tripping Vercel Hobby limits; `/lakes/*` now 301s home.
+- **Monetization**: free MN, paid `LakeLore All-States` subscription at $4.99/yr (price lowered 2026-07-25) covering the other 37 US states (38 active total; US-only submission 2026-08-13 — MB product-held).
+
+---
+
 ## Monetization model (locked in 2026-05-07 · preview model 2026-07-08 · all-states scope 2026-07-15)
 
 - **Free tier:** Minnesota only. Full access, all features.
