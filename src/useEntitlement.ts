@@ -23,6 +23,7 @@ import {
 import { fetchMyEntitlement } from './api';
 import { KEYS } from './storage';
 import { recentlyPurchased } from './purchaseHint';
+import { decideEntitlement } from './entitlementDecision';
 
 // Cache the last-known entitlement so subsequent app launches render the
 // correct lock/unlock chips immediately, instead of flashing "locked" while
@@ -79,26 +80,17 @@ export function useEntitlement(): EntitlementState {
         .then(r => (r.source === 'rc-error' ? null : (r.hasAllStates as boolean | null)))
         .catch(() => null),
     ]);
-    // Right after a local purchase/restore the device's receipt is the newest
-    // fact there is; a server `false` in that window is its 5-minute cache
-    // not having caught up (purchaseHint.ts), so it must not flip a paying
-    // user back to preview on the next foreground.
-    const serverLagging = serverResult === false && sdkResult === true && recentlyPurchased();
-    const final = serverResult !== null && !serverLagging ? serverResult : sdkResult;
-    // A server answer is live; so is a POSITIVE SDK answer (a valid local
-    // receipt during a total outage — round-2 #4: without this, a slow cache
-    // prime carrying a stale false could flip an entitled offline user to
-    // preview). SDK-false with no server is NOT marked — that's the outage
-    // case where the cached true is exactly the protection we want.
-    if (serverResult !== null || sdkResult === true) liveAnswerRef.current = true;
+    // The combining rule (server wins, except a lagging `false` right after a
+    // local purchase; a total outage is neither live nor persisted) lives in
+    // entitlementDecision.ts, where it is unit-tested.
+    const decision = decideEntitlement(sdkResult, serverResult, recentlyPurchased());
+    const final = decision.hasAllStates;
+    if (decision.live) liveAnswerRef.current = true;
     if (mountedRef.current) {
       setHasAllStates(final);
       setLoading(false);
     }
-    // Don't persist a false produced by a TOTAL outage (bug-hunt #11): server
-    // unreachable AND cold SDK -> final=false would overwrite a known-good
-    // true with a fresh-looking timestamp.
-    if (serverResult !== null || sdkResult === true) {
+    if (decision.persist) {
       AsyncStorage.setItem(ENTITLEMENT_CACHE_KEY_V2, JSON.stringify({ v: final, ts: Date.now() })).catch(() => {});
     }
     AsyncStorage.removeItem(ENTITLEMENT_CACHE_KEY).catch(() => {}); // retire the v1 key

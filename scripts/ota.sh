@@ -42,7 +42,7 @@ if $STAGING; then
   export EXPO_PUBLIC_ASK_ENABLED=1
 else
   CHANNEL=production
-  unset EXPO_PUBLIC_API_BASE EXPO_PUBLIC_ASK_ENABLED
+  unset EXPO_PUBLIC_API_BASE EXPO_PUBLIC_ASK_ENABLED EXPO_PUBLIC_ASK_TOKEN
 fi
 
 # 1. Publish what is committed — an OTA from a dirty tree cannot be reproduced.

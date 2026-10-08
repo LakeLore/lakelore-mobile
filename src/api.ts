@@ -313,6 +313,11 @@ export async function askLakes(state: StateKey, messages: AskMessage[]): Promise
   const timer = setTimeout(() => controller.abort(), 60_000);
   const { headers, hadToken } = await identityHeaders();
   headers['Content-Type'] = 'application/json';
+  // Staging closes /ask behind a shared token (server LAKELORE_ASK_TOKEN). Set
+  // EXPO_PUBLIC_ASK_TOKEN for dev/staging builds only: anything EXPO_PUBLIC_ is
+  // readable in the bundle, so it must never be set for a store build.
+  const askToken = process.env.EXPO_PUBLIC_ASK_TOKEN;
+  if (askToken) headers['X-Ask-Token'] = askToken;
   const base = apiBase();
   let res: Response;
   try {
