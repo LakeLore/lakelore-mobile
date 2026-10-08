@@ -10,7 +10,7 @@ Last reviewed: 2026-07-16 (all-states launch reconciliation).
 
 The one place for "what is live right now" (moved here from `~/CLAUDE.md` 2026-10-07 — status no longer lives in any `CLAUDE.md`). Update this section when a release, OTA, server deploy or activation lands; cite the evidence (group id, release number, a request you ran).
 
-**Verified 2026-10-07:** App Store live version **1.1.1** (iTunes lookup); production OTAs exist for runtimes 1.1.0 and 1.1.1 (`eas update:list`); server release **v93** (2026-10-07, paywall path-case fix; previous v92 2026-09-18), 2 machines in `ord`; registry = 56 built, 38 active, MN free. Not yet shipped: 1.1.2 store builds.
+**Verified 2026-10-07:** App Store live version **1.1.1** (iTunes lookup); production OTAs exist for runtimes 1.1.0 and 1.1.1 (`eas update:list`); server release **v94** (2026-10-08: lake-name search + lake index subscriber-only in preview; v93 2026-10-07 paywall path-case fix), 2 machines in `ord`; registry = 56 built, 38 active, MN free. Not yet shipped: 1.1.2 store builds.
 
 **Carried over verbatim from `~/CLAUDE.md` (written 2026-09-15/18 — treat as history, not re-verified):**
 
