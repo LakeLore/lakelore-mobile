@@ -12,7 +12,7 @@ The one place for "what is live right now" (moved here from `~/CLAUDE.md` 2026-1
 
 **Verified 2026-10-07:** App Store live version **1.1.1** (iTunes lookup); production OTAs exist for runtimes 1.1.0 and 1.1.1 (`eas update:list`); server release **v94** (2026-10-08: lake-name search + lake index subscriber-only in preview; v93 2026-10-07 paywall path-case fix), 2 machines in `ord`; registry = 56 built, 38 active, MN free. Not yet shipped: 1.1.2 store builds.
 
-**Committed but NOT deployed as of 2026-10-08:** server `lake-fish-api` 5f5ef16 (served state list, post-purchase refresh hint) and 5351940 (RevenueCat deadline, Sentry for handled 500s, `/ask` closed by default, cached totals) — production is still release v94. Locally refreshed but not deployed data: id wy ny nh nj ut (see IMPROVEMENT_PLAN Round 22).
+**Committed but NOT deployed as of 2026-10-08:** server `lake-fish-api` 5f5ef16 (served state list, post-purchase refresh hint) and 5351940 (RevenueCat deadline, Sentry for handled 500s, `/ask` closed by default, cached totals) — production is still release v94. Locally refreshed but not deployed data: id wy ny nh nj ut tx ia; OR is blocked by a gate (see IMPROVEMENT_PLAN Round 22).
 
 **Carried over verbatim from `~/CLAUDE.md` (written 2026-09-15/18 — treat as history, not re-verified):**
 
