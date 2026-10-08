@@ -23,6 +23,10 @@ export const KEYS = {
   ratingsLakeViews: 'ratings.lakeViews.v1',
   ratingsLastAsk: 'ratings.lastAsk.v1',
   entitlementCacheV2: 'entitlement.allStates.v2',
+  /** Last served state list from /api/client-config (activeStates.ts). */
+  servedStates: 'servedStates.v1',
+  /** API origin that answered last launch (apiOrigin.ts). */
+  lastGoodOrigin: 'apiOrigin.lastGood.v1',
   countySelection: 'countySelection.v1',
   lakeCacheIndex: 'lakeCache.v1.index',
   offlineCacheIndex: 'offlineCache.v1.index',

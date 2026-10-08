@@ -79,7 +79,7 @@ npm run submit:android         # uploads latest production AAB to Play Internal 
 npm run build:staging:ios
 ```
 
-`src/api.ts` honors `EXPO_PUBLIC_API_BASE` in release builds only when it is an https origin; production profiles set nothing and stay on `lake-fish-api.fly.dev`. `submit:ios` submits the LATEST build of any profile — after a staging build, use the explicit build id (`eas submit --id …`) for a production submission, and pick the production build explicitly in App Store Connect.
+`src/apiOrigin.ts` honors `EXPO_PUBLIC_API_BASE` in release builds only when it is an https origin; production profiles set nothing and use the origin list `api.lakeloreapp.com` → `lake-fish-api.fly.dev` (a network-level failure on one rotates to the other; session tokens are bound to the server, not the hostname). **Requests are addressed by PATH through `get()` in `src/api.ts` — never build a URL from a fixed host.** `GET /api/client-config` (`src/clientConfig.ts`) tries every origin and also carries the served state list: the app offers baked-active ∩ served (`src/activeStates.ts` — use `isActiveState` / `useActiveStates`, never `GENERATED_STATES[k].active` directly). Ask/Home screens are `require()`d behind an inline flag in `App.tsx` so production bundles do not contain them. `submit:ios` submits the LATEST build of any profile — after a staging build, use the explicit build id (`eas submit --id …`) for a production submission, and pick the production build explicitly in App Store Connect.
 
 **Staging OTA (2026-09-12):** JS-only changes reach the staging TestFlight build via `eas update --channel staging` — **but `EXPO_PUBLIC_*` values are inlined at BUNDLE time from the local shell env** (`eas.json` profile `env` applies to builds, not updates), so the publish command MUST carry them or the OTA silently points staging at production and hides Ask:
 
@@ -88,7 +88,7 @@ EXPO_PUBLIC_API_BASE=https://lake-fish-api-staging.fly.dev EXPO_PUBLIC_ASK_ENABL
   npx eas-cli update --channel staging --message "…"
 ```
 
-`npm run ota` stays production-only (branch production, no staging env).
+`npm run ota` is `scripts/ota.sh` (2026-10-08) — it sets or clears those variables itself for the target (`--staging` or production), so the manual env prefix above is only needed for a raw `eas update`.
 
 **Metro cache poisons cross-channel publishes (found 2026-09-17, pre-production verification):** `EXPO_PUBLIC_*` inlining rides the transform cache in `node_modules/.cache` — a production `expo export`/`eas update` run after staging publishes reused STAGING-inlined modules (the bundle carried the staging API base with the env unset; a marker test proved the shell env wasn't even consulted). **Before ANY publish that changes channels: `rm -rf node_modules/.cache` and pass `--clear`, then grep the exported .hbc for `lake-fish-api-staging` (must be 0) and `EXPO_PUBLIC_ASK_ENABLED` (must be 0 for production).** A cross-runtime production publish also requires temporarily setting app.json `version` to the TARGET runtime (eas update derives runtimeVersion from it) — flip, publish, restore.
 
@@ -120,7 +120,8 @@ Then wait for Apple processing (5–30 min after EAS finishes). TestFlight on th
 
 ```bash
 cd ~/lake-fish-mobile
-npm run ota -- --message "fix paywall typo"   # tsc --noEmit + jest gate first (2026-07-17, B5)
+npm run ota -- --runtime 1.1.1 --message "fix paywall typo"   # scripts/ota.sh — see below
+npm run ota -- --runtime 1.1.1 --dry-run                        # export + verify the bundle, publish nothing
 # Raw escape hatch (skips the gates): eas update --branch production --message "..."
 ```
 
@@ -138,7 +139,7 @@ That bundles the current JS, uploads to EAS Updates, and the next time any insta
 - `src/sentry.ts` sets `dist` to the OTA `updateId`, tags `ota_update_id`, and reports `Updates.isEmergencyLaunch` (a fleet rolled back to the embedded bundle is no longer invisible).
 - About screen footer shows `v{version} ({build}) · {updateId8}`.
 - `src/session.ts` awaits disk hydration before deciding to re-mint (a valid persisted 7-day token now actually prevents the cold-launch mint — and with it the per-launch App Attest attestation); `src/attest.ts` additionally spaces attestation attempts ≥20 h apart as defense in depth.
-- `npm run ota` prints the target runtimeVersion first (publish-to-empty-runtime guard); `build:prod:*` now run `tsc --noEmit && jest` before EAS; `babel-preset-expo` pinned to the SDK-54 line (`~54.0.10` — the hoisted `^55` preset was transforming every bundle); `.github/workflows/ci.yml` runs the same gate on push.
+- **`npm run ota` = `scripts/ota.sh` (2026-10-08).** `--runtime X.Y.Z` is REQUIRED (the app version whose installed devices receive the update — it swaps app.json's version for the export and restores it, so nobody hand-edits app.json to reach the live fleet); it clears `node_modules/.cache`, sets/unsets `EXPO_PUBLIC_*` for the target, exports to `dist-ota/`, and INSPECTS the bundle (production: no staging host, owned + Fly API hostnames present, chat screens absent; `--staging`: the reverse) before publishing exactly that directory at `--rollout` percent (default 10). It refuses a dirty tree. Source maps upload when `SENTRY_AUTH_TOKEN` is set. Previously: `npm run ota` printed the target runtimeVersion first (publish-to-empty-runtime guard); `build:prod:*` now run `tsc --noEmit && jest` before EAS; `babel-preset-expo` pinned to the SDK-54 line (`~54.0.10` — the hoisted `^55` preset was transforming every bundle); `.github/workflows/ci.yml` runs the same gate on push.
 
 **Version state (2026-09-12):** `app.json` is at **1.1.2** (bumped for the staging TestFlight build — Apple refuses new uploads for the released 1.1.1). The live App Store fleet is still on runtime **1.1.1** (build 29). Consequence: `npm run ota` now targets runtime 1.1.2, which no customer has — an OTA for the live fleet must be published explicitly with `eas update --branch production --runtime-version 1.1.1`. 1.1.2 becomes the next store release (Ask + Trophy) whenever the owner submits it.
 

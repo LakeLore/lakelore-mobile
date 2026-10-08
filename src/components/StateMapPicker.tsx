@@ -15,7 +15,7 @@ import * as Haptics from 'expo-haptics';
 import { useSvgPanZoom, useCommittedMirror, assertWorklet } from '../hooks/useSvgPanZoom';
 import { STATE_PATHS, STATES_VIEWBOX } from '../data/statePaths';
 import { StateKey, GENERATED_STATES } from '../types';
-import { isFreeState } from '../activeStates';
+import { isFreeState, isActiveState, useActiveStates } from '../activeStates';
 import { colors, text, space, hairline, fonts } from '../lakelore-rn/theme';
 import { LockIcon, SectionLabel } from '../lakelore-rn/components';
 import { useToast } from '../Toast';
@@ -34,12 +34,18 @@ interface VB { x: number; y: number; w: number; h: number }
 
 // Selectable = in the registry AND active (states with no stocking and no
 // CPUE data are registry-inactive — drawn muted like the no-data provinces).
-const SELECTABLE = STATE_PATHS.filter(p => p.key != null && GENERATED_STATES[p.key].active);
+// "Active" is the EFFECTIVE list (baked ∩ served — see activeStates.ts), so a
+// state pulled server-side goes muted here without a release.
 const isSelectableKey = (k: StateKey | null): k is StateKey =>
-  k != null && GENERATED_STATES[k].active;
+  k != null && isActiveState(k);
 
 export default function StateMapPicker({ selected, hasAllStates, entitlementLoading, onSelect }: Props) {
   const { width } = useWindowDimensions();
+  const activeStates = useActiveStates();
+  const SELECTABLE = React.useMemo(
+    () => STATE_PATHS.filter(p => p.key != null && activeStates.includes(p.key)),
+    [activeStates],
+  );
   const [, , vbW, vbH] = STATES_VIEWBOX.split(' ').map(Number);
   const mapW = width - 32;
   const mapH = (mapW / vbW) * vbH;
@@ -101,7 +107,7 @@ export default function StateMapPicker({ selected, hasAllStates, entitlementLoad
       }
       if (!nearest || nearestDist > capSq) return;
       const key = nearest.key as StateKey;
-      if (!GENERATED_STATES[key].active) {
+      if (!isActiveState(key)) {
         // Neutral copy on purpose: inactive covers BOTH data-thin states and
         // legally-held ones (2026-08-04) — "no survey data yet" was a false
         // statement for states users had previously browsed (MI/ON).

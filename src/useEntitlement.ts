@@ -22,6 +22,7 @@ import {
 } from './iap';
 import { fetchMyEntitlement } from './api';
 import { KEYS } from './storage';
+import { recentlyPurchased } from './purchaseHint';
 
 // Cache the last-known entitlement so subsequent app launches render the
 // correct lock/unlock chips immediately, instead of flashing "locked" while
@@ -78,7 +79,12 @@ export function useEntitlement(): EntitlementState {
         .then(r => (r.source === 'rc-error' ? null : (r.hasAllStates as boolean | null)))
         .catch(() => null),
     ]);
-    const final = serverResult !== null ? serverResult : sdkResult;
+    // Right after a local purchase/restore the device's receipt is the newest
+    // fact there is; a server `false` in that window is its 5-minute cache
+    // not having caught up (purchaseHint.ts), so it must not flip a paying
+    // user back to preview on the next foreground.
+    const serverLagging = serverResult === false && sdkResult === true && recentlyPurchased();
+    const final = serverResult !== null && !serverLagging ? serverResult : sdkResult;
     // A server answer is live; so is a POSITIVE SDK answer (a valid local
     // receipt during a total outage — round-2 #4: without this, a slow cache
     // prime carrying a stale false could flip an entitled offline user to

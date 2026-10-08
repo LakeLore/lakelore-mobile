@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StateKey, StateConfig, STATE_CONFIGS } from './types';
-import { isActiveState } from './activeStates';
+import { isActiveState, hydrateServedStates } from './activeStates';
 import { KEYS } from './storage';
 
 interface StateContextValue {
@@ -30,7 +30,12 @@ export function StateProvider({ children }: { children: React.ReactNode }) {
   const [pendingCountyPick, setPendingCountyPick] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(KEYS.selectedState)
+    // The served state list is read first, so a state pulled since the last
+    // launch is not restored (it would land the user on a dead state). The
+    // saved choice itself is KEPT: if the list was only briefly wrong, or the
+    // state comes back, the next launch restores it.
+    hydrateServedStates()
+      .then(() => AsyncStorage.getItem(KEYS.selectedState))
       .then(saved => {
         if (saved && isActiveState(saved as StateKey)) {
           setStateKey(saved as StateKey);

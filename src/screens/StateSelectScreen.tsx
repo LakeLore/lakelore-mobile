@@ -11,9 +11,10 @@ import { StateKey, GENERATED_STATES } from '../types';
 // Title adapts to the active fleet: with zero Canadian provinces active
 // (US-only submission, 2026-08-13) "or Province" would advertise something
 // unselectable. Self-heals when a province is reactivated.
-const HAS_CA_ACTIVE = Object.values(GENERATED_STATES).some(st => st.active && st.country === 'CA');
+const hasActiveProvince = (active: readonly StateKey[]) => active.some(k => GENERATED_STATES[k].country === 'CA');
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
 import { useEntitlement } from '../useEntitlement';
+import { useActiveStates } from '../activeStates';
 import StateMapPicker from '../components/StateMapPicker';
 import AboutScreen from './AboutScreen';
 
@@ -30,6 +31,7 @@ export default function StateSelectScreen({ onSelect }: Props) {
   const insets = useSafeAreaInsets();
   const { setState } = useAppState();
   const { hasAllStates, loading: entitlementLoading } = useEntitlement();
+  const hasCaActive = hasActiveProvince(useActiveStates());
   const [showAbout, setShowAbout] = useState(false);
 
   // Every state is enterable. Paid states without entitlement open in
@@ -64,10 +66,10 @@ export default function StateSelectScreen({ onSelect }: Props) {
       <View style={styles.intro}>
         <Text style={[text.labelL, { color: colors.walleye2 }]}>LAKELORE · ATLAS</Text>
         <Text style={[text.displayXL, { color: colors.ink, marginTop: 6 }]}>
-          {HAS_CA_ACTIVE ? 'Select a State or Province' : 'Select a State'}
+          {hasCaActive ? 'Select a State or Province' : 'Select a State'}
         </Text>
         <Text style={[text.editorialS, { color: colors.inkSoft, marginTop: 6 }]}>
-          {HAS_CA_ACTIVE
+          {hasCaActive
             ? 'A field guide to fish populations in surveyed lakes across the US and Canada.'
             : 'A field guide to fish populations in surveyed lakes across the United States.'}
         </Text>

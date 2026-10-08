@@ -15,7 +15,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AppState, Linking, Modal, Platform, Pressable, Text, View } from 'react-native';
 import * as Application from 'expo-application';
-import { API_BASE_URL } from './api';
+import { fetchClientConfig } from './clientConfig';
 import { colors, text, space } from './lakelore-rn/theme';
 import { cmpVersions } from './version';
 
@@ -27,24 +27,12 @@ const STORE_URL =
 const CURRENT_VERSION = Application.nativeApplicationVersion ?? '0.0.0';
 
 
-interface ClientConfig {
-  minVersion: string | null;
-  killedVersions: string[];
-  message: string | null;
-}
-
 type Verdict = { kind: 'ok' } | { kind: 'nudge' | 'killed'; message: string | null };
 
 async function checkClientConfig(): Promise<Verdict> {
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8_000);
-    let res;
-    try {
-      res = await fetch(`${API_BASE_URL}/api/client-config`, { signal: controller.signal });
-    } finally { clearTimeout(timer); }
-    if (!res.ok) return { kind: 'ok' };
-    const cfg: ClientConfig = await res.json();
+    const cfg = await fetchClientConfig();
+    if (!cfg) return { kind: 'ok' };
     // Server JSON is untrusted at the type level — `message` renders straight
     // into a <Text> child, and a non-string (mis-set env var serving an
     // object/number) would throw "Objects are not valid as a React child" at

@@ -34,8 +34,6 @@ import { Sentry } from './src/sentry';
 import StateSelectScreen from './src/screens/StateSelectScreen';
 import SearchScreen from './src/screens/SearchScreen';
 import LakeDetailScreen from './src/screens/LakeDetailScreen';
-import AskScreen from './src/screens/AskScreen';
-import HomeScreen from './src/screens/HomeScreen';
 import { ASK_FEATURE_ENABLED } from './src/askFeature';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -43,6 +41,19 @@ import type { RootStackParamList } from './src/navigation';
 import { colors } from './src/lakelore-rn/theme';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+// Ask LakeLore is COMPILED OUT of production bundles (2026-10-08), not merely
+// hidden. The flag expression is repeated literally here on purpose: Metro
+// only drops a require() whose guard it can fold to a constant IN THIS FILE —
+// an imported boolean (ASK_FEATURE_ENABLED) is opaque to it, which is why the
+// chat screens used to ship in every production bundle behind a runtime check.
+// scripts/ota.sh asserts the production bundle carries no Ask screen.
+const AskScreen: React.ComponentType<any> | null =
+  __DEV__ || process.env.EXPO_PUBLIC_ASK_ENABLED === '1'
+    ? require('./src/screens/AskScreen').default : null;
+const HomeScreen: React.ComponentType<any> | null =
+  __DEV__ || process.env.EXPO_PUBLIC_ASK_ENABLED === '1'
+    ? require('./src/screens/HomeScreen').default : null;
 
 // Render-null micro-boundary for UpdateGate (round-2 review, 2026-08-25).
 // The gate sits OUTSIDE the main ErrorBoundary so the kill switch survives an
@@ -92,7 +103,7 @@ function AppInner() {
   // Launch chooser when the Ask feature is on (owner request 2026-09-12:
   // "recommendations" vs "review the rankings myself" on every open);
   // otherwise the pre-existing behavior — map on first run, last state after.
-  const initialRoute: keyof RootStackParamList = ASK_FEATURE_ENABLED
+  const initialRoute: keyof RootStackParamList = ASK_FEATURE_ENABLED && HomeScreen
     ? 'Home'
     : hadPersistedState ? 'Search' : 'StateSelect';
 
@@ -105,11 +116,11 @@ function AppInner() {
           contentStyle: { backgroundColor: colors.paper },
         }}
       >
-        <Stack.Screen name="Home" component={HomeScreen} />
+        {HomeScreen ? <Stack.Screen name="Home" component={HomeScreen} /> : null}
         <Stack.Screen name="StateSelect" component={StateSelectRoute} />
         <Stack.Screen name="Search" component={SearchScreen} />
         <Stack.Screen name="LakeDetail" component={LakeDetailScreen} />
-        <Stack.Screen name="Ask" component={AskScreen} />
+        {AskScreen ? <Stack.Screen name="Ask" component={AskScreen} /> : null}
       </Stack.Navigator>
     </NavigationContainer>
   );

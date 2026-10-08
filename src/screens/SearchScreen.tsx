@@ -13,8 +13,9 @@ import {
   FilterState, FilterOptions, Measure, Source, Result, ResultsResponse, StateKey,
   defaultFilters, STATE_CONFIGS, speciesDisplayName, GENERATED_STATES, STATE_KEYS,
 } from '../types';
-import { isFreeState } from '../activeStates';
-import { fetchFilters, fetchMeasures, fetchResults, fetchAllResults, DbStatus, fetchStatus, SubscriptionRequiredError } from '../api';
+import { isFreeState, useActiveStates } from '../activeStates';
+import { fetchFilters, fetchMeasures, fetchResults, fetchAllResults, DbStatus, fetchStatus, SubscriptionRequiredError, StateUnavailableError } from '../api';
+import { fetchClientConfig } from '../clientConfig';
 import { scopeScatterRows, plottedRowPredicate } from '../scatterScope';
 import PaywallScreen from './PaywallScreen';
 import AboutScreen from './AboutScreen';
@@ -262,6 +263,20 @@ export default function SearchScreen() {
   // (rows blur via lake_name === null) and /lake/:id 402s into the paywall.
   const preview = !entitlementLoading && !isFreeState(state) && !hasAllStates;
 
+  // The selected state is no longer served (pulled for licensing, or held).
+  // Known two ways: the served state list dropped it, or the server answered
+  // a request for it with "Unknown state". Either way a Retry can never work,
+  // so the screen says so and offers the picker instead of an error banner.
+  const activeStates = useActiveStates();
+  const [unavailableState, setUnavailableState] = useState<StateKey | null>(null);
+  const stateGone = !activeStates.includes(state) || unavailableState === state;
+  const noteStateUnavailable = useCallback((err: unknown): boolean => {
+    if (!(err instanceof StateUnavailableError)) return false;
+    setUnavailableState(err.state);
+    fetchClientConfig(); // refresh the served list so the pickers agree
+    return true;
+  }, []);
+
   const prevStateRef = useRef(state);
   const sessionCache = useRef<Partial<Record<StateKey, SearchSession>>>({});
 
@@ -333,6 +348,8 @@ export default function SearchScreen() {
     } catch (err) {
       if (err instanceof SubscriptionRequiredError) {
         setPaywallTriggered(err.state);
+      } else if (noteStateUnavailable(err)) {
+        // handled by the stateGone notice
       } else {
         // Cold-start offline (the MOST common offline case): /status fails
         // before any search can run, the species button is disabled, and the
@@ -363,7 +380,7 @@ export default function SearchScreen() {
     } finally {
       setLoadingOptions(false);
     }
-  }, []);
+  }, [noteStateUnavailable]);
 
   useEffect(() => {
     if (prevStateRef.current !== state) {
@@ -470,6 +487,8 @@ export default function SearchScreen() {
     } catch (err: unknown) {
       if (err instanceof SubscriptionRequiredError) {
         setPaywallTriggered(err.state);
+      } else if (noteStateUnavailable(err)) {
+        // handled by the stateGone notice
       } else {
         // Network failure: fall back to the last cached results for this
         // state (stale beats blank at the lake), banner shows the age.
@@ -497,7 +516,7 @@ export default function SearchScreen() {
     } finally {
       if (seq === searchSeqRef.current) setLoading(false);
     }
-  }, [filters, state]);
+  }, [filters, state, noteStateUnavailable]);
 
   // Load the Measure × Source manifest for a scope and fold the chosen
   // measure+source into `applyTo`. Returns the resulting filters. On any failure
@@ -1044,7 +1063,22 @@ export default function SearchScreen() {
 
       {/* Error — retry is smart: re-fetch options if they're missing,
           otherwise re-run the last search. */}
-      {error && (
+      {stateGone && (
+        <View style={styles.errorBanner}>
+          <Text style={[text.bodyS, { color: colors.paper, flex: 1 }]} numberOfLines={3}>
+            {`${GENERATED_STATES[state].name} is no longer available in LakeLore.`}
+          </Text>
+          <Pressable
+            onPress={() => navigation.replace('StateSelect')}
+            accessibilityRole="button"
+            accessibilityLabel="Choose another state"
+            style={styles.retryButton}
+          >
+            <Text style={[text.labelM, { color: colors.ink }]}>Choose a state</Text>
+          </Pressable>
+        </View>
+      )}
+      {error && !stateGone && (
         <View style={styles.errorBanner}>
           <Text style={[text.bodyS, { color: colors.paper, flex: 1 }]} numberOfLines={3}>{error}</Text>
           <Pressable

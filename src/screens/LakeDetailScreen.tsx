@@ -680,6 +680,41 @@ export default function LakeDetailScreen() {
     ? speciesDisplayName(localSpecies, state)
     : 'All species';
 
+  // Subscription gate: opened from the preview banner's Unlock button, or by a
+  // hard 402 (a raw lake id in preview — e.g. a lapsed subscriber tapping a
+  // row from cached results). Built once and rendered by BOTH the loaded
+  // screen and the no-data screen: a hard 402 arrives before any data, and
+  // the paywall used to exist only in the loaded branch, so those users got
+  // "No data for this lake" with a Retry that could never work.
+  const purchasedRef = React.useRef(false);
+  const paywall = (
+    <PaywallScreen
+      visible={paywallTriggered !== null}
+      triggeredFrom={paywallTriggered ? STATE_CONFIGS[paywallTriggered].label : undefined}
+      onClose={() => {
+        setPaywallTriggered(null);
+        // PaywallScreen calls onPurchased() then onClose(). After a purchase
+        // the lake is reloading behind the sheet — stay on it.
+        if (purchasedRef.current) { purchasedRef.current = false; return; }
+        if (paywallFromBanner) {
+          // Dismissed from the preview banner — the redacted screen behind
+          // it is still perfectly usable; stay put.
+          setPaywallFromBanner(false);
+          return;
+        }
+        // Dismissed a hard 402 without subscribing — nothing to show here,
+        // back out of the lake detail.
+        navigation.goBack();
+      }}
+      onPurchased={() => {
+        purchasedRef.current = true;
+        setPaywallTriggered(null);
+        setPaywallFromBanner(false);
+        loadLake();
+      }}
+    />
+  );
+
   if (loading) return (
     <SafeAreaView style={styles.safe}>
       <StatusBar style="light" />
@@ -696,11 +731,12 @@ export default function LakeDetailScreen() {
     <SafeAreaView style={styles.safe}>
       <StatusBar style="light" />
       <PaperHeader
-        title="Couldn’t load lake"
+        title={paywallTriggered !== null ? 'Subscriber lake' : 'Couldn’t load lake'}
         eyebrow={state.toUpperCase()}
         onBack={() => navigation.goBack()}
         backLabel="←"
       />
+      {paywallTriggered !== null ? null : (
       <View style={styles.errorBox}>
         <Text style={[text.bodyL, { color: colors.destructive, textAlign: 'center' }]}>
           {error ?? 'No data for this lake.'}
@@ -712,6 +748,8 @@ export default function LakeDetailScreen() {
           <Text style={[text.labelL, { color: colors.inkSoft }]}>Go back</Text>
         </Pressable>
       </View>
+      )}
+      {paywall}
     </SafeAreaView>
   );
 
@@ -1235,29 +1273,7 @@ export default function LakeDetailScreen() {
         </SafeAreaView>
       </Modal>
 
-      {/* Subscription gate: opened from the preview banner's Unlock button,
-          or by a hard 402 (older server / pdf-only paths). */}
-      <PaywallScreen
-        visible={paywallTriggered !== null}
-        triggeredFrom={paywallTriggered ? STATE_CONFIGS[paywallTriggered].label : undefined}
-        onClose={() => {
-          setPaywallTriggered(null);
-          if (paywallFromBanner) {
-            // Dismissed from the preview banner — the redacted screen behind
-            // it is still perfectly usable; stay put.
-            setPaywallFromBanner(false);
-            return;
-          }
-          // Dismissed a hard 402 without subscribing — nothing to show here,
-          // back out of the lake detail.
-          navigation.goBack();
-        }}
-        onPurchased={() => {
-          setPaywallTriggered(null);
-          setPaywallFromBanner(false);
-          loadLake();
-        }}
-      />
+      {paywall}
     </SafeAreaView>
   );
 }

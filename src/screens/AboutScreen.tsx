@@ -17,7 +17,8 @@ import { colors, text, space, hairline } from '../lakelore-rn/theme';
 import { PaperHeader, SectionLabel } from '../lakelore-rn/components';
 import { useEntitlement } from '../useEntitlement';
 import { restorePurchases } from '../iap';
-import { ACTIVE_STATES } from '../activeStates';
+import { useActiveStates } from '../activeStates';
+import { notePurchase } from '../purchaseHint';
 import { APP_VERSION, OTA_UPDATE_ID } from '../api';
 import { StateKey, GENERATED_STATES } from '../types';
 
@@ -157,7 +158,7 @@ const ALL_AGENCIES: AgencySource[] = [
 // One credit per active state. The original launch states keep their
 // hand-written entries above; everything else derives from the generated
 // registry export (agency name + homepage) with a generic blurb.
-const AGENCIES: AgencySource[] = ACTIVE_STATES.map(k => {
+const agenciesFor = (active: readonly StateKey[]): AgencySource[] => active.map(k => {
   const hand = ALL_AGENCIES.find(a => a.key === k);
   const base = hand ?? (() => {
     const g = GENERATED_STATES[k];
@@ -364,6 +365,7 @@ function GlossarySection({ title, children }: { title: string; children: React.R
 
 export default function AboutScreen({ visible, state, onClose }: Props) {
   const { hasAllStates, refresh } = useEntitlement();
+  const activeStates = useActiveStates();
   const [restoring, setRestoring] = useState(false);
   // Restore outcome, rendered INLINE under the Restore row (2026-08-25).
   // Toasts render BEHIND native Modals on iOS, and this whole screen is a
@@ -377,7 +379,7 @@ export default function AboutScreen({ visible, state, onClose }: Props) {
     setRestoring(true);
     setRestoreOutcome(null);
     const result = await restorePurchases();
-    if (result === 'restored') await refresh();
+    if (result === 'restored') { notePurchase(); await refresh(); }
     setRestoring(false);
     setRestoreOutcome(result);
   };
@@ -433,7 +435,7 @@ export default function AboutScreen({ visible, state, onClose }: Props) {
             <Text style={[text.labelL, { color: colors.inkSoft }]}>DATA SOURCES</Text>
           </View>
 
-          {AGENCIES.map(a => (
+          {agenciesFor(activeStates).map(a => (
             <Pressable
               key={a.abbr}
               onPress={() => Linking.openURL(a.url)}

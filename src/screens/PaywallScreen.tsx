@@ -22,7 +22,8 @@ import {
 } from '../iap';
 import { fetchMyEntitlement } from '../api';
 import { GENERATED_STATES } from '../types';
-import { ACTIVE_STATES } from '../activeStates';
+import { useActiveStates } from '../activeStates';
+import { notePurchase } from '../purchaseHint';
 import { TOTAL_ACTIVE_LAKES, TOTAL_ACTIVE_RECORDS, type StateKey } from '../generated/states';
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
 import { PaperHeader, PrimaryButton } from '../lakelore-rn/components';
@@ -80,6 +81,7 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
       // that triggered the paywall). Without this, the immediate post-purchase
       // data fetch returns 402 and bounces the user right back to the paywall.
       // Worst case ~1 s added to the "Subscribing…" state.
+      notePurchase(); // requests now carry the refresh hint (purchaseHint.ts)
       await fetchMyEntitlement().catch(() => {});
       setPurchasing(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -102,6 +104,7 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
     if (result === 'restored') {
       // Same priming rationale as handleSubscribe — restored entitlement
       // needs to land in the server cache before the caller refetches data.
+      notePurchase();
       await fetchMyEntitlement().catch(() => {});
       setRestoring(false);
       onPurchased();
@@ -122,6 +125,7 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
   // authoritative at purchase time and localizes the currency.
   const priceLabel = pkg?.product.priceString ?? null;
   const priceLabelOrFallback = priceLabel ?? 'US$4.99';
+  const { us: PAID_US, ca: PAID_CA } = paidCounts(useActiveStates());
   const paidStatesPhrase = PAID_CA > 0
     ? `${PAID_US} more states + ${PAID_CA} Canadian province${PAID_CA === 1 ? '' : 's'}`
     : `${PAID_US} more states`;
@@ -154,7 +158,7 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
 
           {/* Value props */}
           <View style={styles.valuePropsBox}>
-            {ACTIVE_VALUE_PROPS.map(line => (
+            {valueProps(PAID_US, PAID_CA).map(line => (
               <View key={line.label} style={styles.valuePropRow}>
                 <Text style={[text.dataM, { color: colors.walleye2, width: 26 }]}>›</Text>
                 <View style={{ flex: 1 }}>
@@ -300,15 +304,21 @@ function contextName(triggeredFrom?: string): string | null {
 // overstates.
 const floorK = (n: number) => `${Math.floor(n / 1000).toLocaleString()},000+`;
 
-// Coverage counts derived from the generated registry export — stay correct
-// as states are added without touching this copy.
-const PAID_STATES = ACTIVE_STATES.filter(s => !GENERATED_STATES[s].free);
-const PAID_US = PAID_STATES.filter(s => GENERATED_STATES[s].country === 'US').length;
-const PAID_CA = PAID_STATES.filter(s => GENERATED_STATES[s].country === 'CA').length;
+// Coverage counts derived from the EFFECTIVE active list (activeStates.ts) at
+// render time — correct as states are added, and as the server pulls or
+// restores one without a release.
+function paidCounts(active: readonly StateKey[]) {
+  const paid = active.filter(s => !GENERATED_STATES[s].free);
+  return {
+    us: paid.filter(s => GENERATED_STATES[s].country === 'US').length,
+    ca: paid.filter(s => GENERATED_STATES[s].country === 'CA').length,
+  };
+}
 
 // With the whole continent covered, per-state rows no longer scale — the
 // value props aggregate instead.
-const ACTIVE_VALUE_PROPS: { label: string; detail: string }[] = [
+function valueProps(PAID_US: number, PAID_CA: number): { label: string; detail: string }[] {
+  return [
   { label: `${floorK(TOTAL_ACTIVE_LAKES)} lakes · ${floorK(TOTAL_ACTIVE_RECORDS)} records`,
     detail: 'Agency survey, stocking, and forecast data — counted at build time, growing every refresh' },
   { label: PAID_CA > 0
@@ -323,7 +333,8 @@ const ACTIVE_VALUE_PROPS: { label: string; detail: string }[] = [
     detail: 'Netting + electrofishing catch rates, lengths, and stocking records' },
   { label: 'Every future state included',
     detail: 'New coverage lands in the same subscription at no extra cost' },
-];
+  ];
+}
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
