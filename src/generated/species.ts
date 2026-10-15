@@ -302,6 +302,7 @@ export const SD_SPECIES_NAMES: Record<string, string> = {
   'Rainbow Trout (M)': 'Rainbow Trout',
   'Rainbow Trout (C)': 'Rainbow Trout',
   'Rainbow trout': 'Rainbow Trout',
+  'Rainbow Trout (McConaughy)': 'Rainbow Trout',
   'Brown Trout': 'Brown Trout',
   'Brown Trout (Plymouth Rock)': 'Brown Trout',
   'Brown Trout (Soda Lake)': 'Brown Trout',
