@@ -233,6 +233,7 @@ export const SD_SPECIES_NAMES: Record<string, string> = {
   'TPM': 'Tadpole Madtom',
   'LCH': 'Lake Chub',
   'Walleye': 'Walleye',
+  'Saugeye/Walleye (combined)': 'Walleye',
   'Sauger': 'Sauger',
   'Saugeye': 'Saugeye',
   'Walleye (saugeye)': 'Saugeye',
