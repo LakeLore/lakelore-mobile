@@ -240,7 +240,7 @@ App Store Connect → My Apps → LakeLore → App Store tab.
    - Sign-in required: No (anonymous device UUID identity).
    - Demo account: Not applicable.
    - **Notes for the App Reviewer** (paste from `STORE_LISTING.md` § "Apple Review notes" — that section is the ONLY source; if it is missing, STOP and restore it. A stale inline fallback here once said "four additional states" two eras after the all-states launch — never paste from memory.)
-5. **App Privacy** (separate left-sidebar item): confirm answers match `STORE_LISTING.md` § "App Privacy questionnaire" — Identifiers ✅, Purchases ✅, Diagnostics ✅ (Crash + Performance + Other Diagnostic Data), **User Content ✅ (Customer Support — the feedback form)**, everything else ❌.
+5. **App Privacy** (separate left-sidebar item): confirm answers match `STORE_LISTING.md` § "App Privacy questionnaire" — Identifiers ✅, Purchases ✅, Diagnostics ✅ (Crash + Performance + Other Diagnostic Data), **User Content ✅ (Customer Support — the feedback form; Other User Content — Ask LakeLore chats, 1.1.2+)**, everything else ❌.
 6. **Export Compliance**: already handled by `ITSAppUsesNonExemptEncryption: false` in `app.json`. No questions asked.
 7. **Submit for Review.** Expected review time: 24–72 hours for first submission.
 
