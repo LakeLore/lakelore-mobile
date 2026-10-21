@@ -346,13 +346,41 @@ export async function askLakes(state: StateKey, messages: AskMessage[]): Promise
     await waitForSessionToken(TOKEN_WAIT_MS);
     throw new Error('Session refreshed — send that again.');
   }
-  if (res.status === 429) throw new Error('You’ve asked a lot this hour — try again a little later.');
-  if (res.status === 503) throw new Error('The assistant isn’t available right now.');
+  if (res.status === 429 || res.status === 503) {
+    // The server's message says which limit was hit (hourly, daily, monthly
+    // credit), so show it when there is one.
+    const body = await res.json().catch(() => null);
+    if (typeof body?.message === 'string' && body.message) throw new Error(body.message);
+    throw new Error(res.status === 429
+      ? 'You’ve asked a lot this hour — try again a little later.'
+      : 'The assistant isn’t available right now.');
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new Error(body?.message ?? body?.error ?? `Server error (${res.status})`);
   }
   return res.json() as Promise<AskResponse>;
+}
+
+/** "Report this answer" (POST /api/:state/ask/report, 2026-10-20). */
+export async function reportAskAnswer(
+  state: StateKey,
+  report: { reason: string; question: string; answer: string },
+): Promise<void> {
+  const { headers } = await identityHeaders();
+  headers['Content-Type'] = 'application/json';
+  const askToken = process.env.EXPO_PUBLIC_ASK_TOKEN;
+  if (askToken) headers['X-Ask-Token'] = askToken;
+  const res = await fetch(`${apiBase()}${statePath(state)}/ask/report`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      reason: report.reason.slice(0, 500),
+      question: report.question.slice(0, 2000),
+      answer: report.answer.slice(0, 8000),
+    }),
+  });
+  if (!res.ok) throw new Error(`Server error (${res.status})`);
 }
 
 // ── Lake-name typeahead (2026-09-13) ─────────────────────────────────────────

@@ -27,6 +27,7 @@ import { notePurchase } from '../purchaseHint';
 import { TOTAL_ACTIVE_LAKES, TOTAL_ACTIVE_RECORDS, type StateKey } from '../generated/states';
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
 import { PaperHeader, PrimaryButton } from '../lakelore-rn/components';
+import { ASK_FEATURE_ENABLED } from '../askFeature';
 
 const TERMS_URL   = 'https://www.lakeloreapp.com/terms';
 const PRIVACY_URL = 'https://www.lakeloreapp.com/privacy';
@@ -331,6 +332,10 @@ function valueProps(PAID_US: number, PAID_CA: number): { label: string; detail: 
     detail: 'Preview mode shows the numbers — the pass shows you which lakes' },
   { label: PAID_CA > 0 ? 'State & provincial agency survey data' : 'State agency survey data',
     detail: 'Netting + electrofishing catch rates, lengths, and stocking records' },
+  // Ask LakeLore is subscribers-only (2026-10-20); listed only in bundles
+  // that contain it, so 1.1.1 OTAs never advertise a feature they lack.
+  ...(ASK_FEATURE_ENABLED ? [{ label: 'Ask LakeLore, the AI fishing assistant',
+    detail: 'Say what you’re after and get lakes picked for you from the survey data' }] : []),
   { label: 'Every future state included',
     detail: 'New coverage lands in the same subscription at no extra cost' },
   ];

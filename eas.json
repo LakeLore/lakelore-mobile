@@ -56,7 +56,8 @@
       "channel": "production",
       "autoIncrement": true,
       "env": {
-        "SENTRY_ALLOW_FAILURE": "true"
+        "SENTRY_ALLOW_FAILURE": "true",
+        "EXPO_PUBLIC_ASK_ENABLED": "1"
       },
       "ios": {
         "resourceClass": "m-medium"

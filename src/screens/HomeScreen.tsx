@@ -3,15 +3,19 @@
 // lake rankings yourself (the state → county → search flow). Both destinations
 // can cross over later: Search carries a floating "✦ Ask" button and the chat
 // header carries a "Rankings" button. Only mounted as the initial route when
-// the Ask feature is enabled (App.tsx).
+// the Ask feature is enabled (App.tsx). When the server has the assistant
+// switched off (client-config ask.enabled=false), Home steps aside straight
+// to the rankings flow.
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppState } from '../StateContext';
+import { useAskAvailable } from '../askFeature';
+import { useEntitlement } from '../useEntitlement';
 import type { RootStackParamList } from '../navigation';
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
 import { PaperHeader } from '../lakelore-rn/components';
@@ -22,6 +26,11 @@ export default function HomeScreen() {
 
   const goAsk = () => navigation.replace('Ask');
   const goRankings = () => navigation.replace(hasState ? 'Search' : 'StateSelect');
+  const askAvailable = useAskAvailable();
+  const { hasAllStates, loading } = useEntitlement();
+  useEffect(() => {
+    if (!askAvailable) navigation.replace(hasState ? 'Search' : 'StateSelect');
+  }, [askAvailable, hasState, navigation]);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -43,6 +52,9 @@ export default function HomeScreen() {
           <Text style={[text.bodyM, { color: colors.paper3, marginTop: space.sm }]}>
             Say what you’re after in plain words — a species, a place, big fish or lots of them — and get lakes picked for you from the survey data.
           </Text>
+          {!loading && !hasAllStates && (
+            <Text style={[text.labelS, { color: colors.flash, marginTop: space.md }]}>INCLUDED WITH ALL-STATES</Text>
+          )}
         </Pressable>
 
         <Pressable

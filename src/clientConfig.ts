@@ -5,12 +5,14 @@
 // hostname has gone away.
 import { API_ORIGINS, failoverFrom, isNetworkFailure, looksLikeWrongHost, noteAnswered } from './apiOrigin';
 import { applyServedStates } from './activeStates';
+import { applyServedAsk } from './askFeature';
 
 export interface ClientConfig {
   minVersion: string | null;
   killedVersions: string[];
   message: string | null;
   states?: { active?: unknown };
+  ask?: { enabled?: unknown };
 }
 
 /** Resolves the config, or null if no origin answered usefully. Never throws. */
@@ -26,6 +28,7 @@ export async function fetchClientConfig(): Promise<ClientConfig | null> {
       if (cfg && typeof cfg === 'object') {
         noteAnswered(base);
         applyServedStates(cfg.states?.active);
+        applyServedAsk(cfg.ask);
         return cfg;
       }
     } catch (err) {

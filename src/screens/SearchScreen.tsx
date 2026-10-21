@@ -38,7 +38,7 @@ import { ViewPickerModal } from './search/ViewPickerModal';
 import { MeasurePickerModal } from './search/MeasurePickerModal';
 import { StatePickerModal } from './search/StatePickerModal';
 import { KEYS } from '../storage';
-import { ASK_FEATURE_ENABLED } from '../askFeature';
+import { useAskAvailable } from '../askFeature';
 import { getOfflineResults, putOfflineResults, mergeOfflineScatter } from '../offlineCache';
 
 const PAGE_SIZE = 50;
@@ -193,6 +193,7 @@ export default function SearchScreen() {
   // counties — label the chip and picker accordingly.
   const regionWord = GENERATED_STATES[state].country === 'CA' ? 'Regions' : 'Counties';
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const askAvailable = useAskAvailable();
 
   const [filters, setFilters] = useState<FilterState>(() => defaultFilters(state));
   const [options, setOptions] = useState<FilterOptions | null>(null);
@@ -1451,7 +1452,7 @@ export default function SearchScreen() {
           large bubble bottom-right, above EVERYTHING on this screen — last
           child + zIndex/elevation so no sibling can stack over it; native
           modal sheets are the only thing that cover it). */}
-      {ASK_FEATURE_ENABLED && (
+      {askAvailable && (
         <Pressable
           onPress={() => navigation.navigate('Ask')}
           accessibilityRole="button"

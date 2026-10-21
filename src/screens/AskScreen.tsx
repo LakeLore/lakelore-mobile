@@ -5,19 +5,29 @@
 //
 // Conversation state is in-memory for this visit only; every turn re-sends
 // the whole history (plain text, markers stripped) because the server is
-// stateless. Dev-only until the route ships in production (src/askFeature.ts).
+// stateless.
+//
+// Production launch (2026-10-20, app 1.1.2): subscribers only in every state,
+// MN included — non-subscribers see a locked card that opens the paywall. A
+// one-time disclosure must be accepted before the first question (App Store
+// guideline 5.1.2(i): personal data shared with a third-party AI needs clear
+// disclosure and explicit permission). Every answer is labelled AI-generated
+// and carries a Report link (Google Play's AI-generated content policy).
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView, StyleSheet,
-  ActivityIndicator, KeyboardAvoidingView, Platform,
+  ActivityIndicator, KeyboardAvoidingView, Platform, Alert, Linking,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppState } from '../StateContext';
-import { askLakes, AskLake, AskMessage, SubscriptionRequiredError } from '../api';
+import { askLakes, reportAskAnswer, AskLake, AskMessage, SubscriptionRequiredError } from '../api';
+import { useEntitlement } from '../useEntitlement';
+import { KEYS } from '../storage';
 import { parseAskMarkers, stripAskMarkers } from '../askMarkers';
 import { AskTurn, getAskSession, saveAskSession, clearAskSession } from '../askSession';
 import PaywallScreen from './PaywallScreen';
@@ -27,6 +37,14 @@ import { colors, text, space, hairline } from '../lakelore-rn/theme';
 import { PaperHeader, Chip } from '../lakelore-rn/components';
 
 type Turn = AskTurn;
+
+const PRIVACY_URL = 'https://lakeloreapp.com/privacy';
+
+// Two reasons + Cancel: Android's Alert shows at most three buttons.
+const REPORT_REASONS = [
+  'Wrong or made-up information',
+  'Offensive or harmful',
+];
 
 const STARTERS = [
   'Where should I fish for walleye this weekend?',
@@ -57,6 +75,45 @@ export default function AskScreen() {
   const [busy, setBusy] = useState(false);
   const [paywall, setPaywall] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+  const { hasAllStates, loading: entitlementLoading, refresh: refreshEntitlement } = useEntitlement();
+  // Subscribers only (server 402s everyone else). While entitlement is still
+  // loading, show the chat; a stray ask from a non-subscriber just opens the
+  // paywall via the 402 path below.
+  const locked = !entitlementLoading && !hasAllStates;
+  // AI-sharing disclosure, accepted once per install. null = not read yet.
+  const [consented, setConsented] = useState<boolean | null>(null);
+  useEffect(() => {
+    AsyncStorage.getItem(KEYS.askConsent)
+      .then(v => setConsented(v === '1'))
+      .catch(() => setConsented(false));
+  }, []);
+  const acceptConsent = useCallback(() => {
+    setConsented(true);
+    AsyncStorage.setItem(KEYS.askConsent, '1').catch(() => {});
+  }, []);
+  const [reported, setReported] = useState<Set<number>>(() => new Set());
+
+  const report = useCallback((idx: number) => {
+    const answer = turns[idx];
+    const question = [...turns.slice(0, idx)].reverse().find(t => t.role === 'user');
+    const submit = (reason: string) => {
+      reportAskAnswer(state, {
+        reason,
+        question: question?.content ?? '',
+        answer: answer.display ?? answer.content,
+      })
+        .then(() => setReported(prev => new Set(prev).add(idx)))
+        .catch(() => Alert.alert('Couldn’t send the report', 'Check your connection and try again.'));
+    };
+    Alert.alert(
+      'Report this answer',
+      'What’s wrong with it? The answer and your question are sent to LakeLore for review.',
+      [
+        ...REPORT_REASONS.map(r => ({ text: r, onPress: () => submit(r) })),
+        { text: 'Cancel', style: 'cancel' as const },
+      ],
+    );
+  }, [state, turns]);
 
   const openLake = useCallback((l: AskLake) => {
     if (!l.lake_name) return;
@@ -71,6 +128,8 @@ export default function AskScreen() {
   const send = useCallback(async (q: string) => {
     const question = q.trim();
     if (!question || busy) return;
+    if (locked) { setPaywall(true); return; }
+    if (!consented) return;
     const history: AskMessage[] = turns
       .filter(t => !t.error)
       .map(t => ({ role: t.role, content: t.content }));
@@ -98,7 +157,7 @@ export default function AskScreen() {
       setBusy(false);
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
     }
-  }, [busy, state, turns, commit]);
+  }, [busy, state, turns, commit, locked, consented]);
 
   const renderAssistant = (t: Turn, idx: number) => {
     const lakesById = new Map((t.lakes ?? []).map(l => [l.lake_id, l]));
@@ -124,6 +183,18 @@ export default function AskScreen() {
         </Text>
         {/* Lake cards removed 2026-09-14 (owner: redundant with the
             inline tappable links). t.lakes still resolves the links. */}
+        {!t.error && (
+          <View style={styles.answerFoot}>
+            <Text style={[text.bodyS, { color: colors.inkSoft }]}>AI-generated · can be wrong</Text>
+            {reported.has(idx)
+              ? <Text style={[text.bodyS, { color: colors.inkSoft }]}>Reported — thank you</Text>
+              : (
+                <Pressable onPress={() => report(idx)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Report this answer">
+                  <Text style={[text.bodyS, { color: colors.walleye2, textDecorationLine: 'underline' }]}>Report</Text>
+                </Pressable>
+              )}
+          </View>
+        )}
       </View>
     );
   };
@@ -138,7 +209,7 @@ export default function AskScreen() {
         eyebrow={`${stateCfg.label.toUpperCase()} · ASSISTANT`}
         right={turns.length > 0 ? (
           <Pressable
-            onPress={() => { clearAskSession(state); setTurns([]); setInput(''); }}
+            onPress={() => { clearAskSession(state); setTurns([]); setInput(''); setReported(new Set()); }}
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel="Start a new chat"
@@ -157,7 +228,44 @@ export default function AskScreen() {
           contentContainerStyle={styles.thread}
           keyboardShouldPersistTaps="handled"
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}>
-          {turns.length === 0 && (
+          {locked && (
+            <View style={styles.notice}>
+              <Text style={[text.labelL, { color: colors.walleye2, marginBottom: space.sm }]}>ALL-STATES FEATURE</Text>
+              <Text style={[text.editorialM, { color: colors.ink2 }]}>
+                Ask LakeLore is included with the All-States subscription. Tell it what you’re after and it picks lakes for you from the survey data, in every state LakeLore covers.
+              </Text>
+              <Pressable
+                onPress={() => setPaywall(true)}
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.noticeBtn, { opacity: pressed ? 0.85 : 1 }]}>
+                <Text style={[text.labelL, { color: colors.paper }]}>See the All-States pass</Text>
+              </Pressable>
+            </View>
+          )}
+          {!locked && consented === false && (
+            <View style={styles.notice}>
+              <Text style={[text.labelL, { color: colors.walleye2, marginBottom: space.sm }]}>BEFORE YOU ASK</Text>
+              <Text style={[text.bodyM, { color: colors.ink }]}>
+                Ask LakeLore is an AI assistant. To answer, LakeLore sends the questions you type, and the chat so far, to Anthropic, which runs the Claude AI model. Anthropic uses them only to produce the answer and does not train on them. LakeLore keeps chats for up to 90 days to fix problems.
+              </Text>
+              <Text style={[text.bodyM, { color: colors.ink, marginTop: space.md }]}>
+                Don’t include your name, phone number, or other personal details. Answers come from agency survey data but can be wrong — check the lake page and current regulations.
+              </Text>
+              <Pressable onPress={() => Linking.openURL(PRIVACY_URL)} accessibilityRole="link" hitSlop={8}>
+                <Text style={[text.bodyS, { color: colors.walleye2, textDecorationLine: 'underline', marginTop: space.md }]}>Privacy policy</Text>
+              </Pressable>
+              <Pressable
+                onPress={acceptConsent}
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.noticeBtn, { opacity: pressed ? 0.85 : 1 }]}>
+                <Text style={[text.labelL, { color: colors.paper }]}>I agree — start asking</Text>
+              </Pressable>
+              <Pressable onPress={goRankings} accessibilityRole="button" hitSlop={8}>
+                <Text style={[text.bodyS, { color: colors.inkSoft, marginTop: space.md, textAlign: 'center' }]}>No thanks — browse the rankings</Text>
+              </Pressable>
+            </View>
+          )}
+          {!locked && consented && turns.length === 0 && (
             <View style={styles.empty}>
               <Text style={[text.editorialM, { color: colors.ink2 }]}>
                 Say what you’re after — a species, a place, big fish or lots of fish — and I’ll search {stateCfg.label}’s survey data for you.
@@ -191,7 +299,7 @@ export default function AskScreen() {
           {/* Input flows RIGHT UNDER the conversation (owner 2026-09-13) —
               not pinned to the screen bottom — so the floating pill below
               never covers it. */}
-          <View style={styles.inputRow}>
+          {!locked && consented && <View style={styles.inputRow}>
             <TextInput
               style={styles.input}
               placeholder={`Ask about ${stateCfg.label} lakes…`}
@@ -213,7 +321,7 @@ export default function AskScreen() {
               style={({ pressed }) => [styles.sendBtn, { opacity: busy || !input.trim() ? 0.4 : pressed ? 0.85 : 1 }]}>
               <Text style={[text.labelL, { color: colors.paper }]}>Ask</Text>
             </Pressable>
-          </View>
+          </View>}
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -233,7 +341,7 @@ export default function AskScreen() {
         visible={paywall}
         triggeredFrom={stateCfg.label}
         onClose={() => setPaywall(false)}
-        onPurchased={() => setPaywall(false)}
+        onPurchased={() => { setPaywall(false); refreshEntitlement(); }}
       />
     </SafeAreaView>
   );
@@ -243,6 +351,21 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
   thread: { paddingHorizontal: space.xl, paddingTop: space.xl, paddingBottom: 96, gap: space.xl },
   empty: { paddingTop: space.md },
+  notice: {
+    paddingTop: space.md,
+  },
+  noticeBtn: {
+    backgroundColor: colors.ink,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: space.xl,
+  },
+  answerFoot: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: space.sm,
+  },
   starters: { marginTop: space.xl, alignItems: 'flex-start' },
   userWrap: {
     alignSelf: 'flex-end',

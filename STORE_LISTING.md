@@ -105,6 +105,7 @@ WHAT YOU CAN DO
 • View catch-per-unit-effort and average size for a given lake over time, broken out by gear type.
 • View stocking history — fry, fingerlings, yearlings, adults — with an estimated 'adult fish per 100 acres' overlay derived from a survival model.
 • Compare lakes side-by-side in a scatter plot.
+• Ask LakeLore (All-States subscribers): an AI fishing assistant. Say what you're after — "walleye near Brainerd" or "a small lake with big pike" — and it picks lakes for you from the survey data, with links to each lake's page.
 
 DATA COVERED
 
@@ -196,6 +197,8 @@ Answer "None" / "No" to every question. The app contains no:
 
 Result: rated **4+** (Apple's lowest, all ages).
 
+**1.1.2 adds Ask LakeLore, an AI chatbot (2026-10-20).** Re-open the questionnaire before submitting 1.1.2: if it asks about AI-generated content, chatbots, or user-generated content, answer truthfully — the app has an AI assistant that answers fishing-lake questions from survey data, its system prompt keeps it to that topic and it declines anything else, every answer can be reported in-app, and users can't see each other's content. Expect the result to stay 4+; if Apple's answers raise it, accept the higher rating rather than shading an answer.
+
 ### Export Compliance (uploaded with each build)
 
 Add to `app.json` (already documented elsewhere in the file):
@@ -221,6 +224,7 @@ FOUR categories must be declared (2026-07-26 red-team pass — the feedback form
 - Sensitive Info: ❌
 - Contacts: ❌
 - **User Content: ✅ Customer Support** — Linked to user: ❌. Used for tracking: ❌. Purpose: **App Functionality**. *(The in-app "Report data issue" feedback form: free-text message + lake/species/version context, stored keyed to the anonymous UUID. Was falsely declared ❌ until 2026-07-26.)*
+- **User Content: ✅ Other User Content** *(added for 1.1.2, 2026-10-20)* — Linked to user: ❌. Used for tracking: ❌. Purpose: **App Functionality**. *(Ask LakeLore: the questions a subscriber types, plus the answers, kept 90 days keyed to the anonymous UUID; sent to Anthropic as a service provider to generate each answer, without the UUID. Declared in `app.json` `ios.privacyManifests` as NSPrivacyCollectedDataTypeOtherUserContent.)*
 - Browsing History: ❌
 - Search History: ❌ *(searches ride request URLs only; Sentry breadcrumbs strip query strings as of 1.1.1 — src/sentry.ts beforeBreadcrumb)*
 - **Identifiers: ✅ User ID** — Linked to user: ❌. Used for tracking: ❌. Purpose: **App Functionality**.
@@ -271,9 +275,12 @@ Declared data types (all: **collected**, NOT shared, NOT processed ephemerally, 
 | Financial info → **Purchase history** | Subscription transaction state from RevenueCat/Google. Never the payment method. |
 | App info and performance → **Crash logs** + **Diagnostics** | Sentry crash and performance reports. |
 | Messages → **Other in-app messages** | The "Report data issue" feedback form: free-text message + lake/species/version context. Collected, not shared, **OPTIONAL** (user-initiated), purpose App functionality. *(Added 2026-07-26 — was falsely omitted.)* |
+| App activity → **Other user-generated content** | *(Added for 1.1.2, 2026-10-20.)* Ask LakeLore questions and answers, kept 90 days keyed to the anonymous UUID. Collected, NOT shared (Anthropic processes them as a service provider on our behalf, which Play does not count as sharing), **OPTIONAL** (only subscribers who choose to use the chat), purpose App functionality. |
 | Device or other IDs → **Device or other IDs** | Sentry's per-install installation ID (SDK-generated) + the RevenueCat anonymous app-user ID. Collected, not shared, required, App functionality. *(Added 2026-07-26.)* |
 
-Everything else (location, contacts, photos, browsing, health, etc.): **not collected**. *(Messages moved OUT of this line 2026-07-26 — the feedback form is one.)*
+Everything else (location, contacts, photos, browsing, health, etc.): **not collected**.
+
+**Generative AI (1.1.2+).** Google Play's AI-Generated Content policy applies to Ask LakeLore: users can report an answer in-app (the "Report" link under every answer → `POST /api/:state/ask/report` → `ask-reports.jsonl` on the server volume, reviewed by the owner). If the Play Console's app-content declarations ask whether the app uses generative AI, answer **Yes**. *(Messages moved OUT of this line 2026-07-26 — the feedback form is one.)*
 
 ### Government regulations
 
@@ -327,9 +334,10 @@ Real device screenshots also work — Expo Go renders the app screens identicall
 > • NEW: Trophy Abundance — rank lakes by the catch rate of true trophy-class fish (like a 25″ walleye), with a trophy-over-time chart on every lake page that has the data.
 > • Redesigned search: pick a species, how to rank, and how to view — results appear as you choose. No search button needed.
 > • Filters got easier: sliders for every range, lake-name suggestions as you type, and lake pages now jump straight to the official state survey.
+> • NEW for All-States subscribers: Ask LakeLore, an AI fishing assistant. Say what you're after in plain words and get lakes picked for you from the survey data.
 > • Plus dozens of fixes, including smoother charts and more reliable sessions.
 
-*(The Ask LakeLore assistant is deliberately NOT in this release or these notes — staging-only.)*
+*(Ask LakeLore added to 1.1.2 on 2026-10-20 — owner decision: subscribers only, model Claude Opus 5.5, hard stop at the Max plan's monthly API credit.)*
 
 ### Shot list (8 screenshots — 5 required, 3 optional)
 
@@ -344,7 +352,8 @@ Aim for editorial framing: include search results that *say something*. e.g. WAE
 5. **Lake Detail · CPUE chart** — pick a lake with several decades of survey data and multiple gears (e.g. Lake Mille Lacs in MN, or Lake Oahe in SD). The line chart sells the longitudinal-data angle.
 6. **Lake Detail · Stocking history** — same or different lake, switched to the stocking tab, with the adults/100ac overlay visible. The single most distinctive feature.
 7. **Paywall** — the All-States screen with price + value props. Reviewers of subscription apps look for it; users deserve to see the ask up front.
-8. **County map picker** — shows the regional/local-knowledge angle. (Optional 9th: About & Sources with the glossary — now part of AboutScreen, reached from Search's "ⓘ About & Glossary".)
+8. **County map picker** — shows the regional/local-knowledge angle.
+9. **Ask LakeLore** *(1.1.2)* — a subscriber's chat with one good answer showing tappable lake names (e.g. "Where should I fish for walleye this weekend?" in Minnesota). Consider moving it up to slot 2 — it is the newest reason to subscribe. (Optional 9th: About & Sources with the glossary — now part of AboutScreen, reached from Search's "ⓘ About & Glossary".)
 
 Adjust to taste. **Order matters** in the App Store — the first 1–2 are visible without swiping, so put the strongest screen first.
 
@@ -366,6 +375,12 @@ To test the subscription / paywall flow:
 4. "Restore purchases" is available both inside the paywall and on the About & Sources screen; store/network failures show a retry message, never a false "no subscription found".
 5. "Manage subscription" (always visible on About & Sources) opens the native iOS subscription-management sheet via StoreKit.
 
+Ask LakeLore (AI assistant, new in this version — subscribers only):
+1. After the sandbox purchase above, go back to the opening screen (relaunch the app) and tap "Ask LakeLore where to fish." Without a subscription the screen shows an "All-States feature" card that opens the paywall.
+2. Before the first question the app shows a disclosure that questions are sent to Anthropic's Claude model to generate answers, with a link to the privacy policy; the user must tap "I agree" before asking (guideline 5.1.2(i)).
+3. Ask, for example, "Where should I fish for walleye this weekend?" (Minnesota). Answers name lakes from the state survey data; tapping a lake name opens its page. Every answer is labelled "AI-generated · can be wrong" and has a "Report" link.
+4. The assistant only answers fishing-lake questions from LakeLore's data and declines others. Anthropic receives the conversation but no user identifier and does not train on it.
+
 Data sources: every state fish and wildlife agency is credited on the in-app "About & Sources" screen, accessible from the State Select screen via the "ⓘ ABOUT" badge. The app is independent and not affiliated with any agency; all data is sourced from public records published by each agency.
 
 Privacy:
@@ -373,6 +388,7 @@ Privacy:
 - Purchase History (RevenueCat transaction state): collected for entitlement enforcement. Not linked to identity. Not used for tracking. Purpose: App Functionality.
 - Crash + Performance + Other Diagnostic Data (Sentry): collected for diagnostic purposes. Not linked to identity. Not used for tracking. Purpose: App Functionality. Network breadcrumbs are query-string-stripped client-side.
 - Customer Support (in-app "Report data issue" form): optional, user-initiated free-text feedback with lake/species/app-version context, keyed to the anonymous UUID. Declared as NSPrivacyCollectedDataTypeCustomerSupport, purpose: App Functionality.
+- Other User Content (Ask LakeLore questions and answers): optional, subscribers only, kept 90 days keyed to the anonymous UUID; sent to Anthropic (Claude) as a service provider to generate answers, after explicit in-app consent. Declared as NSPrivacyCollectedDataTypeOtherUserContent, purpose: App Functionality.
 
 Privacy policy: https://www.lakeloreapp.com/privacy
 Terms of use: https://www.lakeloreapp.com/terms
@@ -394,8 +410,9 @@ To test:
 3. Search any species (e.g. Walleye); tap any lake to see charts.
 4. To test the paywall: tap a non-Minnesota state. It opens in PREVIEW — all metrics and charts are visible but lake names/locations are withheld until subscribed. Tap "Unlock" in the preview banner to open the paywall (auto-renew terms + Terms / Privacy links shown). Use a license-tester Google account (Play Console → Setup → License testing) for test purchases at $0.
 5. "Restore purchases" and "Manage subscription" are both on the About & Sources screen (ⓘ ABOUT badge on the state map, or "About & Glossary" from Search).
+6. Ask LakeLore (AI assistant, subscribers only): after a license-tester purchase, relaunch and tap "Ask LakeLore where to fish." Accept the one-time disclosure (questions go to Anthropic's Claude model), then ask e.g. "Where should I fish for walleye this weekend?" in Minnesota. Every answer is labelled AI-generated and has a "Report" link that sends the answer to us for review.
 
-No account / login required. Anonymous device UUID identity. The app collects no contact info and no location — only an anonymous identifier (entitlement lookup), purchase state (subscription enforcement), crash/performance data (Sentry, diagnostic), and optional user-initiated feedback messages ("Report data issue" form).
+No account / login required. Anonymous device UUID identity. The app collects no contact info and no location — only an anonymous identifier (entitlement lookup), purchase state (subscription enforcement), crash/performance data (Sentry, diagnostic), optional user-initiated feedback messages ("Report data issue" form), and, for subscribers who use it, Ask LakeLore questions and answers.
 
 Privacy policy: https://www.lakeloreapp.com/privacy
 Support: support@lakeloreapp.com

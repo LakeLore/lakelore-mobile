@@ -44,6 +44,15 @@ else
   CHANNEL=production
   unset EXPO_PUBLIC_API_BASE EXPO_PUBLIC_ASK_ENABLED EXPO_PUBLIC_ASK_TOKEN
 fi
+# Ask LakeLore ships to store users in app 1.1.2 (2026-10-20). Production
+# bundles for runtime 1.1.2+ carry it (matching the production EAS profile);
+# OTAs to older runtimes keep it compiled out — a new feature reaches those
+# users through store review, not an over-the-air update.
+ASK_IN_BUNDLE=false
+if $STAGING || [[ "$(printf '%s\n' 1.1.2 "$RUNTIME" | sort -V | head -1)" == "1.1.2" ]]; then
+  ASK_IN_BUNDLE=true
+  export EXPO_PUBLIC_ASK_ENABLED=1
+fi
 
 # 1. Publish what is committed — an OTA from a dirty tree cannot be reproduced.
 if ! $DRY && [[ -n "$(git status --porcelain)" ]]; then
@@ -105,8 +114,13 @@ else
   check "does not reference the staging API"   "lake-fish-api-staging" zero
   check "uses the owned API hostname"          "api.lakeloreapp.com"   nonzero
   check "keeps the Fly fallback hostname"      "lake-fish-api.fly.dev" nonzero
-  check "chat screen is compiled out"          "Start a new chat"      zero
-  check "launch chooser is compiled out"       "Give me recommendations" zero
+  if $ASK_IN_BUNDLE; then
+    check "chat screen is present"             "Start a new chat"      nonzero
+    check "launch chooser is present"          "Give me recommendations" nonzero
+  else
+    check "chat screen is compiled out"        "Start a new chat"      zero
+    check "launch chooser is compiled out"     "Give me recommendations" zero
+  fi
 fi
 [[ "$fail" -eq 0 ]] || { echo "bundle checks FAILED — not publishing" >&2; exit 1; }
 

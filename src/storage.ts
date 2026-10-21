@@ -25,6 +25,10 @@ export const KEYS = {
   entitlementCacheV2: 'entitlement.allStates.v2',
   /** Last served state list from /api/client-config (activeStates.ts). */
   servedStates: 'servedStates.v1',
+  /** Last served Ask LakeLore availability from /api/client-config (askFeature.ts). */
+  askServed: 'askServed.v1',
+  /** The user accepted the Ask LakeLore AI-sharing disclosure (AskScreen). */
+  askConsent: 'askConsent.v1',
   /** API origin that answered last launch (apiOrigin.ts). */
   lastGoodOrigin: 'apiOrigin.lastGood.v1',
   countySelection: 'countySelection.v1',
