@@ -27,7 +27,7 @@ import { notePurchase } from '../purchaseHint';
 import { TOTAL_ACTIVE_LAKES, TOTAL_ACTIVE_RECORDS, type StateKey } from '../generated/states';
 import { colors, text, space, hairline } from '../lakelore-rn/theme';
 import { PaperHeader, PrimaryButton } from '../lakelore-rn/components';
-import { ASK_FEATURE_ENABLED } from '../askFeature';
+import { useAskAvailable } from '../askFeature';
 
 const TERMS_URL   = 'https://www.lakeloreapp.com/terms';
 const PRIVACY_URL = 'https://www.lakeloreapp.com/privacy';
@@ -46,6 +46,7 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const askAvailable = useAskAvailable();
 
   const loadOffering = useCallback(async () => {
     setError(null);
@@ -159,7 +160,7 @@ export default function PaywallScreen({ visible, triggeredFrom, onClose, onPurch
 
           {/* Value props */}
           <View style={styles.valuePropsBox}>
-            {valueProps(PAID_US, PAID_CA).map(line => (
+            {valueProps(PAID_US, PAID_CA, askAvailable).map(line => (
               <View key={line.label} style={styles.valuePropRow}>
                 <Text style={[text.dataM, { color: colors.walleye2, width: 26 }]}>›</Text>
                 <View style={{ flex: 1 }}>
@@ -318,7 +319,7 @@ function paidCounts(active: readonly StateKey[]) {
 
 // With the whole continent covered, per-state rows no longer scale — the
 // value props aggregate instead.
-function valueProps(PAID_US: number, PAID_CA: number): { label: string; detail: string }[] {
+function valueProps(PAID_US: number, PAID_CA: number, askAvailable: boolean): { label: string; detail: string }[] {
   return [
   { label: `${floorK(TOTAL_ACTIVE_LAKES)} lakes · ${floorK(TOTAL_ACTIVE_RECORDS)} records`,
     detail: 'Agency survey, stocking, and forecast data — counted at build time, growing every refresh' },
@@ -332,9 +333,10 @@ function valueProps(PAID_US: number, PAID_CA: number): { label: string; detail: 
     detail: 'Preview mode shows the numbers — the pass shows you which lakes' },
   { label: PAID_CA > 0 ? 'State & provincial agency survey data' : 'State agency survey data',
     detail: 'Netting + electrofishing catch rates, lengths, and stocking records' },
-  // Ask LakeLore is subscribers-only (2026-10-20); listed only in bundles
-  // that contain it, so 1.1.1 OTAs never advertise a feature they lack.
-  ...(ASK_FEATURE_ENABLED ? [{ label: 'Ask LakeLore, the AI fishing assistant',
+  // Ask LakeLore is subscribers-only (2026-10-20); listed only when this
+  // bundle contains it AND the server has it switched on, so neither a 1.1.1
+  // OTA nor a switched-off server advertises a feature the buyer can't use.
+  ...(askAvailable ? [{ label: 'Ask LakeLore, the AI fishing assistant',
     detail: 'Say what you’re after and get lakes picked for you from the survey data' }] : []),
   { label: 'Every future state included',
     detail: 'New coverage lands in the same subscription at no extra cost' },

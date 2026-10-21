@@ -19,11 +19,14 @@ export const ASK_FEATURE_ENABLED: boolean =
   __DEV__ || process.env.EXPO_PUBLIC_ASK_ENABLED === '1';
 
 let served = true;
+// Set once a fresh client-config answer arrives; the stored answer must not
+// overwrite it if storage happens to be slower than the network.
+let fresh = false;
 const listeners = new Set<(on: boolean) => void>();
 
 // Restore the last served answer at module load.
 AsyncStorage.getItem(KEYS.askServed)
-  .then(v => { if (v === '0' || v === '1') setServed(v === '1', false); })
+  .then(v => { if (!fresh && (v === '0' || v === '1')) setServed(v === '1', false); })
   .catch(() => { /* default stays open */ });
 
 function setServed(on: boolean, persist: boolean): void {
@@ -36,7 +39,7 @@ function setServed(on: boolean, persist: boolean): void {
 /** Apply `ask` from /api/client-config. Older servers omit it: no change. */
 export function applyServedAsk(ask: unknown): void {
   const enabled = (ask as { enabled?: unknown } | null | undefined)?.enabled;
-  if (typeof enabled === 'boolean') setServed(enabled, true);
+  if (typeof enabled === 'boolean') { fresh = true; setServed(enabled, true); }
 }
 
 /** True when the chat is in this bundle AND the server has it open. */
