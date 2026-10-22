@@ -9,6 +9,45 @@ The version numbers below match `app.json` `version`, which is also the App Stor
 
 ---
 
+## [1.1.2] — not yet built (entry written 2026-10-22)
+
+The trophy + search-redesign release, and the first store build with Ask LakeLore. Most of this reached 1.1.1 users by OTA on 2026-09-18; the new native build adds Ask LakeLore (compiled out of every 1.1.1 OTA) and the store users' first binary on runtime 1.1.2.
+
+### Added
+- **Ask LakeLore** — an AI assistant for All-States subscribers (Claude Opus 5.5, server-side tool use over the state's survey data). Answers only lake-choice questions from LakeLore data and gives a fixed refusal for anything else; per-subscriber daily cap; every answer labelled AI-generated with an in-app Report link; server kill switch via client-config `ask.enabled`.
+- **Trophy Abundance** (schema v8) — rank by catch rate of memorable-size fish, with a Trophy chart tab on the lake page.
+- Slider filters and lake-name typeahead.
+
+### Changed
+- Search redesigned around three selector boxes (Species / Rank Lakes By / View Ranking As) with auto-search; no Search button.
+- Lake page: identity in the header, source/report buttons that open the official state survey.
+
+### Removed
+- Share Lake Card (2026-09-14).
+
+### Fixed
+- Session-token 401 recovery, chart smoothness, and the 2026-09-15 bug-hunt findings (12).
+
+**App Store "What's New":**
+
+> Trophy fishing, redesigned search, and better filters.
+> • NEW: Trophy Abundance — rank lakes by the catch rate of true trophy-class fish (like a 25″ walleye), with a trophy-over-time chart on every lake page that has the data.
+> • Redesigned search: pick a species, how to rank, and how to view — results appear as you choose. No search button needed.
+> • Filters got easier: sliders for every range, lake-name suggestions as you type, and lake pages now jump straight to the official state survey.
+> • NEW for All-States subscribers: Ask LakeLore, an AI fishing assistant. Say what you're after in plain words and get lakes picked for you from the survey data.
+> • Plus dozens of fixes, including smoother charts and more reliable sessions.
+
+**Play release notes (under 500 characters):**
+
+> • NEW: Ask LakeLore — All-States subscribers can ask in plain words and get lakes picked from the survey data.
+> • NEW: Trophy Abundance — rank lakes by catch rate of trophy-class fish, with a trophy chart on lake pages.
+> • Redesigned search: pick species, ranking and view; results appear as you choose.
+> • Slider filters and lake-name suggestions.
+> • Lake pages link straight to the official state survey.
+> • Dozens of fixes.
+
+---
+
 ## [1.1.1] — Build 29 (iOS) / Play release 19 — shipped 2026-08-24
 
 The all-states polish + durability release. (Catch-up entry written 2026-07-26 — 1.1.0 and 1.1.1 shipped their work across 15 OTA rounds and two builds; see LAUNCH.md and the improvement plans for the full trail.)
