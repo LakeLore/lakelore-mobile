@@ -364,7 +364,7 @@ LakeLore is a free Minnesota fishing-lake reference. The optional LakeLore All-S
 
 To test core functionality without subscribing:
 1. Launch the app.
-2. Tap Minnesota on the state map (gold fill / "FREE" chip in the list below the map).
+2. Tap Minnesota on the state map.
 3. A county map opens automatically — tap "Done" to search statewide, or tap one or more counties first.
 4. The full Minnesota dataset (9,400+ lakes, 23,000+ surveys, 396,000+ catch records, from MN DNR public records) is browsable: pick a species and how to rank lakes (the "Rank Lakes By" box: Abundance / Avg Size / Trophy Abundance / Stocking Impact / Presence; results appear automatically), filter by county, gear, year, etc. under Advanced Filters, and tap any lake to see catch-rate-over-time and stocking-history charts.
 
