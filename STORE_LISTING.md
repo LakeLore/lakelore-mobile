@@ -366,7 +366,7 @@ To test core functionality without subscribing:
 1. Launch the app.
 2. Tap Minnesota on the state map (gold fill / "FREE" chip in the list below the map).
 3. A county map opens automatically — tap "Done" to search statewide, or tap one or more counties first.
-4. The full Minnesota dataset (9,400+ lakes, 23,000+ surveys, 396,000+ catch records, from MN DNR public records) is browsable: pick a species and a Measure (Abundance / Avg Size / Stocking Impact / Presence), filter by county, gear, year, etc., and tap any lake to see catch-rate-over-time and stocking-history charts.
+4. The full Minnesota dataset (9,400+ lakes, 23,000+ surveys, 396,000+ catch records, from MN DNR public records) is browsable: pick a species and how to rank lakes (the "Rank Lakes By" box: Abundance / Avg Size / Trophy Abundance / Stocking Impact / Presence; results appear automatically), filter by county, gear, year, etc. under Advanced Filters, and tap any lake to see catch-rate-over-time and stocking-history charts.
 
 To test the subscription / paywall flow:
 1. Tap any non-Minnesota state (e.g. Wisconsin). It opens in PREVIEW: every metric and chart is visible, but lake names, counties, acreage, and coordinates are withheld (server-side) until subscribed. Tapping "Unlock" in the preview banner opens the paywall modal.
@@ -407,7 +407,7 @@ All functionality is available without any login or special access. LakeLore is 
 To test:
 1. Open the app — Minnesota is free, no sign-in required.
 2. Tap Minnesota on the map. A county map opens automatically — tap "Done" to search statewide.
-3. Search any species (e.g. Walleye); tap any lake to see charts.
+3. Pick a species (e.g. Walleye) — results appear automatically; tap any lake to see charts.
 4. To test the paywall: tap a non-Minnesota state. It opens in PREVIEW — all metrics and charts are visible but lake names/locations are withheld until subscribed. Tap "Unlock" in the preview banner to open the paywall (auto-renew terms + Terms / Privacy links shown). Use a license-tester Google account (Play Console → Setup → License testing) for test purchases at $0.
 5. "Restore purchases" and "Manage subscription" are both on the About & Sources screen (ⓘ ABOUT badge on the state map, or "About & Glossary" from Search).
 6. Ask LakeLore (AI assistant, subscribers only): after a license-tester purchase, relaunch and tap "Ask LakeLore where to fish." Accept the one-time disclosure (questions go to Anthropic's Claude model), then ask e.g. "Where should I fish for walleye this weekend?" in Minnesota. Every answer is labelled AI-generated and has a "Report" link that sends the answer to us for review.
