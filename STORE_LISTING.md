@@ -383,12 +383,7 @@ Ask LakeLore (AI assistant, new in this version — subscribers only):
 
 Data sources: every state fish and wildlife agency is credited on the in-app "About & Sources" screen, accessible from the State Select screen via the "ⓘ ABOUT" badge. The app is independent and not affiliated with any agency; all data is sourced from public records published by each agency.
 
-Privacy:
-- Anonymous device UUID (X-User-Id header, plus X-App-Version/X-Update-Id version headers): collected for entitlement lookup and fleet version telemetry. Not linked to user identity. Not used for tracking. Declared in Privacy Manifest as NSPrivacyCollectedDataTypeUserID, purpose: App Functionality.
-- Purchase History (RevenueCat transaction state): collected for entitlement enforcement. Not linked to identity. Not used for tracking. Purpose: App Functionality.
-- Crash + Performance + Other Diagnostic Data (Sentry): collected for diagnostic purposes. Not linked to identity. Not used for tracking. Purpose: App Functionality. Network breadcrumbs are query-string-stripped client-side.
-- Customer Support (in-app "Report data issue" form): optional, user-initiated free-text feedback with lake/species/app-version context, keyed to the anonymous UUID. Declared as NSPrivacyCollectedDataTypeCustomerSupport, purpose: App Functionality.
-- Other User Content (Ask LakeLore questions and answers): optional, subscribers only, kept 90 days keyed to the anonymous UUID; sent to Anthropic (Claude) as a service provider to generate answers, after explicit in-app consent. Declared as NSPrivacyCollectedDataTypeOtherUserContent, purpose: App Functionality.
+Privacy (matches the App Privacy labels): no account, no contact info, no location, no tracking. Collected for App Functionality only and never linked to identity: an anonymous device UUID (entitlement lookup), purchase state (RevenueCat), crash/diagnostic data (Sentry), optional in-app feedback, and, for subscribers who use it after consenting, Ask LakeLore questions and answers (kept 90 days; sent to Anthropic as a service provider, without the UUID).
 
 Privacy policy: https://www.lakeloreapp.com/privacy
 Terms of use: https://www.lakeloreapp.com/terms
