@@ -392,7 +392,7 @@ Support: https://www.lakeloreapp.com/support (publishes support@lakeloreapp.com)
 
 (Update sandbox tester credentials if Apple asks; we provision them per-submission rather than committing them here.)
 
-### Google Play Test Instructions (Play Console → **App content → App access**; duplicate into the release's reviewer notes)
+### Google Play Test Instructions (Play Console → **App content → Sign in details** (formerly App access) → "Any other information" box, **500-character limit**, so paste a condensed version; duplicate into the release's reviewer notes)
 
 *(Field corrected 2026-07-26 — the old target, "Target audience and content", is the children/age questionnaire; instructions pasted there are never seen by the reviewer.)*
 
