@@ -365,9 +365,9 @@ export const MN_SPECIES_NAMES: Record<string, string> = {
   CCF: 'Channel Catfish', BLB: 'Black Bullhead', YEB: 'Yellow Bullhead',
   BRB: 'Brown Bullhead', TPM: 'Tadpole Madtom',
   // Buffalo / sucker family
-  BIB: 'Bigmouth Buffalo', BUB: 'Black Buffalo',
+  BIB: 'Bigmouth Buffalo', BUB: 'Burbot',
   WTS: 'White Sucker', SHR: 'Shorthead Redhorse', GLR: 'Golden Redhorse',
-  SLR: 'Silver Redhorse', GRR: 'Greater Redhorse', RHS: 'River Redhorse',
+  SLR: 'Silver Redhorse', GRR: 'Greater Redhorse', RHS: 'Redhorse',
   QBS: 'Quillback',
   // Other
   FRD: 'Freshwater Drum', CAP: 'Common Carp',
