@@ -165,7 +165,7 @@ npm run build:prod:ios
 
 EAS queue: ~5 min, build: ~10 min. Watch at https://expo.dev/accounts/ndrwtp/projects/lakelore/builds.
 
-If it fails on a Sentry source-map upload error, that's the long-standing issue tracked in `~/APP_OPS.md` "Open items deferred" #1. Production profile has `SENTRY_ALLOW_FAILURE: true` so the build should still succeed.
+Source maps upload during the build. **Verified for 1.1.2 (2026-10-27):** Sentry `lakelore-app-llc/react-native` holds an artifact bundle (2 files) for each store build — `1.1.2+35` (iOS) and `1.1.2+21` (Android), both 2026-10-22. Check the same way after each build: Sentry → Settings → Projects → react-native → Source Maps, or the API `projects/lakelore-app-llc/react-native/files/artifact-bundles/`. The production profile still has `SENTRY_ALLOW_FAILURE: true` (`eas.json`), so a failed upload does NOT fail the build — that check is the only signal.
 
 ### Android
 
@@ -213,6 +213,8 @@ If anything fails, fix and re-build before submitting to App Review.
 
 The Android submit target is `track: "production"` with `releaseStatus: "draft"` (per `eas.json`, changed 2026-08-25 post-launch — the app is live, so a hotfix AAB should land as a Production draft, not detour through Internal Testing). Nothing goes live until you review and roll out the draft manually.
 
+> ⚠️ `npm run submit:android` (`eas submit`) currently fails with "The Google service account cannot submit this app" — the `eas.json` service account lacks release permission (`~/APP_OPS.md` Gotchas, 2026-10-24). Until that permission is granted, upload the AAB by hand: Play Console → Production → Create new release (or Internal testing), with the AAB from `npx eas build:view <id>`.
+
 ```bash
 npm run submit:android
 ```
@@ -256,21 +258,25 @@ App Store Connect → My Apps → LakeLore → App Store tab.
 - [ ] **Content rating** questionnaire → Everyone.
 - [ ] **Target audience**: 18+ only (never any group under 13 — that forces Designed-for-Families compliance).
 - [ ] **News app**: No.
-- [ ] **Data safety**: fill from `STORE_LISTING.md` § "Data Safety form" (FIVE type rows since 2026-07-26, incl. Messages + Device/other IDs) and SUBMIT the form, not just save a draft.
+- [ ] **Data safety**: fill from `STORE_LISTING.md` § "Data Safety form" — that section is the only source for which data types to declare (the count changes: Other user-generated content was added for Ask LakeLore in 1.1.2) — and SUBMIT the form, not just save a draft.
 - [ ] **Government apps**: No. **Financial features**: No. **Advertising ID**: No (verify post-build: `bundletool dump manifest | grep -i ad_id` — if present, block it in app.json or flip the answer).
 - [ ] **Store listing assets**: ≥2 Android phone screenshots (1080×1920+, captured on Android — `screenshots/android-phone/` is currently EMPTY), 512×512 32-bit RGBA icon (export from `assets/icon.png` — the 1024 source is RGB, Play's field requires alpha), feature graphic (exists, correct).
 
-Also first-submission-only: the FIRST AAB must be uploaded through the Console UI (Internal testing → Create new release); `eas submit` works from the second upload onward. Then verify Billing Library ≥8 in the built AAB before the Aug 31 2026 deadline (`bundletool dump manifest`, or check the RevenueCat release notes for the pinned version).
+Also first-submission-only: the FIRST AAB must be uploaded through the Console UI (Internal testing → Create new release). **`eas submit -p android` does not work today:** the service account in `eas.json` is the RevenueCat one and lacks release permission (`~/APP_OPS.md` Gotchas, 2026-10-24) — upload the AAB by hand (download link from `npx eas build:view <id>`) or grant that account the release permission first. Then verify Billing Library ≥8 in the built AAB before the Aug 31 2026 deadline (`bundletool dump manifest`, or check the RevenueCat release notes for the pinned version).
 
 Then, per release:
 
 1. **Production** → Releases → Create new release.
-2. Upload the AAB (or promote from Internal Testing if it's already up).
+2. Upload the AAB by hand (see the `eas submit` note above), or promote from Internal Testing if it's already up.
 3. **Release notes**: paste `CHANGELOG.md` v1.X.Y store-release-notes block (swap "App Store account" → "Google Play account" in the SUBSCRIPTION line if pasting the description).
 4. **Review release** → Save and review.
 5. **Start rollout to Production.**
 
-> ⚠️ **While any build is in review (either store): do NOT set `LAKELORE_MIN_APP_VERSION` or `LAKELORE_KILLED_VERSIONS`** on lake-fish-api — the kill screen would blank the app for the reviewer, and the store link can't offer the in-review version. Kill-list entries may target a single build as `1.1.1+24`.
+> ⚠️ **Review freeze — set it when you submit, keep it until 72 h after release.** A binary in review loads any OTA published to its runtime, so the reviewer would see code nobody reviewed.
+> - **At submission:** `~/lakelore-data/bin/freeze.sh on 168 "1.X.Y in review"` (re-run with more hours if review runs long). While it is set, `scripts/ota.sh` refuses production publishes (a deliberate hotfix passes `--i-know-review-is-open`), and scheduled `refresh.sh --deploy` runs build and back up but do not deploy. Hand-run, gated `deploy.sh` / `deploy-data.sh` fixes are still allowed.
+> - **At release:** `freeze.sh on 72 "1.X.Y first 72 h"` for the POST_LAUNCH_WATCH window; `freeze.sh off` (or let it expire) afterwards. `freeze.sh status` shows what is set.
+> - **Do NOT set `LAKELORE_MIN_APP_VERSION` or `LAKELORE_KILLED_VERSIONS`** on lake-fish-api while either store is reviewing — the kill screen would blank the app for the reviewer, and the store link can't offer the in-review version. Kill-list entries may target a single build as `1.1.1+24`.
+> - **Do NOT switch Ask LakeLore off** (`LAKELORE_ASK_ENABLED=0`) while a build that ships it is in review, and keep the Anthropic API key and credit live until approval — reviewers test the chat, and a 503 reads as a broken feature.
 
 Expected review time: a few hours for routine submissions, up to 7 days for first submission and policy-flagged updates.
 
@@ -278,7 +284,7 @@ Expected review time: a few hours for routine submissions, up to 7 days for firs
 
 ## 7. Post-submit watch
 
-For the first 72 hours after release, follow `~/lake-fish-mobile/POST_LAUNCH_WATCH.md` — Sentry thresholds, store-review monitoring, rollback triggers.
+For the first 72 hours after release, follow `~/POST_LAUNCH_WATCH.md` — Sentry thresholds, Ask cost and errors, store-review monitoring, rollback triggers. Set the release freeze (§6) for the same window.
 
 If you spot a critical bug after Apple approval but before Google approval, hold the Google release at Internal Testing and ship a fixed iOS build first. If Google has already rolled out, follow the OTA rollback recipe in `~/RUNBOOK.md` §12.
 

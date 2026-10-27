@@ -4,6 +4,7 @@
 #   scripts/ota.sh --runtime 1.1.1 --message "what changed"
 #   scripts/ota.sh --runtime 1.1.2 --message "…" --staging
 #   scripts/ota.sh --runtime 1.1.1 --message "…" --dry-run     (export + verify, no publish)
+#   … --i-know-review-is-open    publish despite a review/release freeze (bin/freeze.sh)
 #
 # Why a script (2026-10-08). `npm run ota` was `eas update --branch production`:
 #  - It published to whatever version app.json held. runtimeVersion.policy is
@@ -22,7 +23,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-RUNTIME=""; MESSAGE=""; STAGING=false; DRY=false
+RUNTIME=""; MESSAGE=""; STAGING=false; DRY=false; OVERRIDE_FREEZE=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --runtime) RUNTIME="${2:-}"; shift 2 ;;
@@ -30,6 +31,7 @@ while [[ $# -gt 0 ]]; do
     --rollout) echo "--rollout was removed 2026-10-27: updates go to 100% of the runtime (owner decision)" >&2; exit 2 ;;
     --staging) STAGING=true; shift ;;
     --dry-run) DRY=true; shift ;;
+    --i-know-review-is-open) OVERRIDE_FREEZE=true; shift ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -52,6 +54,20 @@ ASK_IN_BUNDLE=false
 if $STAGING || [[ "$(printf '%s\n' 1.1.2 "$RUNTIME" | sort -V | head -1)" == "1.1.2" ]]; then
   ASK_IN_BUNDLE=true
   export EXPO_PUBLIC_ASK_ENABLED=1
+fi
+
+# 0. Review/release freeze (2026-10-27, PROC-01). A binary in store review
+#    loads any OTA on its runtime, so the reviewer would see unreviewed code.
+#    ~/lakelore-data/bin/freeze.sh holds the switch (SUBMIT_RUNBOOK §6).
+FREEZE_TOOL="$HOME/lakelore-data/bin/freeze.sh"
+if ! $STAGING && ! $DRY && [[ -x "$FREEZE_TOOL" ]] && "$FREEZE_TOOL" status --quiet; then
+  if $OVERRIDE_FREEZE; then
+    echo "WARNING: publishing during a freeze — $("$FREEZE_TOOL" status)" >&2
+  else
+    echo "REFUSED: $("$FREEZE_TOOL" status)" >&2
+    echo "A build in review (or in its first 72 h) would load this update. If this is a deliberate hotfix, re-run with --i-know-review-is-open." >&2
+    exit 1
+  fi
 fi
 
 # 1. Publish what is committed — an OTA from a dirty tree cannot be reproduced.
