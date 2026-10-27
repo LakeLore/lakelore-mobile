@@ -233,6 +233,7 @@ export function cpueLabelForGear(state: StateKey, gear?: string | null, rowKind?
     const denLabel = /^(hr|hour)s?$/.test(den) ? 'Hour'
       : /^miles?$/.test(den) ? 'Mile'
       : /net/.test(den) || /night/.test(den) ? 'Net'
+      : /^hauls?$/.test(den) ? 'Haul'
       : null;
     if (denLabel) return (/^(pound|lb)/.test(num) ? 'Lbs / ' : 'Catch / ') + denLabel;
   }
