@@ -29,7 +29,7 @@ import { askLakes, reportAskAnswer, AskLake, AskMessage, SubscriptionRequiredErr
 import { useEntitlement } from '../useEntitlement';
 import { KEYS } from '../storage';
 import { parseAskMarkers, stripAskMarkers } from '../askMarkers';
-import { AskTurn, getAskSession, saveAskSession, clearAskSession } from '../askSession';
+import { AskTurn, askHistory, getAskSession, saveAskSession, clearAskSession } from '../askSession';
 import PaywallScreen from './PaywallScreen';
 import { STATE_CONFIGS } from '../types';
 import type { RootStackParamList } from '../navigation';
@@ -130,9 +130,7 @@ export default function AskScreen() {
     if (!question || busy) return;
     if (locked) { setPaywall(true); return; }
     if (!consented) return;
-    const history: AskMessage[] = turns
-      .filter(t => !t.error)
-      .map(t => ({ role: t.role, content: t.content }));
+    const history: AskMessage[] = askHistory(turns);
     const next: Turn[] = [...turns, { role: 'user', content: question }];
     commit(next);
     setInput('');

@@ -78,7 +78,7 @@ interface CatchRow {
   // unit as cpue; null where the state/species has no memorable-length data.
   cpue_memorable?: number | null; trophy_derivation?: string | null;
 }
-interface StockRow { stock_year: number; species: string; life_stage: string; quantity: number }
+interface StockRow { stock_year: number; species: string; life_stage: string | null; quantity: number }
 // adults_per_100ac is null for lakes with no usable acreage (metricsV2) —
 // adults_est (absolute estimated survivors) carries the metric instead.
 interface MetricRow { species: string; adults_per_100ac: number | null; adults_est?: number | null }
@@ -103,8 +103,12 @@ function inchesToStage(inches: number): string {
   return 'adult';
 }
 
-function normalizeStage(s: string) {
-  const l = s.toLowerCase().trim().replace(/"/g, '').replace(/\s+/g, ' ');
+// life_stage can be null in the data (~1,830 lakes, 2026-10-27): calling
+// .toLowerCase() on it crashed the lake page. The server now sends 'Unknown'
+// for those rows; this guard covers any other source of a missing stage.
+function normalizeStage(s: string | null | undefined) {
+  const l = (s ?? '').toLowerCase().trim().replace(/"/g, '').replace(/\s+/g, ' ');
+  if (!l) return 'unknown';
   if (l.includes('egg'))        return 'fry';
   if (l.includes('fry'))        return 'fry';
   if (l.includes('fingerling') || l.includes('juvenile')) return 'fingerling';
