@@ -38,16 +38,22 @@ export function saveAskSession(state: StateKey, turns: AskTurn[]): void {
  *  turn — the server repairs anything else, but sending less is cheaper). */
 export const ASK_HISTORY_MAX_MESSAGES = 18;
 export const ASK_HISTORY_MAX_CHARS = 10_000;
+// Cut at n UTF-16 units without splitting a surrogate pair (half an emoji is
+// invalid text and the model API rejects it).
+function clip(s: string, n: number): string {
+  const c = s.charCodeAt(n - 1);
+  return s.slice(0, c >= 0xd800 && c <= 0xdbff ? n - 1 : n);
+}
 export function askHistory(turns: AskTurn[]): { role: 'user' | 'assistant'; content: string }[] {
   const out: { role: 'user' | 'assistant'; content: string }[] = [];
   for (let i = 0; i < turns.length; i++) {
     const t = turns[i];
     if (t.error) continue;
     const next = turns[i + 1];
-    if (t.role === 'user' && (!next || next.error || next.role === 'user')) continue; // unanswered question
+    if (t.role === 'user' && (!next || next.error || next.role === 'user' || !next.content.trim())) continue; // unanswered question
     const content = t.content.trim();
     if (!content) continue;
-    out.push({ role: t.role, content: content.length > 2000 ? `${content.slice(0, 1999)}…` : content });
+    out.push({ role: t.role, content: content.length > 2000 ? `${clip(content, 1999)}…` : content });
   }
   // Pairs (user, assistant) from the front until within limits.
   let total = out.reduce((n, m) => n + m.content.length, 0);

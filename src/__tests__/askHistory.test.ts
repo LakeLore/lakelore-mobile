@@ -43,6 +43,19 @@ describe('askHistory', () => {
     expect(h[h.length - 1].role).toBe('assistant');
   });
 
+  it('treats an empty answer like a failed one', () => {
+    expect(askHistory([u('q1'), a(''), u('q2'), a('a2')])).toEqual([{ role: 'user', content: 'q2' }, { role: 'assistant', content: 'a2' }]);
+    expect(askHistory([u('q1'), a('  ')])).toEqual([]);
+  });
+
+  it('never cuts an emoji in half when shortening', () => {
+    const h = askHistory([u('q'), a('x'.repeat(1998) + '🎣' + 'y'.repeat(50))]);
+    const last = h[1].content;
+    expect(last.length).toBeLessThanOrEqual(2000);
+    const code = last.charCodeAt(last.length - 2);
+    expect(code >= 0xd800 && code <= 0xdbff).toBe(false); // char before the ellipsis is not a lone high surrogate
+  });
+
   it('is empty for a brand-new chat', () => {
     expect(askHistory([])).toEqual([]);
   });
