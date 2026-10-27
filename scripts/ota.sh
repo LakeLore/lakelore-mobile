@@ -1,7 +1,7 @@
 #!/bin/bash
 # scripts/ota.sh — publish an OTA update with the checks that used to be manual.
 #
-#   scripts/ota.sh --runtime 1.1.1 --message "what changed" [--rollout 10]
+#   scripts/ota.sh --runtime 1.1.1 --message "what changed"
 #   scripts/ota.sh --runtime 1.1.2 --message "…" --staging
 #   scripts/ota.sh --runtime 1.1.1 --message "…" --dry-run     (export + verify, no publish)
 #
@@ -14,19 +14,20 @@
 #    Metro's transform cache: on 2026-09-17 a production export reused
 #    staging-inlined modules with the env unset. This clears the cache, sets
 #    the env explicitly for the target, and then INSPECTS the exported bundle.
-#  - It went to 100% of the channel at once. --rollout defaults to 10; raise
-#    it with `eas update:edit` once crash-free, or pass --rollout 100.
+#  - Staged rollout (--rollout, default 10%) was removed 2026-10-27 (owner
+#    decision): every update goes to 100% of the target runtime. Undo is a
+#    rollback — `npx eas update:rollback --branch production` (RUNBOOK §12).
 #
 # Publishing is an outward action: this script never runs unattended.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-RUNTIME=""; MESSAGE=""; ROLLOUT=10; STAGING=false; DRY=false
+RUNTIME=""; MESSAGE=""; STAGING=false; DRY=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --runtime) RUNTIME="${2:-}"; shift 2 ;;
     --message) MESSAGE="${2:-}"; shift 2 ;;
-    --rollout) ROLLOUT="${2:-}"; shift 2 ;;
+    --rollout) echo "--rollout was removed 2026-10-27: updates go to 100% of the runtime (owner decision)" >&2; exit 2 ;;
     --staging) STAGING=true; shift ;;
     --dry-run) DRY=true; shift ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
@@ -34,7 +35,6 @@ while [[ $# -gt 0 ]]; do
 done
 [[ "$RUNTIME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "--runtime X.Y.Z is required: the app version whose installed devices should receive this update" >&2; exit 2; }
 [[ -n "$MESSAGE" ]] || $DRY || { echo "--message is required" >&2; exit 2; }
-[[ "$ROLLOUT" =~ ^[0-9]+$ && "$ROLLOUT" -ge 1 && "$ROLLOUT" -le 100 ]] || { echo "--rollout must be 1-100" >&2; exit 2; }
 
 if $STAGING; then
   CHANNEL=staging
@@ -72,7 +72,7 @@ if [[ "$REPO_VERSION" != "$RUNTIME" ]]; then
   node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('app.json','utf8'));j.expo.version='$RUNTIME';fs.writeFileSync('app.json',JSON.stringify(j,null,2)+'\n')"
 fi
 echo
-echo "=== OTA → channel $CHANNEL, runtime $RUNTIME (repo is at $REPO_VERSION), rollout $ROLLOUT% ==="
+echo "=== OTA → channel $CHANNEL, runtime $RUNTIME (repo is at $REPO_VERSION), all devices on that runtime ==="
 echo "    Only devices running app version $RUNTIME on the $CHANNEL channel receive it."
 echo
 
@@ -130,7 +130,7 @@ fi
 
 # 6. Publish exactly the inspected bundle.
 npx eas update --channel "$CHANNEL" --input-dir "$OUT" --skip-bundler \
-  --rollout-percentage "$ROLLOUT" --message "$MESSAGE"
+  --message "$MESSAGE"
 
 # 7. Source maps, so crashes from this bundle are readable in Sentry.
 if [[ -n "${SENTRY_AUTH_TOKEN:-}" ]]; then
@@ -140,4 +140,4 @@ else
 fi
 
 echo
-echo "published at $ROLLOUT%. Widen with: npx eas update:edit   ·   roll back with: npx eas update:revert-update-rollout (RUNBOOK §12)"
+echo "published to every device on runtime $RUNTIME. Roll back with: npx eas update:rollback --branch $CHANNEL (RUNBOOK §12)"
