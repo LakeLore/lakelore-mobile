@@ -44,7 +44,6 @@
       "channel": "staging",
       "autoIncrement": true,
       "env": {
-        "SENTRY_ALLOW_FAILURE": "true",
         "EXPO_PUBLIC_API_BASE": "https://lake-fish-api-staging.fly.dev",
         "EXPO_PUBLIC_ASK_ENABLED": "1"
       },
@@ -56,7 +55,6 @@
       "channel": "production",
       "autoIncrement": true,
       "env": {
-        "SENTRY_ALLOW_FAILURE": "true",
         "EXPO_PUBLIC_ASK_ENABLED": "1"
       },
       "ios": {

@@ -165,7 +165,7 @@ npm run build:prod:ios
 
 EAS queue: ~5 min, build: ~10 min. Watch at https://expo.dev/accounts/ndrwtp/projects/lakelore/builds.
 
-Source maps upload during the build. **Verified for 1.1.2 (2026-10-27):** Sentry `lakelore-app-llc/react-native` holds an artifact bundle (2 files) for each store build — `1.1.2+35` (iOS) and `1.1.2+21` (Android), both 2026-10-22. Check the same way after each build: Sentry → Settings → Projects → react-native → Source Maps, or the API `projects/lakelore-app-llc/react-native/files/artifact-bundles/`. The production profile still has `SENTRY_ALLOW_FAILURE: true` (`eas.json`), so a failed upload does NOT fail the build — that check is the only signal.
+Source maps upload during the build. **Verified for 1.1.2 (2026-10-27):** Sentry `lakelore-app-llc/react-native` holds an artifact bundle (2 files) for each store build — `1.1.2+35` (iOS) and `1.1.2+21` (Android), both 2026-10-22. Check the same way after each build: Sentry → Settings → Projects → react-native → Source Maps, or the API `projects/lakelore-app-llc/react-native/files/artifact-bundles/`. Since 2026-10-27 `eas.json` no longer sets `SENTRY_ALLOW_FAILURE`, so a failed upload FAILS the build — fix the upload (APP_OPS "Open items deferred" #1 has the diagnostic recipe) rather than shipping a build whose crashes can't be read.
 
 ### Android
 
@@ -304,7 +304,7 @@ Update `LAUNCH.md` "Already shipped" list with the release date and version numb
 
 ## Common failure modes
 
-- **EAS build fails on Sentry upload**. `SENTRY_ALLOW_FAILURE: true` in eas.json should let it pass. If it doesn't, see `~/APP_OPS.md` "Open items deferred" #1.
+- **EAS build fails on Sentry upload**. Expected behaviour since 2026-10-27 (`SENTRY_ALLOW_FAILURE` removed). Check the EAS secret `SENTRY_AUTH_TOKEN` is still valid (token file and rotation: `~/APP_OPS.md` key-files table) and the slugs in `app.json`; recipe in `~/APP_OPS.md` "Open items deferred" #1. In an emergency, add `"SENTRY_ALLOW_FAILURE": "true"` back to the production `env` for one build and remove it after.
 - **TestFlight build doesn't show up after `submit:ios`**. ASC processing varies 5–25 min. If >2 hours, log into ASC and check Activity tab for upload errors.
 - **Sandbox purchase says "Cannot connect to iTunes Store"**. You're signed into a real Apple ID. Sign out in Settings → Media & Purchases, leave it signed out, attempt purchase; sandbox prompt should appear.
 - **Play Store rejects AAB / first submission fails**. Target-API-level is NOT the likely cause (Expo SDK 54 targets API 36). The real first-submission failure modes, in order: (1) the FIRST-EVER bundle must be uploaded manually via Play Console → Internal testing → Create release (the Play Developer API refuses an app with no prior release — `eas submit` works from the second upload on); (2) unfilled App content forms (see the checklist in §6); (3) missing Android phone screenshots; (4) versionCode collision — run `eas build:version:get -p android` and compare against App bundle explorer before building.
