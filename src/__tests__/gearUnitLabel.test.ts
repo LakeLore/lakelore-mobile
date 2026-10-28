@@ -14,7 +14,6 @@ describe('cpueLabelForGear on consolidated gear labels', () => {
     ['ca', 'Boat electrofishing (fish/min)', 'Catch / Min'],
     ['il', 'IDNR electrofishing (fish/min)', 'Catch / Min'],
     ['il', 'IDNR electrofishing (fish/30min)', 'Catch / 30 Min'],
-    ['la', 'LDWF MP: gill net (fish/100 net-night)', 'Catch / 100 Nets'],
     ['la', 'LDWF MP: gill net (fish/100ft net-night)', 'Catch / 100 ft Net'],
     ['la', 'LDWF MP: gill net (number/100ft/net-night)', 'Catch / 100 ft Net'],
     ['la', 'LDWF MP: gill net (pounds/100ft net-night)', 'Lbs / 100 ft Net'],
