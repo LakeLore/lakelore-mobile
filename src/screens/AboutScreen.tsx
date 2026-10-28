@@ -206,7 +206,7 @@ function StateGlossarySection({ state }: { state: StateKey }) {
           {isSD
             ? 'Fish caught per standard sampling unit. Gill nets: Catch / Net (fish per net-night). Electrofishing: Catch / Hour. Higher catch rate = more abundant fish population.'
             : isND
-            ? 'Catch / Net — fish caught per net-night across all net configurations (mesh-graded gill nets and others). Electrofishing surveys use Catch / Hour. Higher = more abundant fish population.'
+            ? 'Catch / Net — gill-net catch per net-night of the standard 80-ft net. Lakes netted with longer nets or gangs of nets (Devils Lake, Sakakawea, Oahe and others) are converted to that standard, so a 250-ft net\'s catch is shown at 80/250 of NDGF\'s per-net figure and lakes compare fairly. Electrofishing surveys use Catch / Hour. Higher = more abundant fish population.'
             : 'Catch / Net — fish caught per net set, across all net types (gill nets, frame nets, trap nets). Electrofishing surveys use Catch / Hour. Higher = more abundant fish population.'}
         </GlossarySection>
       )}

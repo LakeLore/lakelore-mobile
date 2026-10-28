@@ -227,14 +227,24 @@ export function cpueLabelForGear(state: StateKey, gear?: string | null, rowKind?
   // net≠per-net in LA).
   const paren = g.match(/\(([^)]*\/[^)]*)\)\s*$/);
   if (paren) {
-    const slash = paren[1].lastIndexOf('/');
-    const num = paren[1].slice(0, slash).trim();
-    const den = paren[1].slice(slash + 1).trim();
-    const denLabel = /^(hr|hour)s?$/.test(den) ? 'Hour'
-      : /^miles?$/.test(den) ? 'Mile'
-      : /net/.test(den) || /night/.test(den) ? 'Net'
-      : /^hauls?$/.test(den) ? 'Haul'
+    // 'number/100ft/net-night' and 'fish/100ft net-night' are one unit: the
+    // numerator is the first piece, the rest is the denominator.
+    const pieces = paren[1].split('/');
+    const num = pieces[0].trim();
+    const den = pieces.slice(1).join(' ').replace(/\s+/g, ' ').trim();
+    // A leading count is part of the unit: '(fish/min)' is per minute, not
+    // per hour (60x); '(fish/30min)', '(fish/100 net-night)', '(…/100ft net-night)'.
+    const lead = den.match(/^(\d+)\s*(ft\b)?\s*(.*)$/);
+    const per = lead ? lead[3] : den;
+    const base = /^(hr|hour)s?$/.test(per) ? 'Hour'
+      : /^min(ute)?s?$/.test(per) ? 'Min'
+      : /^miles?$/.test(per) ? 'Mile'
+      : /net/.test(per) || /night/.test(per) ? 'Net'
+      : /^hauls?$/.test(per) ? 'Haul'
       : null;
+    const denLabel = !base || !lead ? base
+      : lead[2] ? `${lead[1]} ft ${base}`
+      : `${lead[1]} ${base === 'Min' ? 'Min' : base + 's'}`;
     if (denLabel) return (/^(pound|lb)/.test(num) ? 'Lbs / ' : 'Catch / ') + denLabel;
   }
   if (/electrofish|shocker|(?:^|[\s-])ef(?:[-\s*]|$)/.test(g)) return 'Catch / Hour';
