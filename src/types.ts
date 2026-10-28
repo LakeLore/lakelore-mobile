@@ -153,6 +153,15 @@ export interface FilterState {
   maxGearCount: string;
 }
 
+// Survey Year slider default (owner 2026-10-27): the last 20 survey seasons,
+// counting the current year (2026 -> 2007+). Rankings use each lake's latest
+// survey, so lakes last surveyed before this drop out until the user drags the
+// left thumb to "Any". Stocking Impact and Presence ignore survey years.
+export const DEFAULT_SURVEY_YEARS = 20;
+export function defaultMinYear(now: Date = new Date()): string {
+  return String(now.getFullYear() - (DEFAULT_SURVEY_YEARS - 1));
+}
+
 export function defaultFilters(state: StateKey): FilterState {
   const cfg = STATE_CONFIGS[state];
   return {
@@ -161,7 +170,7 @@ export function defaultFilters(state: StateKey): FilterState {
     gearTypes: cfg.defaultGear ? [cfg.defaultGear] : [],
     minCpue: '',
     maxCpue: '',
-    minYear: '',
+    minYear: defaultMinYear(),
     maxYear: '',
     counties: [],
     minAcres: '',

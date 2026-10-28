@@ -11,7 +11,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppState } from '../StateContext';
 import {
   FilterState, FilterOptions, Measure, Source, Result, ResultsResponse, StateKey,
-  defaultFilters, STATE_CONFIGS, speciesDisplayName, GENERATED_STATES, STATE_KEYS,
+  defaultFilters, defaultMinYear, STATE_CONFIGS, speciesDisplayName, GENERATED_STATES, STATE_KEYS,
 } from '../types';
 import { isFreeState, useActiveStates } from '../activeStates';
 import { fetchFilters, fetchMeasures, fetchResults, fetchAllResults, DbStatus, fetchStatus, SubscriptionRequiredError, StateUnavailableError } from '../api';
@@ -650,7 +650,7 @@ export default function SearchScreen() {
   const hasFilters = filters.counties.length > 0
     || filters.lakeName.trim()
     || filters.minCpue || filters.maxCpue
-    || filters.minYear || filters.maxYear
+    || filters.minYear !== defaultMinYear() || filters.maxYear
     || filters.minAcres || filters.maxAcres
     || filters.minStocked || filters.maxStocked
     || filters.minLength || filters.maxLength
