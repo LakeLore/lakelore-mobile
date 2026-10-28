@@ -40,13 +40,32 @@ const META_KEYS = new Set(['acres', 'depth', 'year', 'date', 'lake']);
 // per metric, shown as a toast when a stat pill (or the sort label) is
 // tapped. cpue definitions switch on the label since the unit varies by
 // gear and cpue_kind.
-function metricDefinition(key: string, label: string): string | null {
+export function metricDefinition(key: string, label: string): string | null {
   if (key === 'cpue') {
     if (label === 'Rel. Catch Index') return 'Agency relative-abundance index. Compare lakes for the same species only — not a true catch rate.';
     if (label === 'Angler Catch Rate') return 'Catch rate derived from angler/tournament creel data rather than standardized survey nets.';
     if (label === 'Norm. Catch Rate') return 'A catch rate normalized across gear types for lakes surveyed with mixed gear, expressed in spring-fyke-net-equivalent fish per net so it compares to net-sampled lakes.';
-    if (label === 'Catch / Hour') return 'Fish caught per hour of electrofishing in the agency survey. Higher = more abundant.';
-    return 'Fish caught per net set (gill, trap, or fyke net) in the agency survey. Higher = more abundant.';
+    if (label === 'Index' || label === 'Catch Index') return 'Agency relative-abundance index. Compare lakes for the same species only — not a true catch rate.';
+    if (label === 'Angler Rate') return 'Catch rate derived from angler/tournament creel data rather than standardized survey nets.';
+    // Key on the label's unit, not the exact string (final review 2026-10-27:
+    // 'Catch / Min', 'Catch / Haul', 'Lbs / 100 ft Net' all read "per net set").
+    const m = /^(Catch|Lbs|Fish) \/ (?:(\d+) )?(ft )?(Hour|Min|Mile|Net|Nets|Haul|Acre)$/.exec(label);
+    if (m) {
+      const what = m[1] === 'Lbs' ? 'Pounds of fish' : 'Fish';
+      const n = m[2] ? `${m[2]} ` : '';
+      const per = {
+        Hour: 'per hour of electrofishing',
+        Min: m[2] ? `per ${n}minutes of electrofishing` : 'per minute of electrofishing',
+        Mile: 'per mile of shoreline electrofished',
+        Net: m[3] ? `per ${n}feet of net per net set` : 'per net set (gill, trap, or fyke net)',
+        Nets: `per ${n}net sets`,
+        Haul: 'per seine haul',
+        Acre: 'per acre (a population estimate, not a catch rate)',
+      }[m[4]];
+      if (m[1] === 'Fish' && m[4] === 'Acre') return 'Estimated fish per acre from a mark-recapture population estimate — not a catch rate. Higher = more abundant.';
+      return `${what} caught ${per} in the agency survey. Higher = more abundant.`;
+    }
+    return 'Fish caught per unit of sampling effort in the agency survey. Higher = more abundant.';
   }
   switch (key) {
     case 'cpue_memorable':
@@ -234,18 +253,20 @@ export function cpueLabelForGear(state: StateKey, gear?: string | null, rowKind?
     const den = pieces.slice(1).join(' ').replace(/\s+/g, ' ').trim();
     // A leading count is part of the unit: '(fish/min)' is per minute, not
     // per hour (60x); '(fish/30min)', '(fish/100 net-night)', '(…/100ft net-night)'.
-    const lead = den.match(/^(\d+)\s*(ft\b)?\s*(.*)$/);
+    const lead = den.match(/^(\d+)\s*-?\s*(ft\b)?\s*(.*)$/);
     const per = lead ? lead[3] : den;
     const base = /^(hr|hour)s?$/.test(per) ? 'Hour'
       : /^min(ute)?s?$/.test(per) ? 'Min'
       : /^miles?$/.test(per) ? 'Mile'
       : /net/.test(per) || /night/.test(per) ? 'Net'
       : /^hauls?$/.test(per) ? 'Haul'
+      : /^acres?$/.test(per) ? 'Acre'
       : null;
     const denLabel = !base || !lead ? base
       : lead[2] ? `${lead[1]} ft ${base}`
       : `${lead[1]} ${base === 'Min' ? 'Min' : base + 's'}`;
-    if (denLabel) return (/^(pound|lb)/.test(num) ? 'Lbs / ' : 'Catch / ') + denLabel;
+    // Per-acre rates are population estimates (fish/acre), not catches.
+    if (denLabel) return (/^(pound|lb)/.test(num) ? 'Lbs / ' : base === 'Acre' ? 'Fish / ' : 'Catch / ') + denLabel;
   }
   if (/electrofish|shocker|(?:^|[\s-])ef(?:[-\s*]|$)/.test(g)) return 'Catch / Hour';
   // Two-letter gear codes are per-state vocabularies and MUST stay state-gated:

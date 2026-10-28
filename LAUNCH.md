@@ -129,7 +129,7 @@ As of the last update to this file (2026-09-15 — pre-1.1.2-release update; pre
 
 ## Known minor open items (not blocking)
 
-- **Sentry source-map upload — still failing** with "Project not found" against `lakelore-app-llc/react-native`, even though the `SENTRY_AUTH_TOKEN` is set as an EAS project secret. Working around it with `SENTRY_ALLOW_FAILURE=true` in `eas.json` production profile so source-map upload is attempted but doesn't tank the build; symbolicated stack traces remain absent until the Sentry org/project/token access is sorted out. (Revisit when launch dust settles.)
+- ~~**Sentry source-map upload**~~ ✅ resolved: slugs corrected 2026-05-27, token replaced 2026-08-24, and the 1.1.2 builds uploaded cleanly, so `SENTRY_ALLOW_FAILURE` was removed from `eas.json` on 2026-10-27 — a failed upload now fails the build. OTA maps: `scripts/ota.sh` uploads only when `SENTRY_AUTH_TOKEN` is set in the shell. Details: `CLAUDE.md` (Sentry bullet).
 - **`expo-updates` (OTA) wired** as of 2026-05-13 — `production` channel, `runtimeVersion.policy: appVersion`. First production OTA published the same day (update group `bfed3391`). See `~/lake-fish-mobile/CLAUDE.md` "OTA updates" section for usage and `~/RUNBOOK.md §12` for rollback.
 - **RC dashboard "Credentials need attention" warning** on the Play Store credential block. Cosmetic — verified directly against Google's API that all permissions are correct and Google accepts the credentials. Worth filing as an RC support ticket.
 - ~~**Offsite DB backups**~~ ✅ DONE 2026-07-07 — Backblaze B2 (`lakelore-backups`) + git (`LakeLore/lakelore-data`), automated via weekly launchd + every `refresh.sh`. See `~/APP_OPS.md` + `~/RUNBOOK.md §9`.
