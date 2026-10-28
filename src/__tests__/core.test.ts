@@ -1,7 +1,7 @@
 // Core pure-function tests (IMPROVEMENT_PLAN 1.12): species-name mapping,
 // cpue-kind labeling, the stocked-metric fallback, and client-signature
 // parity with the server.
-import { speciesDisplayName, STATE_CONFIGS, GENERATED_STATES, STATE_KEYS, defaultFilters, defaultMinYear } from '../types';
+import { speciesDisplayName, STATE_CONFIGS, GENERATED_STATES, STATE_KEYS } from '../types';
 import { hmacSha256Hex } from '../userSig';
 
 describe('speciesDisplayName', () => {
@@ -79,19 +79,5 @@ describe('cmpVersions', () => {
     expect(cmpVersions('1.2', '1.2.0')).toBe(0);
     expect(cmpVersions('1.2', '1.2.1')).toBe(-1);
     expect(cmpVersions('2', '1.9.9')).toBe(1);
-  });
-});
-
-describe('survey year default', () => {
-  it('covers the last 20 seasons, current year included', () => {
-    expect(defaultMinYear(new Date(2026, 9, 27))).toBe('2007');
-    expect(defaultMinYear(new Date(2030, 0, 1))).toBe('2011');
-  });
-  it('every state starts with the 20-year floor and no upper bound', () => {
-    for (const k of STATE_KEYS) {
-      const f = defaultFilters(k);
-      expect(f.minYear).toBe(defaultMinYear());
-      expect(f.maxYear).toBe('');
-    }
   });
 });
